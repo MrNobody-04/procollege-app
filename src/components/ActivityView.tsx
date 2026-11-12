@@ -1,9 +1,11 @@
 import React from 'react';
-import { Bell, CheckCheck, Megaphone, AtSign, FileCheck, PhoneCall, Award, RotateCcw } from 'lucide-react';
+import { Bell, CheckCheck, Megaphone, AtSign, FileCheck, PhoneCall, Award, RotateCcw, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useCollegeNotices } from '../hooks/useCollegeNotices';
 
 export const ActivityView: React.FC = () => {
   const { notifications, markNotificationsAsRead, courses, setSelectedCourse, setSelectedChannel, setActiveTab, setChannelTab } = useApp();
+  const { notices } = useCollegeNotices('padmashree-demo');
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -60,6 +62,45 @@ export const ActivityView: React.FC = () => {
             Mark all read
           </button>
         </div>
+
+        {/* Live Turso Database Notices with Edge Cache */}
+        {notices.length > 0 && (
+          <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border border-indigo-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs font-bold text-indigo-950 uppercase tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  Live Campus Notices (Turso Edge Cache)
+                </span>
+              </div>
+              <span className="text-[10px] bg-white/80 border border-indigo-200 text-indigo-700 font-semibold px-2 py-0.5 rounded-full">
+                Cache-Control: 60s
+              </span>
+            </div>
+
+            <div className="grid gap-2.5">
+              {notices.map((n) => (
+                <div key={n.id} className="bg-white/95 rounded-xl p-3.5 border border-indigo-100 shadow-2xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-zinc-900 leading-snug">{n.title}</h3>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-600 font-medium px-2 py-0.5 rounded shrink-0">
+                      {n.priority || 'important'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600 mt-1 leading-relaxed">{n.content}</p>
+                  <div className="mt-2.5 flex items-center justify-between text-[11px] text-zinc-400 pt-2 border-t border-zinc-100">
+                    <span className="font-medium text-zinc-500">Author: {n.author_name || 'Academic Dean'}</span>
+                    <span>{new Date(n.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Notifications List */}
         <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs divide-y divide-zinc-100 overflow-hidden">

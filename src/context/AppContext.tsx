@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   User,
   CourseTeam,
@@ -1460,7 +1460,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Keep selectedCourse in sync when switching institution or tenant
   useEffect(() => {
     if (tenantCourses.length > 0) {
-      if (!tenantCourses.some(c => c.id === selectedCourse.id)) {
+      if (!tenantCourses.some((c: CourseTeam) => c.id === selectedCourse.id)) {
         setSelectedCourse(tenantCourses[0]);
         if (tenantCourses[0].channels.length > 0) {
           setSelectedChannel(tenantCourses[0].channels[0]);

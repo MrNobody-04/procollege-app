@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Send, Video, Phone, Paperclip, Smile, MoreHorizontal, ShieldCheck, ChevronLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
 
 export const ChatView: React.FC = () => {
   const {
@@ -17,16 +18,66 @@ export const ChatView: React.FC = () => {
   const [filterQuery, setFilterQuery] = useState('');
   const [mobileChatListOpen, setMobileChatListOpen] = useState(false);
 
+  // Live Dexie IndexedDB + Turso delta sync + Ably Realtime hook
+  const { messages: realtimeMsgs, isSyncing, sendMessage } = useRealtimeMessages(selectedConversation.id);
+
   const activeMessages = directMessages[selectedConversation.id] || [];
   const otherUser =
     selectedConversation.participants.find(p => p.id !== currentUser.id) ||
     selectedConversation.participants[0];
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Combined messages with deduplication
+  const allMessages = useMemo(() => {
+    const seen = new Set<string>();
+    const list: { id: string; senderId?: string; content: string; timestamp: string }[] = [];
+
+    // Local state messages
+    for (const m of activeMessages) {
+      if (!seen.has(m.id)) {
+        seen.add(m.id);
+        list.push({
+          id: m.id,
+          senderId: m.senderId,
+          content: m.content,
+          timestamp: m.timestamp,
+        });
+      }
+    }
+
+    // Live Dexie/Turso/Ably messages
+    for (const rm of realtimeMsgs) {
+      if (!seen.has(rm.id)) {
+        seen.add(rm.id);
+        const isMe = rm.sender_id === currentUser.id || rm.sender_name === currentUser.name;
+        list.push({
+          id: rm.id,
+          senderId: rm.sender_id || (isMe ? currentUser.id : otherUser.id),
+          content: rm.body || rm.content || '',
+          timestamp: rm.created_at
+            ? new Date(rm.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'Just now',
+        });
+      }
+    }
+
+    return list;
+  }, [activeMessages, realtimeMsgs, currentUser, otherUser]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim()) return;
-    sendDirectMessage(selectedConversation.id, messageInput.trim());
+    const text = messageInput.trim();
     setMessageInput('');
+
+    // Update in-memory state
+    sendDirectMessage(selectedConversation.id, text);
+
+    // Save to IndexedDB, push to Turso via /api/messages, and broadcast on Ably REST
+    try {
+      await sendMessage(text, currentUser.name, currentUser.id);
+    } catch (err) {
+      console.warn('Realtime message dispatch warning:', err);
+    }
   };
 
   const filteredConversations = conversations.filter(c =>
@@ -139,6 +190,10 @@ export const ChatView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {isSyncing ? 'Syncing...' : 'Live Realtime (Ably + Turso)'}
+            </div>
             <button
               onClick={() => startMeeting(`Direct Call: ${otherUser.name}`, 'Chat')}
               className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600 hover:text-[#5b5fc7] transition-colors"
@@ -168,7 +223,7 @@ export const ChatView: React.FC = () => {
             </div>
           </div>
 
-          {activeMessages.map(msg => {
+          {allMessages.map(msg => {
             const isMe = msg.senderId === currentUser.id;
             return (
               <div

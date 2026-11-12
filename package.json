@@ -7,14 +7,24 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pages:dev": "wrangler pages dev --compatibility-date=2024-11-01",
+    "db:init": "node scripts/init-db.mjs"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "ably": "^2.30.0",
+    "browser-image-compression": "^2.0.2",
+    "dexie": "^4.4.7",
+    "dexie-react-hooks": "^4.4.0",
+    "dotenv": "^18.0.10",
+    "hono": "^4.13.18",
     "lucide-react": "^1.72.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261112.1",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
@@ -23,6 +33,7 @@
     "oxlint": "^1.90.0",
     "tailwindcss": "^4.3.5",
     "typescript": "~7.0.2",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "wrangler": "^4.161.0"
   }
 }
