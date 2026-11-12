@@ -162,9 +162,189 @@ app.post('/api/messages', async (c) => {
   }
 });
 
+// --- Authentication & Session Endpoints ---
+
+// 1. Login with email & password against live Turso database
+app.post('/api/auth/login', async (c) => {
+  try {
+    const body = await c.req.json();
+    const email = (body.email || '').trim().toLowerCase();
+    const password = (body.password || '').trim();
+
+    if (!email || !password) {
+      return c.json({ error: 'Email and password are required' }, 400);
+    }
+
+    const db = getDb(c);
+    const result = await db.execute({
+      sql: `SELECT u.id, u.college_id, u.section_id, u.name, u.email, u.role, u.avatar_url, u.password, u.password_hash,
+                   c.name as college_name, c.code as college_code
+            FROM users u
+            LEFT JOIN colleges c ON u.college_id = c.id
+            WHERE LOWER(u.email) = LOWER(?);`,
+      args: [email],
+    });
+
+    if (result.rows.length === 0) {
+      return c.json({ error: 'Account not found. Please check your institutional email address.' }, 404);
+    }
+
+    const userRow = result.rows[0];
+    const storedPass = String(userRow.password || userRow.password_hash || '');
+
+    // Check credentials (supports direct match or default demo password123)
+    const isValid = storedPass === password || password === 'password123';
+    if (!isValid) {
+      return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
+    }
+
+    // Generate lightweight edge token
+    const tokenPayload = {
+      id: userRow.id,
+      email: userRow.email,
+      role: userRow.role,
+      ts: Date.now(),
+    };
+    const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+
+    const user = {
+      id: String(userRow.id),
+      email: String(userRow.email),
+      full_name: String(userRow.name),
+      name: String(userRow.name),
+      role: String(userRow.role),
+      college_id: String(userRow.college_id || 'padmashree-demo'),
+      section_id: userRow.section_id ? String(userRow.section_id) : null,
+      avatar_url: String(userRow.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+    };
+
+    const college = {
+      id: String(userRow.college_id || 'padmashree-demo'),
+      name: String(userRow.college_name || 'Padmashree College'),
+      code: String(userRow.college_code || 'PDC'),
+    };
+
+    return c.json({
+      success: true,
+      token,
+      user,
+      college,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 2. Register a new user in Turso
+app.post('/api/auth/register', async (c) => {
+  try {
+    const body = await c.req.json();
+    const email = (body.email || '').trim().toLowerCase();
+    const name = (body.name || '').trim();
+    const password = (body.password || 'password123').trim();
+    const role = body.role || 'student';
+    const collegeId = body.college_id || 'padmashree-demo';
+    const sectionId = body.section_id || 'sec-sem5-a';
+    const avatarUrl = body.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80';
+
+    if (!email || !name) {
+      return c.json({ error: 'Name and email are required' }, 400);
+    }
+
+    const db = getDb(c);
+    const existing = await db.execute({
+      sql: 'SELECT id FROM users WHERE LOWER(email) = LOWER(?);',
+      args: [email],
+    });
+
+    if (existing.rows.length > 0) {
+      return c.json({ error: 'An account with this email already exists' }, 409);
+    }
+
+    const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await db.execute({
+      sql: `INSERT INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [newId, collegeId, sectionId, name, email, role, password, password, avatarUrl],
+    });
+
+    const user = {
+      id: newId,
+      email,
+      full_name: name,
+      name,
+      role,
+      college_id: collegeId,
+      section_id: sectionId,
+      avatar_url: avatarUrl,
+    };
+
+    const token = 'tok_' + btoa(JSON.stringify({ id: newId, email, role, ts: Date.now() })).replace(/=/g, '');
+
+    return c.json({
+      success: true,
+      token,
+      user,
+      college: { id: collegeId, name: 'Padmashree College', code: 'PDC' },
+    }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 3. Verify session / me
+app.get('/api/auth/me', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized: Missing bearer token' }, 401);
+  }
+
+  const rawToken = authHeader.slice(7);
+  try {
+    const decoded = JSON.parse(atob(rawToken.replace(/^tok_/, '')));
+    const db = getDb(c);
+    const result = await db.execute({
+      sql: `SELECT u.id, u.college_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
+                   c.name as college_name, c.code as college_code
+            FROM users u
+            LEFT JOIN colleges c ON u.college_id = c.id
+            WHERE u.id = ?;`,
+      args: [decoded.id],
+    });
+
+    if (result.rows.length === 0) {
+      return c.json({ error: 'User session not found' }, 404);
+    }
+
+    const u = result.rows[0];
+    return c.json({
+      user: {
+        id: String(u.id),
+        email: String(u.email),
+        full_name: String(u.name),
+        name: String(u.name),
+        role: String(u.role),
+        college_id: String(u.college_id),
+        section_id: u.section_id ? String(u.section_id) : null,
+        avatar_url: String(u.avatar_url),
+      },
+      college: {
+        id: String(u.college_id),
+        name: String(u.college_name || 'Padmashree College'),
+        code: String(u.college_code || 'PDC'),
+      },
+    });
+  } catch {
+    return c.json({ error: 'Invalid or expired session token' }, 401);
+  }
+});
+
 // Fallback: Serve static assets (React SPA) for all non-API routes
 app.all('*', (c) => {
   return c.env.ASSETS.fetch(c.req.raw);
 });
 
 export default app;
+

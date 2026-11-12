@@ -14,10 +14,12 @@ import {
   Menu,
   Mail,
   Phone,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
+import type { User, UserRole } from '../types';
 
 export const PortalLanding: React.FC = () => {
   const {
@@ -52,6 +54,66 @@ export const PortalLanding: React.FC = () => {
   });
   const [phoneCountryCode, setPhoneCountryCode] = useState<string>('+977');
 
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+
+  const performLogin = async (emailToUse: string, passwordToUse: string) => {
+    setIsLoggingIn(true);
+    setLoginError('');
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToUse, password: passwordToUse }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Login failed. Please check your credentials.');
+      }
+
+      // Store credentials in localStorage
+      localStorage.setItem('procollege_token', data.token);
+      localStorage.setItem('procollege_user', JSON.stringify(data.user));
+      localStorage.setItem('procollege_college', JSON.stringify(data.college));
+
+      const roleStr = data.user.role;
+      const mappedRole: UserRole =
+        roleStr === 'admin'
+          ? 'admin'
+          : roleStr === 'teacher'
+          ? 'professor'
+          : 'student';
+
+      const appUser: User = {
+        id: data.user.id,
+        name: data.user.full_name || data.user.name,
+        email: data.user.email,
+        role: mappedRole,
+        license:
+          data.user.role === 'admin' || data.user.role === 'teacher'
+            ? 'Microsoft 365 A5 for Faculty'
+            : 'Microsoft 365 A5 for Students',
+        department: data.user.role === 'admin' ? 'Administration' : 'Department of BIT',
+        institutionName: data.college?.name || 'Padmashree College',
+        avatar: data.user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+        status: 'available',
+      };
+
+      setIsDemoMode(false);
+      setCurrentUser(appUser);
+      setShowSignInModal(false);
+      setShowRequestModal(false);
+      setMobileMenuOpen(false);
+      setViewMode('app');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLoginError(message);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const launchDemoMode = (userToSet?: typeof availableUsers[0]) => {
     setIsDemoMode(true);
     if (userToSet) {
@@ -63,7 +125,7 @@ export const PortalLanding: React.FC = () => {
     setViewMode('app');
   };
 
-  const handleInstitutionalLogin = (e: React.FormEvent) => {
+  const handleInstitutionalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
 
@@ -71,24 +133,11 @@ export const PortalLanding: React.FC = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
-      setLoginError('Please enter a valid institutional email address (name@university.edu).');
+      setLoginError('Please enter a valid institutional email address (e.g. sujan@padmashree.edu.np).');
       return;
     }
 
-    const foundUser = availableUsers.find(
-      u => u.email.toLowerCase() === email || (u.loginId && u.loginId.toLowerCase() === email)
-    );
-
-    if (foundUser) {
-      setIsDemoMode(false); // Official verified session
-      setCurrentUser(foundUser);
-      setShowSignInModal(false);
-      setViewMode('app');
-    } else {
-      setLoginError(
-        'Institutional email not found in our registry. Please check your credentials or submit an access request.'
-      );
-    }
+    await performLogin(email, loginPassword || 'password123');
   };
 
   const handleOrgRequestSubmit = (e: React.FormEvent) => {
@@ -1220,48 +1269,67 @@ export const PortalLanding: React.FC = () => {
               </button>
             </div>
 
-            {/* TAB 1: ACADEMIC ROLE SIGN-IN (Professor & Students only - Zero Admin in Demo) */}
+            {/* TAB 1: ACADEMIC ROLE SIGN-IN (Live Turso Accounts) */}
             {signInTab === 'demo' && (() => {
-              const demoPersonas = [
+              const livePersonas = [
                 {
-                  roleLabel: 'Professor',
+                  roleLabel: 'Admin / Dean',
+                  badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+                  name: 'Academic Dean',
+                  email: 'dean@padmashree.edu.np',
+                  department: 'Institutional Administration',
+                  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+                },
+                {
+                  roleLabel: 'Teacher / Faculty',
                   badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-                  user: availableUsers.find(u => u.role === 'professor') || availableUsers[1]
+                  name: 'Er. Ramesh Sharma',
+                  email: 'teacher@padmashree.edu.np',
+                  department: 'Department of BIT',
+                  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
                 },
                 {
                   roleLabel: 'Student',
                   badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                  user: availableUsers.find(u => u.role === 'student') || availableUsers[2]
+                  name: 'Sujan G.C.',
+                  email: 'sujan@padmashree.edu.np',
+                  department: 'Sem 5 - Sec A (BIT)',
+                  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80',
                 },
-                {
-                  roleLabel: 'Student',
-                  badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-                  user: availableUsers.find(u => u.id === 'user_sophia') || availableUsers.find(u => u.role === 'student' && u.id !== 'user_alex') || availableUsers[2]
-                }
               ];
 
               return (
                 <div className="mt-4 sm:mt-5 space-y-3">
-                  <div className="text-xs text-[#586680] leading-relaxed">
-                    Select your authorized academic persona to sign in directly:
+                  <div className="flex items-center justify-between text-xs text-[#586680]">
+                    <span>Select an authorized account to sign in directly with live Turso DB:</span>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                      Live Turso
+                    </span>
                   </div>
 
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
+                    </div>
+                  )}
+
                   <div className="space-y-2.5">
-                    {demoPersonas.map((persona, idx) => (
+                    {livePersonas.map((persona) => (
                       <button
-                        key={persona.user.id || idx}
-                        onClick={() => launchDemoMode(persona.user)}
-                        className="w-full p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200 hover:border-[#173bff] hover:bg-zinc-50/90 text-left flex items-center justify-between transition-all group cursor-pointer gap-2.5 shadow-xs hover:shadow-md"
+                        key={persona.email}
+                        disabled={isLoggingIn}
+                        onClick={() => performLogin(persona.email, 'password123')}
+                        className="w-full p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200 hover:border-[#173bff] hover:bg-zinc-50/90 text-left flex items-center justify-between transition-all group cursor-pointer gap-2.5 shadow-xs hover:shadow-md disabled:opacity-50"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <img
-                            src={persona.user.avatar}
+                            src={persona.avatar}
                             alt=""
                             className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover ring-1 ring-zinc-200 shrink-0"
                           />
                           <div className="min-w-0">
                             <div className="text-xs sm:text-sm font-bold text-[#101b46] group-hover:text-[#173bff] transition-colors flex items-center gap-2 truncate">
-                              <span>{persona.user.name}</span>
+                              <span>{persona.name}</span>
                               <span
                                 className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${persona.badgeColor}`}
                               >
@@ -1269,14 +1337,20 @@ export const PortalLanding: React.FC = () => {
                               </span>
                             </div>
                             <div className="text-[10px] sm:text-xs text-[#586680] truncate mt-0.5">
-                              {persona.user.department}
+                              {persona.email} • {persona.department}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-1.5 text-xs font-bold text-[#173bff] shrink-0 group-hover:translate-x-1 transition-transform">
-                          <span>Sign In</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          {isLoggingIn ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <span>1-Click Login</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
                         </div>
                       </button>
                     ))}
@@ -1301,8 +1375,45 @@ export const PortalLanding: React.FC = () => {
             {/* TAB 2: INSTITUTIONAL SIGN-IN FORM */}
             {signInTab === 'institutional' && (
               <form onSubmit={handleInstitutionalLogin} className="mt-4 sm:mt-5 space-y-3.5">
+                {/* 1-Click Quick Demo Login Shortcuts */}
+                <div className="p-3 bg-indigo-50/80 border border-indigo-200/80 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      1-Click Live Turso Demo Accounts:
+                    </span>
+                    <span className="text-[10px] text-indigo-600 font-medium">pass: password123</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      disabled={isLoggingIn}
+                      onClick={() => performLogin('sujan@padmashree.edu.np', 'password123')}
+                      className="px-2.5 py-1.5 bg-white border border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg text-[11px] font-bold text-indigo-800 transition-colors shadow-2xs text-center flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <span>🎓 Student</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isLoggingIn}
+                      onClick={() => performLogin('teacher@padmashree.edu.np', 'password123')}
+                      className="px-2.5 py-1.5 bg-white border border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg text-[11px] font-bold text-indigo-800 transition-colors shadow-2xs text-center flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <span>👨‍🏫 Teacher</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isLoggingIn}
+                      onClick={() => performLogin('dean@padmashree.edu.np', 'password123')}
+                      className="px-2.5 py-1.5 bg-white border border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg text-[11px] font-bold text-indigo-800 transition-colors shadow-2xs text-center flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <span>🏛️ Admin</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="text-xs text-[#586680] leading-relaxed">
-                  Sign in with your official institutional email provided by your College Administrator.
+                  Or enter your registered institutional email and password to authenticate directly with Turso:
                 </div>
 
                 {loginError && (
@@ -1321,7 +1432,7 @@ export const PortalLanding: React.FC = () => {
                     autoComplete="email"
                     value={loginEmail}
                     onChange={e => setLoginEmail(e.target.value)}
-                    placeholder="name@university.edu"
+                    placeholder="e.g. sujan@padmashree.edu.np"
                     className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
                   />
                 </div>
@@ -1336,17 +1447,27 @@ export const PortalLanding: React.FC = () => {
                     autoComplete="current-password"
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
-                    placeholder="••••••••••••"
+                    placeholder="password123"
                     className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-black shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2"
+                  disabled={isLoggingIn}
+                  className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-black shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
                 >
-                  <Key className="w-4 h-4" />
-                  <span>Sign In to Workspace</span>
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Authenticating with Turso...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Key className="w-4 h-4" />
+                      <span>Sign In to Workspace</span>
+                    </>
+                  )}
                 </button>
 
                 <div className="pt-2 text-center">

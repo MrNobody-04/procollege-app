@@ -93,10 +93,16 @@ async function init() {
         email TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'student',
         avatar_url TEXT,
+        password TEXT,
+        password_hash TEXT,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
-    console.log('   ✔ Table `users` created / verified');
+    const userColsRes = await db.execute("PRAGMA table_info(users);");
+    const userCols = new Set(userColsRes.rows.map(r => r.name));
+    if (!userCols.has('password')) await db.execute("ALTER TABLE users ADD COLUMN password TEXT;");
+    if (!userCols.has('password_hash')) await db.execute("ALTER TABLE users ADD COLUMN password_hash TEXT;");
+    console.log('   ✔ Table `users` created / verified (with password columns)');
 
     // 5. channels
     await db.execute(`
@@ -224,13 +230,59 @@ async function init() {
     });
     console.log('   ✔ Seeded Section: "Sem 5 - Sec A" (ID: sec-sem5-a)');
 
-    // 1 User: Academic Dean
-    const userId = 'usr-admin-01';
+    // 1 User: Admin (Academic Dean)
     await db.execute({
-      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role) VALUES (?, ?, ?, ?, ?, ?);`,
-      args: [userId, collegeId, sectionId, 'Academic Dean', 'dean@padmashree.edu.np', 'admin'],
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'usr-admin-01',
+        collegeId,
+        sectionId,
+        'Academic Dean',
+        'dean@padmashree.edu.np',
+        'admin',
+        'password123',
+        'password123',
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      ],
     });
-    console.log('   ✔ Seeded User: "Academic Dean" (dean@padmashree.edu.np)');
+    console.log('   ✔ Seeded Admin: "Academic Dean" (dean@padmashree.edu.np / password123)');
+
+    // 2 User: Teacher (Er. Ramesh Sharma)
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'usr-teacher-01',
+        collegeId,
+        sectionId,
+        'Er. Ramesh Sharma',
+        'teacher@padmashree.edu.np',
+        'teacher',
+        'password123',
+        'password123',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+      ],
+    });
+    console.log('   ✔ Seeded Teacher: "Er. Ramesh Sharma" (teacher@padmashree.edu.np / password123)');
+
+    // 3 User: Student (Sujan G.C.)
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'usr-student-01',
+        collegeId,
+        sectionId,
+        'Sujan G.C.',
+        'sujan@padmashree.edu.np',
+        'student',
+        'password123',
+        'password123',
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80',
+      ],
+    });
+    console.log('   ✔ Seeded Student: "Sujan G.C." (sujan@padmashree.edu.np / password123)');
 
     // 2 Channels: general and announcements
     const chGeneralId = 'ch-general';
@@ -248,6 +300,7 @@ async function init() {
     console.log('   ✔ Seeded Channel: "announcements" (ID: ch-announcements)');
 
     // 2 Welcome Notices
+    const userId = 'usr-admin-01';
     const notice1Id = 'not-welcome-01';
     await db.execute({
       sql: `INSERT OR REPLACE INTO notices (id, college_id, title, content, priority, author_id, author_name) VALUES (?, ?, ?, ?, ?, ?, ?);`,

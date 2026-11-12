@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   User,
+  UserRole,
   CourseTeam,
   Channel,
   ThreadPost,
@@ -223,6 +224,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [faculties, setFaculties] = useState<FacultyDepartment[]>(INITIAL_FACULTIES);
   const [selectedInstitution, setSelectedInstitution] = useState<string>('ProCollege University Network');
 
+  // Restore authenticated Turso session on refresh if present
+  useEffect(() => {
+    try {
+      const savedUserStr = localStorage.getItem('procollege_user');
+      const savedToken = localStorage.getItem('procollege_token');
+      if (savedUserStr && savedToken) {
+        const u = JSON.parse(savedUserStr);
+        const mappedRole: UserRole =
+          u.role === 'admin'
+            ? 'admin'
+            : u.role === 'teacher'
+            ? 'professor'
+            : 'student';
+
+        const restoredUser: User = {
+          id: u.id,
+          name: u.full_name || u.name,
+          email: u.email,
+          role: mappedRole,
+          license:
+            u.role === 'admin' || u.role === 'teacher'
+              ? 'Microsoft 365 A5 for Faculty'
+              : 'Microsoft 365 A5 for Students',
+          department: u.role === 'admin' ? 'Administration' : 'Department of BIT',
+          institutionName: 'Padmashree College',
+          avatar:
+            u.avatar_url ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+          status: 'available',
+        };
+        setCurrentUser(restoredUser);
+        setIsDemoMode(false);
+        setViewMode('app');
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const closeDialog = useCallback(() => {
@@ -362,6 +402,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logoutUser = () => {
+    try {
+      localStorage.removeItem('procollege_token');
+      localStorage.removeItem('procollege_user');
+      localStorage.removeItem('procollege_college');
+    } catch {
+      // ignore
+    }
     setViewMode('portal');
   };
 
