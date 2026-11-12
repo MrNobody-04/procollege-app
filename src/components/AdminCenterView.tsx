@@ -374,7 +374,7 @@ export const AdminCenterView: React.FC = () => {
     addPost(
       `ch_${newCourseId}_gen`,
       `Welcome to ${courseName.trim()} - Class Noticeboard`,
-      `Welcome students to ${courseName.trim()}. This is our official cohort announcement section where all assigned lecturers and faculty can broadcast class details, syllabus updates, urgent alerts, holiday notices, and academic events.`,
+      `Welcome students to ${courseName.trim()}. This is our official announcement section where all assigned lecturers and faculty can broadcast class details, syllabus updates, urgent alerts, holiday notices, and academic events.`,
       true,
       undefined,
       'general'
@@ -1171,7 +1171,7 @@ export const AdminCenterView: React.FC = () => {
                   <span>Academic Faculties & Departments</span>
                 </h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Establish collegiate faculties, appoint academic deans, and organize degree class cohorts and subject modules under each department.
+                  Establish collegiate faculties, appoint academic deans, and organize degree classes and subject modules under each department.
                 </p>
               </div>
 
@@ -1228,7 +1228,7 @@ export const AdminCenterView: React.FC = () => {
                         </div>
                         <div className="flex items-center justify-between text-zinc-600">
                           <span className="text-[11px] font-medium text-zinc-500">Active Classes:</span>
-                          <span className="font-bold text-[#5b5fc7]">{associatedClasses.length} cohorts</span>
+                          <span className="font-bold text-[#5b5fc7]">{associatedClasses.length} {associatedClasses.length === 1 ? 'class' : 'classes'}</span>
                         </div>
                       </div>
 
