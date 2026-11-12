@@ -1,0 +1,259 @@
+export type UserRole = 'developer' | 'admin' | 'professor' | 'lecturer' | 'student' | 'ta' | 'dean';
+export type PresenceStatus = 'available' | 'busy' | 'away' | 'dnd' | 'in-call' | 'offline';
+export type LicenseSku =
+  | 'Microsoft 365 A5 for Faculty'
+  | 'Microsoft 365 A3 for Faculty'
+  | 'Microsoft 365 A1 for Faculty'
+  | 'Microsoft 365 A5 for Students'
+  | 'Microsoft 365 A3 for Students'
+  | 'Microsoft 365 A1 for Students';
+
+export interface User {
+  id: string;
+  loginId?: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  license: LicenseSku;
+  department: string;
+  institutionName?: string;
+  avatar: string;
+  status: PresenceStatus;
+  statusMessage?: string;
+  isMuted?: boolean;
+  temporaryPassword?: string;
+  createdAt?: string;
+}
+
+export interface FacultyDepartment {
+  id: string;
+  name: string;
+  code: string;
+  deanId?: string;
+  deanName?: string;
+  description: string;
+  institutionName?: string;
+}
+
+export interface InstitutionalRequest {
+  id: string;
+  institutionName: string;
+  department: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  studentCount: number;
+  deploymentType: 'campus-pro' | 'enterprise';
+  notes?: string;
+  status: 'pending' | 'verified' | 'provisioned';
+  submittedAt: string;
+  assignedAdminId?: string;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt';
+  size: string;
+  url?: string;
+  isClassMaterial?: boolean;
+  permission?: 'read-only' | 'editable';
+}
+
+export interface Reply {
+  id: string;
+  author: User;
+  content: string;
+  timestamp: string;
+  reactions: Record<string, string[]>; // emoji -> array of user names
+}
+
+export type PostCategory = 'general' | 'alert' | 'holiday' | 'event' | 'class-details';
+
+export interface ThreadPost {
+  id: string;
+  channelId: string;
+  author: User;
+  title?: string;
+  content: string;
+  isAnnouncement?: boolean;
+  category?: PostCategory;
+  timestamp: string;
+  pinned?: boolean;
+  reactions: Record<string, string[]>;
+  replies: Reply[];
+  attachments?: Attachment[];
+  assignmentId?: string; // routed assignment announcement card
+}
+
+export interface Channel {
+  id: string;
+  courseId: string;
+  name: string;
+  description: string;
+  isGeneral?: boolean;
+  unreadCount?: number;
+  studentFilePermission?: 'read-only' | 'can-edit';
+  subjectLecturerName?: string;
+  subjectLecturerId?: string;
+}
+
+export type DeploymentModel = 'model-a' | 'model-b'; // Model A: Subject-per-Team | Model B: Cohort-Batch with Subject Channels
+
+export interface CourseTeam {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  institutionName?: string;
+  term: string;
+  color: string;
+  icon: string;
+  instructor: User;
+  coOwners?: User[]; // For Model B cohort batch teams
+  memberCount: number;
+  enrolledStudents?: User[];
+  channels: Channel[];
+  isActivated: boolean; // Pre-staged inactive state until Lecturer clicks Activate banner
+  model: DeploymentModel;
+  template: 'Class' | 'PLC' | 'Staff' | 'Other';
+}
+
+export interface DirectMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  timestamp: string;
+  reactions: Record<string, string[]>;
+  attachments?: Attachment[];
+}
+
+export interface Conversation {
+  id: string;
+  type: 'direct' | 'group';
+  participants: User[];
+  lastMessage?: string;
+  lastMessageTime?: string;
+  unreadCount?: number;
+}
+
+export type SubmissionStatus =
+  | 'not-turned-in'
+  | 'viewed'
+  | 'turned-in'
+  | 'turned-in-late'
+  | 'graded'
+  | 'returned'
+  | 'revision-requested';
+
+export interface SubmittedFile {
+  name: string;
+  size: string;
+  type: string;
+  isReadOnly: boolean;
+  uploadedAt: string;
+}
+
+export interface AssignmentSubmission {
+  studentId: string;
+  studentName: string;
+  status: SubmissionStatus;
+  viewedAt?: string;
+  submittedAt?: string;
+  fileName?: string;
+  fileSize?: string;
+  files: SubmittedFile[];
+  grade?: number;
+  feedback?: string;
+  rubricScores?: Record<string, number>;
+  revisionGranted?: boolean; // Individual deadline override granted by lecturer
+}
+
+export interface RubricCriterion {
+  id: string;
+  criterion: string;
+  description?: string;
+  maxPoints: number;
+}
+
+export interface Assignment {
+  id: string;
+  courseId: string;
+  courseCode: string;
+  title: string;
+  instructions: string;
+  points: number;
+  targetChannelId?: string; // Routing: General vs specific subject channel
+  referenceMaterialMode: 'students-cant-edit' | 'students-edit-own-copy'; // Permission setting beside attached file
+  referenceFiles?: Attachment[];
+  scheduleDate?: string; // Schedule to assign in future
+  dueAt: string; // Mandatory Due Date & Time
+  dueTimestamp?: number; // Epoch timestamp for deadline checking
+  closeAt?: string; // Close Date & Time (Hard Cutoff)
+  isStrictNoLateSubmission?: boolean; // Strict rule: Close Date == Due Date
+  rubric: RubricCriterion[];
+  submissions: AssignmentSubmission[];
+}
+
+export interface CalendarEvent {
+  id: string;
+  courseId?: string;
+  courseCode?: string;
+  title: string;
+  instructorName: string;
+  day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  dateStr: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  isVirtual: boolean;
+  meetingLink?: string;
+}
+
+export interface CourseFile {
+  id: string;
+  courseId: string;
+  channelId?: string;
+  name: string;
+  category: 'Class Materials' | 'Syllabus' | 'Lecture Slides' | 'Lab Manuals' | 'Readings' | 'Subject Files';
+  size: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  isClassMaterials?: boolean; // Pinned folder: Owners = Edit, Members = Read-Only
+  permission: 'read-only' | 'can-edit';
+}
+
+export interface ActivityNotification {
+  id: string;
+  type: 'mention' | 'assignment' | 'reply' | 'announcement' | 'call' | 'grade' | 'revision' | 'course_material';
+  title: string;
+  detail: string;
+  timestamp: string;
+  courseCode?: string;
+  channelId?: string;
+  isRead: boolean;
+  author?: User;
+}
+
+export type DialogType = 'success' | 'info' | 'warning' | 'error';
+
+export interface DialogOptions {
+  title?: string;
+  type?: DialogType;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}
+
+export interface DialogState {
+  isOpen: boolean;
+  message: string;
+  title: string;
+  type: DialogType;
+  confirmText: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}
