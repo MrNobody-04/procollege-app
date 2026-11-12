@@ -1,24 +1,26 @@
 import { Hono } from 'hono';
-import { handle } from 'hono/cloudflare-pages';
 import { createClient } from '@libsql/client/web';
 
-type Bindings = {
+export type Env = {
   TURSO_DB_URL: string;
   TURSO_AUTH_TOKEN: string;
   ABLY_API_KEY: string;
+  ASSETS: {
+    fetch: (request: Request | string, init?: RequestInit) => Promise<Response>;
+  };
 };
 
-const app = new Hono<{ Bindings: Bindings }>().basePath('/api');
+const app = new Hono<{ Bindings: Env }>();
 
 // Helper to get Turso client from context
-function getDb(c: any) {
-  const url = c.env?.TURSO_DB_URL || 'libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io';
-  const authToken = c.env?.TURSO_AUTH_TOKEN;
+function getDb(c: { env: Env }) {
+  const url = c.env.TURSO_DB_URL || 'libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io';
+  const authToken = c.env.TURSO_AUTH_TOKEN;
   return createClient({ url, authToken });
 }
 
 // 1. Health check & DB verification
-app.get('/health', async (c) => {
+app.get('/api/health', async (c) => {
   try {
     const db = getDb(c);
     const result = await db.execute('SELECT count(*) as count FROM colleges;');
@@ -28,13 +30,14 @@ app.get('/health', async (c) => {
       collegesCount: count,
       timestamp: new Date().toISOString(),
     });
-  } catch (err: any) {
-    return c.json({ status: 'error', message: err.message }, 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ status: 'error', message }, 500);
   }
 });
 
 // 2. Notices for college with Edge Cache
-app.get('/notices/:collegeId', async (c) => {
+app.get('/api/notices/:collegeId', async (c) => {
   const collegeId = c.req.param('collegeId');
   try {
     const db = getDb(c);
@@ -46,13 +49,14 @@ app.get('/notices/:collegeId', async (c) => {
     // Cache-Control: public, max-age=60, s-maxage=60 for edge caching
     c.header('Cache-Control', 'public, max-age=60, s-maxage=60');
     return c.json({ notices: result.rows });
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
   }
 });
 
 // 3. Channels for college
-app.get('/channels/:collegeId', async (c) => {
+app.get('/api/channels/:collegeId', async (c) => {
   const collegeId = c.req.param('collegeId');
   try {
     const db = getDb(c);
@@ -61,13 +65,14 @@ app.get('/channels/:collegeId', async (c) => {
       args: [collegeId],
     });
     return c.json({ channels: result.rows });
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
   }
 });
 
 // 4. Messages for channel with delta sync (?since=TIMESTAMP)
-app.get('/messages/:channelId', async (c) => {
+app.get('/api/messages/:channelId', async (c) => {
   const channelId = c.req.param('channelId');
   const since = c.req.query('since');
 
@@ -88,13 +93,14 @@ app.get('/messages/:channelId', async (c) => {
     }
 
     return c.json({ messages: result.rows });
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
   }
 });
 
 // 5. Send message: Saves to Turso & publishes via Ably REST
-app.post('/messages', async (c) => {
+app.post('/api/messages', async (c) => {
   try {
     const body = await c.req.json();
     const id = body.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -129,7 +135,7 @@ app.post('/messages', async (c) => {
     };
 
     // Publish to Ably REST using Basic Auth (API Key)
-    const ablyApiKey = c.env?.ABLY_API_KEY;
+    const ablyApiKey = c.env.ABLY_API_KEY;
     if (ablyApiKey) {
       try {
         const authHeader = 'Basic ' + btoa(ablyApiKey);
@@ -150,10 +156,15 @@ app.post('/messages', async (c) => {
     }
 
     return c.json({ message: savedMessage }, 201);
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
   }
 });
 
-export const onRequest = handle(app);
+// Fallback: Serve static assets (React SPA) for all non-API routes
+app.all('*', (c) => {
+  return c.env.ASSETS.fetch(c.req.raw);
+});
 
+export default app;
