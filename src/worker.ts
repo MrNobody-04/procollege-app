@@ -25,6 +25,8 @@ export type Env = {
   CLOUDINARY_API_KEY?: string;
   CLOUDINARY_API_SECRET?: string;
   JWT_SECRET?: string;
+  DEVELOPER_EMAIL?: string;
+  DEVELOPER_PASSWORD?: string;
   procollege_vault?: D1Database;
   ASSETS: {
     fetch: (request: Request | string, init?: RequestInit) => Promise<Response>;
@@ -212,7 +214,7 @@ app.post('/api/messages', async (c) => {
 
 // --- Authentication & Session Endpoints ---
 
-// 1. Login with email & password against live Turso database
+// 1. Login with email & password against live Turso database or secure environment
 app.post('/api/auth/login', async (c) => {
   try {
     const body = await c.req.json();
@@ -223,6 +225,49 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ error: 'Email and password are required' }, 400);
     }
 
+    // A. Check Developer / Platform Creator credentials from secure environment secrets (never exposed to public)
+    const devEnvEmail = (c.env.DEVELOPER_EMAIL || '').trim().toLowerCase();
+    const devEnvPass = c.env.DEVELOPER_PASSWORD || '';
+
+    if (devEnvEmail && email === devEnvEmail) {
+      if (!devEnvPass || password !== devEnvPass) {
+        return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
+      }
+
+      const tokenPayload = {
+        id: 'user_dev_root',
+        email: devEnvEmail,
+        role: 'developer',
+        ts: Date.now(),
+      };
+      const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+
+      const user = {
+        id: 'user_dev_root',
+        email: devEnvEmail,
+        full_name: 'Platform Creator',
+        name: 'Platform Creator',
+        role: 'developer',
+        college_id: 'col_platform_root',
+        section_id: null,
+        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      };
+
+      const college = {
+        id: 'col_platform_root',
+        name: 'ProCollege Global Core Engine',
+        code: 'PRO',
+      };
+
+      return c.json({
+        success: true,
+        token,
+        user,
+        college,
+      });
+    }
+
+    // B. Check against live Turso database users table
     const db = getDb(c);
     const result = await db.execute({
       sql: `SELECT u.id, u.college_id, u.section_id, u.name, u.email, u.role, u.avatar_url, u.password, u.password_hash,
@@ -239,9 +284,11 @@ app.post('/api/auth/login', async (c) => {
 
     const userRow = result.rows[0];
     const storedPass = String(userRow.password || userRow.password_hash || '');
+    const userRole = String(userRow.role || '');
 
-    // Check credentials (supports direct match or default demo password123)
-    const isValid = storedPass === password || password === 'password123';
+    // Strict credential check: privileged accounts (developer, admin) require exact password match
+    const isPrivileged = userRole === 'developer' || userRole === 'admin';
+    const isValid = storedPass === password || (!isPrivileged && password === 'password123');
     if (!isValid) {
       return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
     }

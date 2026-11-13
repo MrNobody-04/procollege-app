@@ -44,19 +44,19 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
 
 export const INITIAL_USERS: User[] = [
   {
-    id: 'user_dev_creator',
-    loginId: 'DEV-CREATOR-01',
-    name: 'Platform Creator (Developer Admin)',
-    email: 'developer@procollege.io',
-    role: 'developer',
+    id: 'user_alan',
+    loginId: 'FAC-CS-301',
+    name: 'Prof. Alan Turing',
+    email: 'a.turing@procollege.edu',
+    role: 'professor',
     license: 'Microsoft 365 A5 for Faculty',
-    department: 'Platform Core & Infrastructure',
-    institutionName: 'ProCollege Global Core Engine',
+    department: 'Computer Science & Engineering',
+    institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
     status: 'available',
-    statusMessage: 'Developer / Creator Master Mode Active',
+    statusMessage: 'Office Hours: Tue/Thu 2-4 PM',
     isMuted: false,
-    createdAt: '2026-08-01'
+    createdAt: '2026-09-10'
   },
   {
     id: 'user_org_admin',
@@ -72,21 +72,6 @@ export const INITIAL_USERS: User[] = [
     statusMessage: 'Organization Admin · Identity & User Provisioning',
     isMuted: false,
     createdAt: '2026-09-01'
-  },
-  {
-    id: 'user_alan',
-    loginId: 'FAC-CS-301',
-    name: 'Prof. Alan Turing',
-    email: 'a.turing@procollege.edu',
-    role: 'professor',
-    license: 'Microsoft 365 A5 for Faculty',
-    department: 'Computer Science & Engineering',
-    institutionName: 'ProCollege University Network',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-    status: 'available',
-    statusMessage: 'Office Hours: Tue/Thu 2-4 PM',
-    isMuted: false,
-    createdAt: '2026-09-10'
   },
   {
     id: 'user_alex',
