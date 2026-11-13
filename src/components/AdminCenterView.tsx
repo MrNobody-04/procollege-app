@@ -23,9 +23,11 @@ import {
   FolderTree,
   Megaphone,
   ClipboardList,
-  ArrowLeft
+  ArrowLeft,
+  FileSpreadsheet
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
+import { AdminRosterUpload } from './AdminRosterUpload';
 import { useApp } from '../context/AppContext';
 import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest, FacultyDepartment } from '../types';
 
@@ -64,8 +66,8 @@ export const AdminCenterView: React.FC = () => {
   const isDeveloper = currentUser.role === 'developer';
   const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin';
 
-  // Primary Tab - Classes, Faculties, Users, Developer Requests, and Roles
-  const [activeAdminTab, setActiveAdminTab] = useState<'classes' | 'faculties' | 'users' | 'requests' | 'roles'>('classes');
+  // Primary Tab - Classes, Faculties, Users, Excel Roster, Developer Requests, and Roles
+  const [activeAdminTab, setActiveAdminTab] = useState<'classes' | 'faculties' | 'users' | 'roster' | 'requests' | 'roles'>('classes');
   const [searchClassQuery, setSearchClassQuery] = useState('');
   const [dbRequests, setDbRequests] = useState<InstitutionalRequest[]>([]);
 
@@ -743,6 +745,15 @@ export const AdminCenterView: React.FC = () => {
               <UserPlus className="w-3.5 h-3.5 text-zinc-600" />
               <span>Register ID</span>
             </button>
+
+            <button
+              onClick={() => setActiveAdminTab('roster')}
+              className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="Bulk import student roster from Excel (.xlsx/.csv) with auto-generated passwords"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Import Roster</span>
+            </button>
           </div>
         </div>
 
@@ -832,6 +843,17 @@ export const AdminCenterView: React.FC = () => {
           >
             <Users className="w-4 h-4" />
             Students & Lecturers ({availableUsers.length})
+          </button>
+          <button
+            onClick={() => setActiveAdminTab('roster')}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+              activeAdminTab === 'roster'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-white text-emerald-800 hover:text-emerald-900 border border-emerald-200'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            Excel Roster Import
           </button>
           {isDeveloperOrAdmin && (
             <button
@@ -1654,6 +1676,15 @@ export const AdminCenterView: React.FC = () => {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 3.5: BULK EXCEL ROSTER IMPORT & CREDENTIALS           */}
+        {/* ========================================================= */}
+        {activeAdminTab === 'roster' && (
+          <div className="animate-in fade-in duration-200">
+            <AdminRosterUpload />
           </div>
         )}
 

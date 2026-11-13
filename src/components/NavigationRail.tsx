@@ -36,7 +36,7 @@ export const NavigationRail: React.FC = () => {
   ];
 
   return (
-    <aside className="w-14 sm:w-16 md:w-18 bg-[#201f1e] text-zinc-300 flex flex-col items-center py-2 sm:py-2.5 select-none z-30 shrink-0 border-r border-zinc-800">
+    <aside className="w-14 sm:w-16 md:w-18 bg-[#201f1e] text-zinc-300 flex flex-col items-center py-2 sm:py-2.5 select-none z-20 shrink-0 border-r border-zinc-800">
       {/* College Logo */}
       <div
         className="mb-2 sm:mb-3 flex flex-col items-center cursor-pointer group"

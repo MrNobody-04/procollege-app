@@ -20,7 +20,8 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
     deanId: 'user_alan',
     deanName: 'Prof. Alan Turing',
     institutionName: 'ProCollege University Network',
-    description: 'Algorithms, Software Architecture, Operating Systems & Distributed Infrastructure'
+    description: 'Algorithms, Software Architecture, Operating Systems & Distributed Infrastructure',
+    isDemo: true
   },
   {
     id: 'fac_ai',
@@ -29,7 +30,8 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
     deanId: 'user_feifei',
     deanName: 'Dr. Fei-Fei Li',
     institutionName: 'ProCollege University Network',
-    description: 'Neural Networks, Computer Vision, Foundation Models & Deep Learning'
+    description: 'Neural Networks, Computer Vision, Foundation Models & Deep Learning',
+    isDemo: true
   },
   {
     id: 'fac_phys',
@@ -38,7 +40,8 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
     deanId: 'user_feynman',
     deanName: 'Dr. Richard Feynman',
     institutionName: 'ProCollege University Network',
-    description: 'Quantum Mechanics, Electromagnetism & Applied Computational Physics'
+    description: 'Quantum Mechanics, Electromagnetism & Applied Computational Physics',
+    isDemo: true
   }
 ];
 
@@ -49,14 +52,15 @@ export const INITIAL_USERS: User[] = [
     name: 'Prof. Alan Turing',
     email: 'a.turing@procollege.edu',
     role: 'professor',
-    license: 'Microsoft 365 A5 for Faculty',
+    license: 'ProCollege Verified for Faculty',
     department: 'Computer Science & Engineering',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
     status: 'available',
     statusMessage: 'Office Hours: Tue/Thu 2-4 PM',
     isMuted: false,
-    createdAt: '2026-09-10'
+    createdAt: '2026-09-10',
+    isDemo: true
   },
   {
     id: 'user_org_admin',
@@ -64,14 +68,15 @@ export const INITIAL_USERS: User[] = [
     name: 'Dr. Margaret Hamilton',
     email: 'admin@procollege.edu',
     role: 'admin',
-    license: 'Microsoft 365 A5 for Faculty',
+    license: 'ProCollege Verified for Faculty',
     department: 'Chief Academic IT Operations',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80',
     status: 'available',
     statusMessage: 'Organization Admin · Identity & User Provisioning',
     isMuted: false,
-    createdAt: '2026-09-01'
+    createdAt: '2026-09-01',
+    isDemo: true
   },
   {
     id: 'user_alex',
@@ -79,14 +84,15 @@ export const INITIAL_USERS: User[] = [
     name: 'Alex Johnson',
     email: 'alex.j@student.procollege.edu',
     role: 'student',
-    license: 'Microsoft 365 A3 for Students',
+    license: 'ProCollege Verified for Students',
     department: 'Computer Science (Class of 2027)',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=256&q=80',
     status: 'available',
     statusMessage: 'Studying for CS301 Midterm',
     isMuted: false,
-    createdAt: '2026-09-15'
+    createdAt: '2026-09-15',
+    isDemo: true
   },
   {
     id: 'user_feifei',
@@ -94,14 +100,15 @@ export const INITIAL_USERS: User[] = [
     name: 'Dr. Fei-Fei Li',
     email: 'f.li@procollege.edu',
     role: 'professor',
-    license: 'Microsoft 365 A3 for Faculty',
+    license: 'ProCollege Verified for Faculty',
     department: 'Artificial Intelligence & Vision Lab',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
     status: 'in-call',
     statusMessage: 'Keynote at Vision Summit',
     isMuted: false,
-    createdAt: '2026-09-10'
+    createdAt: '2026-09-10',
+    isDemo: true
   },
   {
     id: 'user_feynman',
@@ -109,14 +116,15 @@ export const INITIAL_USERS: User[] = [
     name: 'Dr. Richard Feynman',
     email: 'r.feynman@procollege.edu',
     role: 'professor',
-    license: 'Microsoft 365 A5 for Faculty',
+    license: 'ProCollege Verified for Faculty',
     department: 'Physics & Applied Sciences',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
     status: 'busy',
     statusMessage: 'Quantum Lab Experiments in progress',
     isMuted: false,
-    createdAt: '2026-09-10'
+    createdAt: '2026-09-10',
+    isDemo: true
   },
   {
     id: 'user_sophia',
@@ -124,14 +132,15 @@ export const INITIAL_USERS: User[] = [
     name: 'Sophia Chen',
     email: 'sophia.c@student.procollege.edu',
     role: 'student',
-    license: 'Microsoft 365 A3 for Students',
+    license: 'ProCollege Verified for Students',
     department: 'Electrical Engineering & CS',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=256&q=80',
     status: 'available',
     statusMessage: 'Working on capstone hardware test',
     isMuted: false,
-    createdAt: '2026-09-15'
+    createdAt: '2026-09-15',
+    isDemo: true
   },
   {
     id: 'user_elena',
@@ -139,12 +148,13 @@ export const INITIAL_USERS: User[] = [
     name: 'Elena Rostova (TA)',
     email: 'elena.r@procollege.edu',
     role: 'ta',
-    license: 'Microsoft 365 A1 for Faculty',
+    license: 'ProCollege Verified for Faculty',
     department: 'Computer Science (Graduate TA)',
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80',
     status: 'away',
     statusMessage: 'Grading Assignment 2, back at 5 PM',
-    isMuted: false
+    isMuted: false,
+    isDemo: true
   },
   {
     id: 'user_marcus',
@@ -152,13 +162,14 @@ export const INITIAL_USERS: User[] = [
     name: 'Marcus Aurelius',
     email: 'marcus.a@student.procollege.edu',
     role: 'student',
-    license: 'Microsoft 365 A3 for Students',
+    license: 'ProCollege Verified for Students',
     department: 'Computer Science',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
     status: 'available',
     isMuted: false,
-    createdAt: '2026-09-15'
+    createdAt: '2026-09-15',
+    isDemo: true
   },
   {
     id: 'user_devon',
@@ -166,13 +177,14 @@ export const INITIAL_USERS: User[] = [
     name: 'Devon Vance',
     email: 'devon.v@student.procollege.edu',
     role: 'student',
-    license: 'Microsoft 365 A3 for Students',
+    license: 'ProCollege Verified for Students',
     department: 'Computer Science',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=256&q=80',
     status: 'offline',
     isMuted: false,
-    createdAt: '2026-09-15'
+    createdAt: '2026-09-15',
+    isDemo: true
   },
   {
     id: 'user_priya',
@@ -180,13 +192,14 @@ export const INITIAL_USERS: User[] = [
     name: 'Priya Patel',
     email: 'priya.p@student.procollege.edu',
     role: 'student',
-    license: 'Microsoft 365 A3 for Students',
+    license: 'ProCollege Verified for Students',
     department: 'Computer Science',
     institutionName: 'ProCollege University Network',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
     status: 'available',
     isMuted: false,
-    createdAt: '2026-09-15'
+    createdAt: '2026-09-15',
+    isDemo: true
   }
 ];
 
@@ -215,7 +228,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
         name: 'Marcus Aurelius',
         email: 'marcus.a@student.procollege.edu',
         role: 'student',
-        license: 'Microsoft 365 A3 for Students',
+        license: 'ProCollege Verified for Students',
         department: 'Computer Science',
         institutionName: 'ProCollege University Network',
         avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
@@ -227,7 +240,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
         name: 'Priya Patel',
         email: 'priya.p@student.procollege.edu',
         role: 'student',
-        license: 'Microsoft 365 A3 for Students',
+        license: 'ProCollege Verified for Students',
         department: 'Computer Science',
         institutionName: 'ProCollege University Network',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',

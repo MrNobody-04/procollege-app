@@ -164,8 +164,14 @@ async function init() {
     await ensureColumn('users', 'password', 'TEXT');
     await ensureColumn('users', 'password_hash', 'TEXT');
     await ensureColumn('users', 'institution_name', 'TEXT');
+    await ensureColumn('users', 'institution_id', 'TEXT');
+    await ensureColumn('users', 'course_id', 'TEXT');
+    await ensureColumn('users', 'phone', 'TEXT');
+    await ensureColumn('users', 'otp_code', 'TEXT');
+    await ensureColumn('users', 'otp_expires_at', 'TEXT');
+    await ensureColumn('users', 'must_change_password', 'INTEGER DEFAULT 0');
     await ensureColumn('users', 'department', 'TEXT');
-    console.log('   ✔ Table `users` created / verified');
+    console.log('   ✔ Table `users` created / verified (with OTP & tenant isolation columns)');
 
     // 7. channels
     await db.execute(`

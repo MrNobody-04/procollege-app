@@ -15,7 +15,10 @@ import {
   Mail,
   Phone,
   MessageSquare,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -36,9 +39,22 @@ export const PortalLanding: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Sign In Modal State
+  const [authStep, setAuthStep] = useState<'credentials' | 'otp' | 'change-password'>('credentials');
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
+
+  // OTP State
+  const [otpEmail, setOtpEmail] = useState<string>('');
+  const [otpCode, setOtpCode] = useState<string>('');
+  const [otpDevHint, setOtpDevHint] = useState<string>('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+
+  // First-time Password Change State
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
+  const [pendingAuthResponse, setPendingAuthResponse] = useState<any>(null);
 
   // Institutional Request Form State
   const [orgForm, setOrgForm] = useState({
@@ -54,6 +70,65 @@ export const PortalLanding: React.FC = () => {
   const [phoneCountryCode, setPhoneCountryCode] = useState<string>('+977');
 
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+
+  const resetAuthModal = () => {
+    setShowSignInModal(false);
+    setAuthStep('credentials');
+    setLoginError('');
+    setOtpCode('');
+    setOtpEmail('');
+    setOtpDevHint('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPendingAuthResponse(null);
+  };
+
+  const finishLoginSession = (data: any) => {
+    // Store credentials in localStorage
+    localStorage.setItem('procollege_token', data.token);
+    localStorage.setItem('procollege_user', JSON.stringify(data.user));
+    localStorage.setItem('procollege_college', JSON.stringify(data.college));
+
+    const roleStr = data.user.role;
+    const mappedRole: UserRole =
+      roleStr === 'developer'
+        ? 'developer'
+        : roleStr === 'admin'
+        ? 'admin'
+        : roleStr === 'teacher'
+        ? 'professor'
+        : 'student';
+
+    const appUser: User = {
+      id: data.user.id,
+      name: data.user.full_name || data.user.name,
+      email: data.user.email,
+      role: mappedRole,
+      license:
+        mappedRole === 'developer' || mappedRole === 'admin' || mappedRole === 'professor'
+          ? 'Microsoft 365 A5 for Faculty'
+          : 'Microsoft 365 A5 for Students',
+      department:
+        mappedRole === 'developer'
+          ? 'Platform Architecture & Operations'
+          : mappedRole === 'admin'
+          ? 'Administration'
+          : 'Department of BIT',
+      institutionName:
+        mappedRole === 'developer'
+          ? 'ProCollege Platform Operations'
+          : data.college?.name || 'Padmashree College',
+      avatar: data.user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      status: 'available',
+    };
+
+    setIsDemoMode(false);
+    setCurrentUser(appUser);
+    resetAuthModal();
+    setShowRequestModal(false);
+    setMobileMenuOpen(false);
+    setViewMode('app');
+  };
 
   const performLogin = async (emailToUse: string, passwordToUse: string) => {
     setIsLoggingIn(true);
@@ -71,50 +146,15 @@ export const PortalLanding: React.FC = () => {
         throw new Error(data.error || 'Login failed. Please check your credentials.');
       }
 
-      // Store credentials in localStorage
-      localStorage.setItem('procollege_token', data.token);
-      localStorage.setItem('procollege_user', JSON.stringify(data.user));
-      localStorage.setItem('procollege_college', JSON.stringify(data.college));
+      if (data.requireOtp) {
+        setAuthStep('otp');
+        setOtpEmail(data.email || emailToUse);
+        setOtpDevHint(data.devOtp || '');
+        setOtpCode(data.devOtp || '');
+        return;
+      }
 
-      const roleStr = data.user.role;
-      const mappedRole: UserRole =
-        roleStr === 'developer'
-          ? 'developer'
-          : roleStr === 'admin'
-          ? 'admin'
-          : roleStr === 'teacher'
-          ? 'professor'
-          : 'student';
-
-      const appUser: User = {
-        id: data.user.id,
-        name: data.user.full_name || data.user.name,
-        email: data.user.email,
-        role: mappedRole,
-        license:
-          mappedRole === 'developer' || mappedRole === 'admin' || mappedRole === 'professor'
-            ? 'Microsoft 365 A5 for Faculty'
-            : 'Microsoft 365 A5 for Students',
-        department:
-          mappedRole === 'developer'
-            ? 'Platform Architecture & Operations'
-            : mappedRole === 'admin'
-            ? 'Administration'
-            : 'Department of BIT',
-        institutionName:
-          mappedRole === 'developer'
-            ? 'ProCollege Platform Operations'
-            : data.college?.name || 'Padmashree College',
-        avatar: data.user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-        status: 'available',
-      };
-
-      setIsDemoMode(false);
-      setCurrentUser(appUser);
-      setShowSignInModal(false);
-      setShowRequestModal(false);
-      setMobileMenuOpen(false);
-      setViewMode('app');
+      finishLoginSession(data);
     } catch (err: unknown) {
       const fallbackUser = availableUsers.find(
         u => u.email.toLowerCase() === emailToUse.toLowerCase()
@@ -122,7 +162,7 @@ export const PortalLanding: React.FC = () => {
       if (fallbackUser) {
         setIsDemoMode(false);
         setCurrentUser(fallbackUser);
-        setShowSignInModal(false);
+        resetAuthModal();
         setShowRequestModal(false);
         setMobileMenuOpen(false);
         setViewMode('app');
@@ -132,6 +172,78 @@ export const PortalLanding: React.FC = () => {
       setLoginError(message);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    const code = otpCode.trim();
+    if (!code || code.length !== 6) {
+      setLoginError('Please enter a valid 6-digit OTP code.');
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, otp: code }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Invalid or expired OTP code.');
+      }
+
+      if (data.mustChangePassword) {
+        setPendingAuthResponse(data);
+        setAuthStep('change-password');
+        return;
+      }
+
+      finishLoginSession(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLoginError(message);
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!newPassword || newPassword.length < 6) {
+      setLoginError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLoginError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pendingAuthResponse?.token || ''}`,
+        },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update password.');
+      }
+
+      finishLoginSession(pendingAuthResponse);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLoginError(message);
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -1301,91 +1413,265 @@ export const PortalLanding: React.FC = () => {
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
               <ProCollegeLogo size="sm" variant="dark-text" />
               <button
-                onClick={() => {
-                  setShowSignInModal(false);
-                  setLoginError('');
-                }}
+                onClick={resetAuthModal}
                 className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mt-5">
-              <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Sign In to ProCollege</h3>
-              <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
-                Enter your registered institutional credentials to access your academic workspace.
-              </p>
-            </div>
-
-            <form onSubmit={handleInstitutionalLogin} className="mt-5 space-y-4">
-              {loginError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                  {loginError}
+            {/* Step 1: Institutional Credentials */}
+            {authStep === 'credentials' && (
+              <>
+                <div className="mt-5">
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Sign In to ProCollege</h3>
+                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                    Enter your registered institutional credentials to access your academic workspace.
+                  </p>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                  Institutional Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={loginEmail}
-                  onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="name@institution.edu"
-                  className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
-                />
-              </div>
+                <form onSubmit={handleInstitutionalLogin} className="mt-5 space-y-4">
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
+                    </div>
+                  )}
 
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  value={loginPassword}
-                  onChange={e => setLoginPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Institutional Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={loginEmail}
+                      onChange={e => setLoginEmail(e.target.value)}
+                      placeholder="name@institution.edu"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
 
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
-              >
-                {isLoggingIn ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Signing in...</span>
-                  </>
-                ) : (
-                  <>
-                    <Key className="w-4 h-4" />
-                    <span>Sign In</span>
-                  </>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={loginPassword}
+                      onChange={e => setLoginPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn}
+                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
+                  >
+                    {isLoggingIn ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Signing in...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Key className="w-4 h-4" />
+                        <span>Sign In</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSignInModal(false);
+                        setShowRequestModal(true);
+                      }}
+                      className="text-xs text-[#173bff] hover:underline font-semibold"
+                    >
+                      Need an account for your university? Request Campus Deployment →
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* Step 2: 6-Digit Student OTP Verification */}
+            {authStep === 'otp' && (
+              <>
+                <div className="mt-5">
+                  <div className="w-10 h-10 rounded-xl bg-[#173bff]/10 text-[#173bff] flex items-center justify-center mb-3">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Security Verification</h3>
+                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                    A 6-digit security OTP has been issued for <span className="font-semibold text-zinc-800">{otpEmail}</span>. Enter the code to continue.
+                  </p>
+                </div>
+
+                {otpDevHint && (
+                  <div className="mt-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-blue-900">OTP Code: </span>
+                      <span className="font-mono font-bold tracking-widest text-[#173bff] ml-1 bg-white px-2 py-0.5 rounded border border-blue-200">
+                        {otpDevHint}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOtpCode(otpDevHint)}
+                      className="text-xs font-semibold text-[#173bff] hover:underline cursor-pointer"
+                    >
+                      Auto-fill
+                    </button>
+                  </div>
                 )}
-              </button>
 
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSignInModal(false);
-                    setShowRequestModal(true);
-                  }}
-                  className="text-xs text-[#173bff] hover:underline font-semibold"
-                >
-                  Need an account for your university? Request Campus Deployment →
-                </button>
-              </div>
-            </form>
+                <form onSubmit={handleVerifyOtp} className="mt-5 space-y-4">
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5 text-center">
+                      6-Digit Security Code
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      autoFocus
+                      required
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="000000"
+                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-3 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isVerifyingOtp || otpCode.trim().length !== 6}
+                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                  >
+                    {isVerifyingOtp ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying Security Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Verify & Continue</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthStep('credentials');
+                        setLoginError('');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Email & Password</span>
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* Step 3: First-time Password Change */}
+            {authStep === 'change-password' && (
+              <>
+                <div className="mt-5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center mb-3">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Set Permanent Password</h3>
+                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                    You are signing in with a temporary roster password. Please create a secure permanent password to protect your student records.
+                  </p>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new password"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isChangingPassword || !newPassword || !confirmPassword}
+                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(16,185,129,0.35)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                  >
+                    {isChangingPassword ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Updating Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Save & Enter Workspace</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthStep('credentials');
+                        setLoginError('');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Sign In</span>
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

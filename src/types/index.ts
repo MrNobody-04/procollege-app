@@ -1,6 +1,9 @@
 export type UserRole = 'developer' | 'admin' | 'professor' | 'lecturer' | 'student' | 'ta' | 'dean';
 export type PresenceStatus = 'available' | 'busy' | 'away' | 'dnd' | 'in-call' | 'offline';
 export type LicenseSku =
+  | 'ProCollege Verified for Faculty'
+  | 'ProCollege Verified for Students'
+  | 'ProCollege Enterprise Platform License'
   | 'Microsoft 365 A5 for Faculty'
   | 'Microsoft 365 A3 for Faculty'
   | 'Microsoft 365 A1 for Faculty'
@@ -23,6 +26,7 @@ export interface User {
   isMuted?: boolean;
   temporaryPassword?: string;
   createdAt?: string;
+  isDemo?: boolean;
 }
 
 export interface FacultyDepartment {
@@ -34,6 +38,7 @@ export interface FacultyDepartment {
   description: string;
   institutionName?: string;
   memberIds?: string[];
+  isDemo?: boolean;
 }
 
 export interface InstitutionalRequest {
@@ -119,6 +124,7 @@ export interface CourseTeam {
   isActivated: boolean; // Pre-staged inactive state until Lecturer clicks Activate banner
   model: DeploymentModel;
   template: 'Class' | 'PLC' | 'Staff' | 'Other';
+  isDemo?: boolean;
 }
 
 export interface DirectMessage {
@@ -224,13 +230,17 @@ export interface CourseFile {
   id: string;
   courseId: string;
   channelId?: string;
+  institutionName?: string;
   name: string;
   category: 'Class Materials' | 'Syllabus' | 'Lecture Slides' | 'Lab Manuals' | 'Readings' | 'Subject Files';
   size: string;
   uploadedAt: string;
   uploadedBy: string;
+  uploadedByRole?: UserRole;
   isClassMaterials?: boolean; // Pinned folder: Owners = Edit, Members = Read-Only
   permission: 'read-only' | 'can-edit';
+  isPrivate?: boolean; // Private student submissions or working files restricted from public listing
+  isDemo?: boolean;
 }
 
 export interface ActivityNotification {

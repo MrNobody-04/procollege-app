@@ -109,29 +109,32 @@ export const TopHeader: React.FC = () => {
   };
 
   return (
-    <header className="h-12 bg-[#2b2b2b] text-white flex items-center justify-between px-3 sm:px-4 border-b border-zinc-800 z-30 shrink-0 select-none relative">
+    <header className="h-12 bg-[#2b2b2b] text-white flex items-center justify-between px-3 sm:px-4 border-b border-zinc-800 z-50 shrink-0 select-none relative">
       {/* Brand & 9-Dot App Launcher */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Microsoft 365 9-Dot App Launcher */}
+        {/* ProCollege 9-Dot App Launcher */}
         <div className="relative">
           <button
             onClick={() => setShowWaffle(!showWaffle)}
             className={`p-1.5 rounded-md hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors flex items-center justify-center ${
               showWaffle ? 'bg-zinc-800 text-white' : ''
             }`}
-            title="Microsoft 365 Apps"
+            title="ProCollege Workspace Apps"
           >
             <Grid className="w-4 h-4" />
           </button>
 
           {showWaffle && (
             <div
-              className="absolute left-0 top-12 w-64 bg-white text-zinc-900 rounded-xl shadow-xl border border-zinc-200 p-3 z-50 animate-in fade-in"
+              className="absolute left-0 top-12 w-72 bg-white text-zinc-900 rounded-2xl shadow-2xl border border-zinc-200/90 p-4 z-50 animate-in fade-in select-none"
               onMouseLeave={() => setShowWaffle(false)}
             >
-              <div className="pb-2 mb-2 border-b border-zinc-100">
-                <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wide">
-                  Apps
+              <div className="pb-2.5 mb-2.5 border-b border-zinc-100 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-zinc-600 uppercase tracking-wide">
+                  ProCollege Apps
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                  Campus Suite
                 </span>
               </div>
 
@@ -141,10 +144,10 @@ export const TopHeader: React.FC = () => {
                     setActiveTab('teams');
                     setShowWaffle(false);
                   }}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
+                  className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
                 >
-                  <GraduationCap className="w-4 h-4 text-[#5b5fc7]" />
-                  <span className="font-medium text-zinc-800">Class</span>
+                  <GraduationCap className="w-4 h-4 text-[#5b5fc7] shrink-0" />
+                  <span className="font-semibold text-zinc-800">Class</span>
                 </button>
 
                 <button
@@ -152,10 +155,10 @@ export const TopHeader: React.FC = () => {
                     setActiveTab('assignments');
                     setShowWaffle(false);
                   }}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
+                  className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
                 >
-                  <FileCheck className="w-4 h-4 text-emerald-600" />
-                  <span className="font-medium text-zinc-800">Assignments</span>
+                  <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold text-zinc-800">Assignments</span>
                 </button>
 
                 <button
@@ -163,10 +166,10 @@ export const TopHeader: React.FC = () => {
                     setActiveTab('calendar');
                     setShowWaffle(false);
                   }}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
+                  className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
                 >
-                  <Calendar className="w-4 h-4 text-purple-600" />
-                  <span className="font-medium text-zinc-800">Calendar</span>
+                  <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span className="font-semibold text-zinc-800">Calendar</span>
                 </button>
 
                 <button
@@ -174,27 +177,29 @@ export const TopHeader: React.FC = () => {
                     setActiveTab('files');
                     setShowWaffle(false);
                   }}
-                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
+                  className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
                 >
-                  <FolderOpen className="w-4 h-4 text-amber-600" />
-                  <span className="font-medium text-zinc-800">Files</span>
+                  <FolderOpen className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="font-semibold text-zinc-800">Files</span>
                 </button>
 
-                {currentUser.role === 'admin' && (
+                {(currentUser.role === 'admin' || currentUser.role === 'developer') && (
                   <button
                     onClick={() => {
                       setActiveTab('admin');
                       setShowWaffle(false);
                     }}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
+                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left col-span-2"
                   >
-                    <Shield className="w-4 h-4 text-[#5b5fc7]" />
-                    <span className="font-medium text-zinc-800">Admin Center</span>
+                    <Shield className="w-4 h-4 text-[#5b5fc7] shrink-0" />
+                    <span className="font-semibold text-zinc-800">
+                      {currentUser.role === 'developer' ? 'Platform Creator Console' : 'Campus Administration Center'}
+                    </span>
                   </button>
                 )}
               </div>
 
-              <div className="pt-2 mt-2 border-t border-zinc-100">
+              <div className="pt-2.5 mt-2.5 border-t border-zinc-100">
                 <button
                   onClick={() => {
                     setViewMode('portal');
