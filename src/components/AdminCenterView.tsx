@@ -133,6 +133,31 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; provider?: string } | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+  const [logStatusFilter, setLogStatusFilter] = useState<'all' | 'delivered' | 'failed'>('all');
+  const [copiedOtpId, setCopiedOtpId] = useState<string | null>(null);
+
+  const handleCopyOtp = (id: string, code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedOtpId(id);
+    setTimeout(() => setCopiedOtpId(null), 2000);
+  };
+
+  const filteredEmailLogs = useMemo(() => {
+    return emailLogs.filter((log: any) => {
+      const matchesStatus = logStatusFilter === 'all' || log.status === logStatusFilter;
+      const q = logSearchQuery.trim().toLowerCase();
+      const matchesSearch = !q ||
+        (log.recipient_email || '').toLowerCase().includes(q) ||
+        (log.recipient_name || '').toLowerCase().includes(q) ||
+        (log.otp_code || '').toLowerCase().includes(q) ||
+        (log.provider || '').toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+  }, [emailLogs, logStatusFilter, logSearchQuery]);
+
+  const deliveredCount = useMemo(() => emailLogs.filter((l: any) => l.status === 'delivered').length, [emailLogs]);
+  const failedCount = useMemo(() => emailLogs.filter((l: any) => l.status === 'failed').length, [emailLogs]);
 
   const fetchEmailSettings = async () => {
     setIsLoadingEmailSettings(true);
@@ -1990,60 +2015,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         {/* DEVELOPER SECTION 5: 2FA EMAIL & OTP DISPATCH GATEWAY      */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-email' && (
-          <div className="space-y-5">
-            {/* Clean & Natural Header Card */}
-            <div className="bg-white rounded-xl border border-zinc-200 p-4 sm:p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700 shrink-0">
-                    <Mail className="w-4 h-4 text-zinc-700" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm sm:text-base font-bold text-zinc-900">Two-Factor Authentication (2FA) Gateway</h2>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                        {emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'Connected & Active' : 'Setup Recommended'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Transactional OTP dispatch engine for administrative logins and student roster onboarding.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                  <div className="px-3 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-600 flex items-center gap-1.5">
-                    <span className="text-zinc-400 text-[11px]">Active Provider:</span>
-                    <span className="font-semibold text-zinc-900 font-mono uppercase text-xs">{emailSettings.provider || 'Relay'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Clean 3-Metric Summary Strip */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-lg p-3">
-                  <span className="text-[11px] font-semibold text-zinc-500 block">Security Verification</span>
-                  <div className="text-xs font-bold text-zinc-800 mt-0.5">6-Digit Temporary OTP</div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">10-minute expiry with rate-limiting</div>
-                </div>
-                <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-lg p-3">
-                  <span className="text-[11px] font-semibold text-zinc-500 block">Mandatory Flow</span>
-                  <div className="text-xs font-bold text-zinc-800 mt-0.5">Admins & Imported Students</div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">Zero unverified logins permitted</div>
-                </div>
-                <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-lg p-3">
-                  <span className="text-[11px] font-semibold text-zinc-500 block">Zero-Budget Infrastructure</span>
-                  <div className="text-xs font-bold text-zinc-800 mt-0.5">Google Apps Script Relay</div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">100% Free • Direct Gmail Inbox Delivery</div>
-                </div>
-              </div>
-            </div>
-
+          <div className="space-y-6">
             {/* Email Gateway Configuration & Test Row */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Provider Settings Form (7 cols) */}
@@ -2227,21 +2199,30 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
               {/* Right Column: Live Test & Diagnostics (5 cols) */}
               <div className="lg:col-span-5 space-y-5">
-                {/* Send Live Test Email Card */}
+                {/* Developer Diagnostic Sandbox Card */}
                 <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
-                  <div className="flex items-center gap-2.5 pb-3 border-b border-zinc-100">
-                    <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700">
-                      <Send className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-zinc-900">Send Test 2FA Verification</h3>
-                      <p className="text-xs text-zinc-500">Verify real email delivery to your inbox.</p>
+                  <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700 shrink-0">
+                        <Send className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-zinc-900">Developer Delivery Sandbox</h3>
+                          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            Auto in Production
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          In real usage, 2FA OTP codes are sent automatically to users upon sign-in. Nobody manually enters recipient emails. Use this tool only to test your webhook.
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   <form onSubmit={handleSendTestEmail} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-zinc-700 mb-1">Target Email Address</label>
+                      <label className="block text-xs font-semibold text-zinc-700 mb-1">Target Test Email Address</label>
                       <input
                         type="email"
                         required
@@ -2306,11 +2287,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <ul className="space-y-2 text-zinc-600 text-[11px] leading-relaxed">
                     <li className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
-                      <span><strong>Campus Admins:</strong> Upon creation or password reset, logging in dispatches a fresh 6-digit OTP code to their official email.</span>
+                      <span><strong>Campus Admins:</strong> Upon creation or password reset, logging in dispatches a fresh 6-digit OTP code directly to their official email.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
-                      <span><strong>Imported Students:</strong> Entering temporary roster credentials triggers a 6-digit OTP sent to their Gmail, followed by mandatory permanent password setup.</span>
+                      <span><strong>Imported Students:</strong> Entering temporary roster credentials triggers a 6-digit OTP to their Gmail, followed by mandatory permanent password setup.</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
@@ -2321,75 +2302,254 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
             </div>
 
-            {/* Bottom Row: Live 2FA & Email Audit Logs Table */}
-            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700">
-                    <ClipboardList className="w-4 h-4" />
+            {/* Bottom Row: Live 2FA & Email Audit Logs Table (Redesigned) */}
+            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden space-y-0">
+              {/* Header Bar */}
+              <div className="p-4 sm:p-5 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700 shrink-0">
+                    <ClipboardList className="w-4 h-4 text-zinc-700" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-zinc-900">Recent 2FA OTP & Email Delivery Logs</h3>
-                    <p className="text-xs text-zinc-500">Live audit of security codes issued across all organizations.</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-zinc-900">Recent 2FA OTP & Email Delivery Logs</h3>
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live Stream
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Real-time telemetry of 6-digit OTP verification codes issued across all organizations.
+                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={fetchEmailSettings}
-                  className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Refresh Logs</span>
-                </button>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <button
+                    onClick={fetchEmailSettings}
+                    disabled={isLoadingEmailSettings}
+                    className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingEmailSettings ? 'animate-spin' : ''}`} />
+                    <span>Refresh Logs</span>
+                  </button>
+                </div>
               </div>
 
-              {emailLogs.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 text-xs bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200">
-                  <Mail className="w-8 h-8 mx-auto mb-2 text-zinc-300" />
-                  <p className="font-semibold text-zinc-600">No email delivery events recorded yet.</p>
-                  <p className="text-[11px] text-zinc-400 mt-1">Send a test email above or log in with an admin or student account to trigger 2FA.</p>
+              {/* Quick KPI Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-zinc-200/80 border-b border-zinc-200 text-xs">
+                <div className="bg-white p-3.5">
+                  <span className="text-[11px] font-medium text-zinc-500 block">Total Codes Dispatched</span>
+                  <span className="text-base font-bold text-zinc-900 font-mono mt-0.5 block">{emailLogs.length}</span>
+                </div>
+                <div className="bg-white p-3.5">
+                  <span className="text-[11px] font-medium text-zinc-500 block">Inbox Delivery Rate</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-base font-bold text-emerald-600 font-mono">
+                      {emailLogs.length > 0 ? Math.round((deliveredCount / emailLogs.length) * 100) : 100}%
+                    </span>
+                    <span className="text-[10px] text-zinc-400">({deliveredCount} delivered)</span>
+                  </div>
+                </div>
+                <div className="bg-white p-3.5">
+                  <span className="text-[11px] font-medium text-zinc-500 block">Dispatch Exceptions</span>
+                  <span className={`text-base font-bold font-mono mt-0.5 block ${failedCount > 0 ? 'text-rose-600' : 'text-zinc-700'}`}>
+                    {failedCount}
+                  </span>
+                </div>
+                <div className="bg-white p-3.5">
+                  <span className="text-[11px] font-medium text-zinc-500 block">Active Dispatch Engine</span>
+                  <span className="text-xs font-bold text-zinc-900 uppercase font-mono mt-1 block">
+                    {emailSettings.provider === 'relay' ? 'Google Apps Script Relay' : (emailSettings.provider || 'Relay')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter & Search Bar */}
+              <div className="p-3 bg-zinc-50/70 border-b border-zinc-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                {/* Search Input */}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={logSearchQuery}
+                    onChange={e => setLogSearchQuery(e.target.value)}
+                    placeholder="Search by recipient email, name, or OTP code..."
+                    className="w-full text-xs pl-8 pr-7 py-1.5 bg-white border border-zinc-200 rounded-lg placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+                  />
+                  {logSearchQuery && (
+                    <button
+                      onClick={() => setLogSearchQuery('')}
+                      className="absolute right-2.5 top-1.5 text-zinc-400 hover:text-zinc-600 text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter Tabs */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-zinc-200 shrink-0 text-xs">
+                  <button
+                    onClick={() => setLogStatusFilter('all')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                      logStatusFilter === 'all'
+                        ? 'bg-zinc-900 text-white shadow-2xs'
+                        : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
+                    }`}
+                  >
+                    All ({emailLogs.length})
+                  </button>
+                  <button
+                    onClick={() => setLogStatusFilter('delivered')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      logStatusFilter === 'delivered'
+                        ? 'bg-emerald-700 text-white shadow-2xs'
+                        : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Delivered ({deliveredCount})
+                  </button>
+                  <button
+                    onClick={() => setLogStatusFilter('failed')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      logStatusFilter === 'failed'
+                        ? 'bg-rose-700 text-white shadow-2xs'
+                        : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                    Failed ({failedCount})
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Body */}
+              {filteredEmailLogs.length === 0 ? (
+                <div className="p-10 text-center text-zinc-400 text-xs bg-white">
+                  <Mail className="w-9 h-9 mx-auto mb-2 text-zinc-300" />
+                  <p className="font-semibold text-zinc-700 text-sm">
+                    {emailLogs.length === 0 ? 'No email delivery events recorded yet' : 'No logs match your filter criteria'}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                    {emailLogs.length === 0
+                      ? 'When campus admins or students sign in, their generated 2FA security codes will appear here in real time.'
+                      : 'Try clearing your search query or switching filter tabs to view other security dispatches.'}
+                  </p>
+                  {logSearchQuery && (
+                    <button
+                      onClick={() => { setLogSearchQuery(''); setLogStatusFilter('all'); }}
+                      className="mt-3 px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="border-b border-zinc-200 text-zinc-500 text-[11px] font-semibold bg-zinc-50/70">
-                        <th className="py-2.5 px-3">Recipient Email</th>
-                        <th className="py-2.5 px-3">Name / Role</th>
-                        <th className="py-2.5 px-3">2FA Code</th>
-                        <th className="py-2.5 px-3">Provider</th>
-                        <th className="py-2.5 px-3">Status</th>
-                        <th className="py-2.5 px-3">Time</th>
+                      <tr className="border-b border-zinc-200 text-zinc-500 text-[11px] font-semibold bg-zinc-50/80 uppercase tracking-wider">
+                        <th className="py-3 px-4">Recipient Account</th>
+                        <th className="py-3 px-4">Security 2FA Code</th>
+                        <th className="py-3 px-4">Relay Engine</th>
+                        <th className="py-3 px-4">Delivery Status</th>
+                        <th className="py-3 px-4 text-right">Timestamp</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100 font-mono text-[11px]">
-                      {emailLogs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
-                          <td className="py-2.5 px-3 font-semibold text-zinc-900">{log.recipient_email}</td>
-                          <td className="py-2.5 px-3 font-sans text-zinc-600">{log.recipient_name || 'User'}</td>
-                          <td className="py-2.5 px-3">
-                            <span className="font-bold text-zinc-800 tracking-wider bg-zinc-100 rounded px-2 py-0.5 border border-zinc-200/70">
-                              {log.otp_code || '••••••'}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 uppercase text-zinc-500 font-semibold">{log.provider || 'none'}</td>
-                          <td className="py-2.5 px-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                              log.status === 'delivered'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}>
-                              {log.status === 'delivered' ? '✓ Delivered' : '✗ Failed'}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 font-sans text-zinc-400 text-[10px]">
-                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </td>
-                        </tr>
-                      ))}
+                    <tbody className="divide-y divide-zinc-100">
+                      {filteredEmailLogs.map((log: any) => {
+                        const initial = (log.recipient_name?.[0] || log.recipient_email?.[0] || 'U').toUpperCase();
+                        const isDelivered = log.status === 'delivered';
+                        return (
+                          <tr key={log.id} className="hover:bg-zinc-50/70 transition-colors">
+                            {/* Recipient Account */}
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-700 text-xs shrink-0 font-mono">
+                                  {initial}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-zinc-900 font-mono text-xs truncate max-w-[220px]">
+                                    {log.recipient_email}
+                                  </div>
+                                  <div className="text-[11px] text-zinc-500 flex items-center gap-1.5 mt-0.5">
+                                    <span>{log.recipient_name || 'Campus User'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2FA Security Code */}
+                            <td className="py-3 px-4">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-100/90 border border-zinc-200 font-mono text-xs font-bold text-zinc-900 tracking-wider">
+                                <span>{log.otp_code || '••••••'}</span>
+                                {log.otp_code && (
+                                  <button
+                                    onClick={() => handleCopyOtp(log.id, log.otp_code)}
+                                    title="Copy 2FA code"
+                                    className="p-0.5 rounded hover:bg-zinc-200 text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer ml-1"
+                                  >
+                                    {copiedOtpId === log.id ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Relay Engine */}
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-zinc-100 text-zinc-700 border border-zinc-200/60">
+                                {log.provider || 'Relay'}
+                              </span>
+                            </td>
+
+                            {/* Delivery Status */}
+                            <td className="py-3 px-4">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                                isDelivered
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+                              }`}>
+                                {isDelivered ? (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    <span>Delivered to Inbox</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                    <span>Dispatch Failed</span>
+                                  </>
+                                )}
+                              </span>
+                            </td>
+
+                            {/* Timestamp */}
+                            <td className="py-3 px-4 text-right">
+                              <div className="text-zinc-700 font-medium text-xs">
+                                {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </div>
+                              <div className="text-[10px] text-zinc-400 mt-0.5">
+                                {new Date(log.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
+
+              {/* Table Footer */}
+              <div className="p-3 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-500">
+                <span>Showing {filteredEmailLogs.length} of {emailLogs.length} logged events</span>
+                <span className="text-[11px] text-zinc-400">Retention: 30 days rolling audit logs</span>
+              </div>
             </div>
           </div>
         )}

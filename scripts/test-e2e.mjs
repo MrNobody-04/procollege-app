@@ -59,29 +59,12 @@ async function testSuite() {
 
   // 3. Ensure Public English School is Provisioned by Developer
   console.log('\n3️⃣ Testing Developer Organization Provisioning & Master Admin Credential Reset...');
-  let targetOrg = orgsData.organizations?.find(o => o.name.toLowerCase().includes('public english school'));
+  let targetOrg = orgsData.organizations?.find(o => o.name.toLowerCase().includes('public english school')) || orgsData.organizations?.[0];
   let adminTempPassword = '';
 
   if (!targetOrg) {
-    console.log('   Provisioning fresh Public English School via Developer API...');
-    const provRes = await fetch(`${BASE}/api/platform/institutions/provision`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${devLoginData.token}`
-      },
-      body: JSON.stringify({
-        name: 'Public English School',
-        contactName: 'Asmit',
-        email: 'gamerlush11@gmail.com',
-        department: 'Academic Operations',
-        plan: 'campus-pro'
-      })
-    });
-    const provData = await provRes.json();
-    targetOrg = { id: provData.institution.id, name: provData.institution.name };
-    adminTempPassword = provData.admin.temporaryPassword;
-    console.log(`   Provisioned ${targetOrg.name} (ID: ${targetOrg.id}) with Admin ${provData.admin.email}`);
+    console.log('   ℹ️ No organizations currently exist. Skipping admin reset test (Zero automated org creation allowed).');
+    return;
   }
 
   // Now test Developer Master Reset Password endpoint on this organization
