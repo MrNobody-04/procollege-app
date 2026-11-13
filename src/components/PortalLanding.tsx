@@ -1122,7 +1122,7 @@ export const PortalLanding: React.FC = () => {
                           {isSubmittingRequest ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Saving Request to Turso DB...</span>
+                              <span>Submitting Deployment Request...</span>
                             </>
                           ) : (
                             <>
@@ -1338,11 +1338,8 @@ export const PortalLanding: React.FC = () => {
 
               return (
                 <div className="mt-4 sm:mt-5 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-[#586680]">
-                    <span>Select an authorized account to sign in directly with live Turso DB:</span>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
-                      Live Turso
-                    </span>
+                  <div className="text-xs text-[#586680] leading-relaxed">
+                    Select an authorized academic persona to sign in directly:
                   </div>
 
                   {loginError && (
@@ -1418,7 +1415,7 @@ export const PortalLanding: React.FC = () => {
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-indigo-950 flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      1-Click Live Turso Demo Accounts:
+                      1-Click Demo Accounts:
                     </span>
                     <span className="text-[10px] text-indigo-600 font-medium">pass: password123</span>
                   </div>
@@ -1451,7 +1448,7 @@ export const PortalLanding: React.FC = () => {
                 </div>
 
                 <div className="text-xs text-[#586680] leading-relaxed">
-                  Or enter your registered institutional email and password to authenticate directly with Turso:
+                  Or enter your registered institutional email and password:
                 </div>
 
                 {loginError && (
@@ -1498,7 +1495,7 @@ export const PortalLanding: React.FC = () => {
                   {isLoggingIn ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Authenticating with Turso...</span>
+                      <span>Signing in...</span>
                     </>
                   ) : (
                     <>

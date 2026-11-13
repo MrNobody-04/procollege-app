@@ -19,7 +19,7 @@ export const ChatView: React.FC = () => {
   const [mobileChatListOpen, setMobileChatListOpen] = useState(false);
 
   // Live Dexie IndexedDB + Turso delta sync + Ably Realtime hook
-  const { messages: realtimeMsgs, isSyncing, sendMessage } = useRealtimeMessages(selectedConversation.id);
+  const { messages: realtimeMsgs, sendMessage } = useRealtimeMessages(selectedConversation.id);
 
   const activeMessages = directMessages[selectedConversation.id] || [];
   const otherUser =
@@ -190,10 +190,6 @@ export const ChatView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              {isSyncing ? 'Syncing...' : 'Live Realtime (Ably + Turso)'}
-            </div>
             <button
               onClick={() => startMeeting(`Direct Call: ${otherUser.name}`, 'Chat')}
               className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600 hover:text-[#5b5fc7] transition-colors"
