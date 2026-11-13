@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "dev:worker": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "node scripts/init-db.mjs"
+    "db:init": "node scripts/init-db.mjs",
+    "secrets:push": "node scripts/push-secrets.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

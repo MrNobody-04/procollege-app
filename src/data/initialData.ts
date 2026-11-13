@@ -212,6 +212,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     name: 'Advanced Algorithms & Complexity',
     department: 'Computer Science',
     institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
     term: 'Fall 2026',
     color: '#4f46e5',
     icon: '⚡',
@@ -250,9 +251,9 @@ export const INITIAL_COURSES: CourseTeam[] = [
     ],
     channels: [
       { id: 'ch_cs301_gen', courseId: 'course_cs301', name: 'Announcements', description: 'Class-wide notices, exam schedules, and alerts from all lecturers', isGeneral: true, unreadCount: 2, studentFilePermission: 'read-only' },
-      { id: 'ch_cs301_lec', courseId: 'course_cs301', name: 'Weekly Lectures', description: 'Slide decks, lecture recordings, and Q&A', isGeneral: false, unreadCount: 0, studentFilePermission: 'read-only' },
-      { id: 'ch_cs301_proj', courseId: 'course_cs301', name: 'Final Project', description: 'Team formations, progress updates, and code reviews', isGeneral: false, unreadCount: 1, studentFilePermission: 'can-edit' },
-      { id: 'ch_cs301_help', courseId: 'course_cs301', name: 'Office Hours & Helpdesk', description: 'Ask questions to Professor Turing and TA Elena', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit' }
+      { id: 'ch_cs301_lec', courseId: 'course_cs301', name: 'Weekly Lectures', description: 'Slide decks, lecture recordings, and Q&A', isGeneral: false, unreadCount: 0, studentFilePermission: 'read-only', subjectLecturerName: 'Prof. Alan Turing', subjectLecturerId: 'user_alan' },
+      { id: 'ch_cs301_proj', courseId: 'course_cs301', name: 'Final Project', description: 'Team formations, progress updates, and code reviews', isGeneral: false, unreadCount: 1, studentFilePermission: 'can-edit', subjectLecturerName: 'Prof. Alan Turing', subjectLecturerId: 'user_alan' },
+      { id: 'ch_cs301_help', courseId: 'course_cs301', name: 'Office Hours & Helpdesk', description: 'Ask questions to Professor Turing and TA Elena', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit', subjectLecturerName: 'Elena Rostova (TA)', subjectLecturerId: 'user_elena' }
     ]
   },
   {
@@ -261,6 +262,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     name: 'B.Sc. Computer Science - Semester 3 (Section A)',
     department: 'School of Computing',
     institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
     term: 'Academic Year 2026-2027',
     color: '#0891b2',
     icon: '🏛️',
@@ -323,6 +325,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     name: 'Deep Learning & Neural Networks',
     department: 'Artificial Intelligence',
     institutionName: 'ProCollege University Network',
+    facultyId: 'fac_ai',
     term: 'Fall 2026',
     color: '#059669',
     icon: '🧠',
@@ -333,7 +336,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     template: 'Class',
     channels: [
       { id: 'ch_ds204_gen', courseId: 'course_ds204', name: 'Announcements', description: 'Class notices, foundation updates, and lab schedules from all lecturers', isGeneral: true, unreadCount: 0, studentFilePermission: 'read-only' },
-      { id: 'ch_ds204_labs', courseId: 'course_ds204', name: 'GPU Cluster Labs', description: 'Slurm and PyTorch multi-node training scripts', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit' }
+      { id: 'ch_ds204_labs', courseId: 'course_ds204', name: 'GPU Cluster Labs', description: 'Slurm and PyTorch multi-node training scripts', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit', subjectLecturerName: 'Dr. Fei-Fei Li', subjectLecturerId: 'user_feifei' }
     ]
   },
   {
@@ -342,6 +345,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     name: 'Quantum Mechanics & Modern Physics',
     department: 'Physics',
     institutionName: 'ProCollege University Network',
+    facultyId: 'fac_phys',
     term: 'Fall 2026',
     color: '#d97706',
     icon: '⚛️',
@@ -352,7 +356,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     template: 'Class',
     channels: [
       { id: 'ch_phys210_gen', courseId: 'course_phys210', name: 'Announcements', description: 'Class notices, syllabus updates, and lab schedules from all lecturers', isGeneral: true, unreadCount: 0, studentFilePermission: 'read-only' },
-      { id: 'ch_phys210_lab', courseId: 'course_phys210', name: 'Experimental Lab', description: 'Apparatus calibration and lab reports', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit' }
+      { id: 'ch_phys210_lab', courseId: 'course_phys210', name: 'Experimental Lab', description: 'Apparatus calibration and lab reports', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit', subjectLecturerName: 'Dr. Richard Feynman', subjectLecturerId: 'user_feynman' }
     ]
   }
 ];
@@ -428,15 +432,20 @@ export const INITIAL_POSTS: Record<string, ThreadPost[]> = {
 // Future deadlines: Nov 20, Nov 25 (timestamp > current)
 // Past deadlines: Nov 05, Nov 02 (timestamp < current)
 export const INITIAL_ASSIGNMENTS: Assignment[] = [
-  // 1. PENDING (To Do) - Future deadline, not turned in yet
+  // 1. PENDING (To Do) - Future deadline, not turned in yet (CS 301 - Weekly Lectures)
   {
     id: 'asgn_pending',
+    institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
     courseId: 'course_cs301',
     courseCode: 'CS 301',
+    channelId: 'ch_cs301_lec',
+    targetChannelId: 'ch_cs301_lec',
+    subjectName: 'Weekly Lectures',
+    createdByEmail: 'a.turing@procollege.edu',
     title: 'Problem Set 5: Dynamic Programming on Trees',
     instructions: 'Complete problems 1 through 4. Prove the optimal substructure and implement memoized recurrence relations for weighted tree independent sets. Attach your written PDF before the due date.',
     points: 100,
-    targetChannelId: 'ch_cs301_gen',
     referenceMaterialMode: 'students-cant-edit',
     referenceFiles: [
       {
@@ -467,15 +476,20 @@ export const INITIAL_ASSIGNMENTS: Assignment[] = [
     ]
   },
 
-  // 2. COMPLETED (Turned in before deadline - replaceable via Undo Turn In!)
+  // 2. COMPLETED (Turned in before deadline - CS 301 - Weekly Lectures)
   {
     id: 'asgn_completed_replaceable',
+    institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
     courseId: 'course_cs301',
     courseCode: 'CS 301',
+    channelId: 'ch_cs301_lec',
+    targetChannelId: 'ch_cs301_lec',
+    subjectName: 'Weekly Lectures',
+    createdByEmail: 'a.turing@procollege.edu',
     title: 'Problem Set 4: Network Flow & Bipartite Matching',
     instructions: 'Implement push-relabel algorithm and benchmark against bipartite graph matching datasets. Submit your code and typed proof report. You may replace or revise your files until the deadline expires.',
     points: 100,
-    targetChannelId: 'ch_cs301_gen',
     referenceMaterialMode: 'students-cant-edit',
     referenceFiles: [
       {
@@ -513,15 +527,20 @@ export const INITIAL_ASSIGNMENTS: Assignment[] = [
     ]
   },
 
-  // 3. DUE DATE PASSED - Deadline has passed, student did NOT submit! (Strictly locked: no uploads, edits, or deletions)
+  // 3. DUE DATE PASSED - CS 301 - Final Project
   {
     id: 'asgn_due_passed',
+    institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
     courseId: 'course_cs301',
     courseCode: 'CS 301',
+    channelId: 'ch_cs301_proj',
+    targetChannelId: 'ch_cs301_proj',
+    subjectName: 'Final Project',
+    createdByEmail: 'a.turing@procollege.edu',
     title: 'Lab 1: Asymptotic Graph Traversal & DFS Profiling',
     instructions: 'Profile DFS and BFS on dense graphs with Valgrind and Callgrind. All submissions had to be received before the cutoff date.',
     points: 100,
-    targetChannelId: 'ch_cs301_gen',
     referenceMaterialMode: 'students-cant-edit',
     referenceFiles: [
       {
@@ -550,15 +569,20 @@ export const INITIAL_ASSIGNMENTS: Assignment[] = [
     ]
   },
 
-  // 4. COMPLETED & GRADED - Past deadline, turned in on time, locked
+  // 4. COMPLETED & GRADED - Cohort B.Sc. CS 2026 - Operating Systems
   {
     id: 'asgn_graded',
+    institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
     courseId: 'course_cohort_cs',
     courseCode: 'B.Sc. CS 2026',
+    channelId: 'ch_cohort_os',
+    targetChannelId: 'ch_cohort_os',
+    subjectName: 'Operating Systems',
+    createdByEmail: 'f.li@procollege.edu',
     title: 'OS Lab 1: Linux Process Forking & Inter-Process Pipes',
     instructions: 'Implement a command-line pipeline in C supporting stdin/stdout redirection and concurrent pipe execution.',
     points: 100,
-    targetChannelId: 'ch_cohort_os',
     referenceMaterialMode: 'students-cant-edit',
     referenceFiles: [
       {
@@ -593,6 +617,78 @@ export const INITIAL_ASSIGNMENTS: Assignment[] = [
         ]
       }
     ]
+  },
+
+  // 5. Cohort B.Sc. CS 2026 - Computer Networks
+  {
+    id: 'asgn_net_1',
+    institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
+    courseId: 'course_cohort_cs',
+    courseCode: 'B.Sc. CS 2026',
+    channelId: 'ch_cohort_net',
+    targetChannelId: 'ch_cohort_net',
+    subjectName: 'Computer Networks',
+    createdByEmail: 'a.turing@procollege.edu',
+    title: 'Socket Programming: Multi-Threaded HTTP Web Server',
+    instructions: 'Design and implement an asynchronous multi-threaded TCP web server in C/C++ handling concurrent HTTP GET requests and binary file streaming.',
+    points: 100,
+    referenceMaterialMode: 'students-cant-edit',
+    referenceFiles: [
+      {
+        id: 'ref_net_1',
+        name: 'RFC2616_HTTP_Specification.pdf',
+        type: 'pdf',
+        size: '950 KB',
+        permission: 'read-only'
+      }
+    ],
+    dueAt: 'Nov 28, 2026, 11:59 PM',
+    dueTimestamp: 1795910340000,
+    closeAt: 'Nov 28, 2026, 11:59 PM',
+    isStrictNoLateSubmission: true,
+    rubric: [
+      { id: 'r1', criterion: 'TCP Socket bind and concurrency', maxPoints: 50 },
+      { id: 'r2', criterion: 'HTTP protocol parser correctness', maxPoints: 30 },
+      { id: 'r3', criterion: 'Stress test throughput', maxPoints: 20 }
+    ],
+    submissions: []
+  },
+
+  // 6. Cohort B.Sc. CS 2026 - Database Systems
+  {
+    id: 'asgn_db_1',
+    institutionName: 'ProCollege University Network',
+    facultyId: 'fac_cs',
+    courseId: 'course_cohort_cs',
+    courseCode: 'B.Sc. CS 2026',
+    channelId: 'ch_cohort_db',
+    targetChannelId: 'ch_cohort_db',
+    subjectName: 'Database Systems',
+    createdByEmail: 'r.feynman@procollege.edu',
+    title: 'Database Assignment 1: B+ Tree Concurrency & WAL Logging',
+    instructions: 'Implement write-ahead logging (WAL) and 2-phase locking concurrency protocols for crash-safe B+ tree indexes under concurrent workloads.',
+    points: 100,
+    referenceMaterialMode: 'students-cant-edit',
+    referenceFiles: [
+      {
+        id: 'ref_db_1',
+        name: 'ARIES_Recovery_Algorithm.pdf',
+        type: 'pdf',
+        size: '1.6 MB',
+        permission: 'read-only'
+      }
+    ],
+    dueAt: 'Nov 30, 2026, 11:59 PM',
+    dueTimestamp: 1796083140000,
+    closeAt: 'Nov 30, 2026, 11:59 PM',
+    isStrictNoLateSubmission: true,
+    rubric: [
+      { id: 'r1', criterion: 'WAL log record serialization and replay', maxPoints: 50 },
+      { id: 'r2', criterion: '2PL latch acquisition and deadlock handling', maxPoints: 30 },
+      { id: 'r3', criterion: 'Crash recovery unit tests', maxPoints: 20 }
+    ],
+    submissions: []
   }
 ];
 

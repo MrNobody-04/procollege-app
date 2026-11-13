@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FileCheck,
   Clock,
@@ -8,10 +8,12 @@ import {
   File,
   Presentation,
   FileArchive,
-  Share2,
   Upload,
   Calendar,
-  Paperclip
+  Paperclip,
+  Lock,
+  Layers,
+  BookOpen
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import type { RubricCriterion } from '../types';
@@ -19,6 +21,7 @@ import type { RubricCriterion } from '../types';
 interface CreateAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultCourseId?: string;
   defaultChannelId?: string;
 }
 
@@ -42,16 +45,42 @@ const toDateTimeLocalString = (date: Date): string => {
 export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   isOpen,
   onClose,
+  defaultCourseId,
   defaultChannelId
 }) => {
-  const { selectedCourse, createAssignment, showDialog } = useApp();
+  const { courses, selectedCourse, createAssignment, showDialog, currentUser } = useApp();
+
+  const isContextLocked = Boolean(defaultCourseId && defaultChannelId);
+
+  // Eligible courses for current user based on institution and role
+  const userInstitution = currentUser.institutionName || 'ProCollege University Network';
+  const eligibleCourses = courses.filter(c => {
+    if (currentUser.role !== 'developer') {
+      if (c.institutionName && userInstitution && c.institutionName !== userInstitution) return false;
+    }
+    if (currentUser.role === 'admin' || currentUser.role === 'developer') return true;
+    return (
+      c.instructor.id === currentUser.id ||
+      c.coOwners?.some(co => co.id === currentUser.id) ||
+      c.channels.some(
+        ch =>
+          !ch.isGeneral &&
+          (ch.subjectLecturerId === currentUser.id ||
+            (ch.subjectLecturerName && ch.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase())))
+      )
+    );
+  });
+
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(
+    defaultCourseId || eligibleCourses[0]?.id || selectedCourse.id
+  );
+  const [selectedChannelId, setSelectedChannelId] = useState<string>(defaultChannelId || '');
 
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [points, setPoints] = useState(100);
-  const [targetChannelId, setTargetChannelId] = useState(defaultChannelId || selectedCourse.channels[0].id);
 
-  // Multiple Reference Files State (PDF, PPT, DOC, ZIP)
+  // Reference Files State
   const [referenceFiles, setReferenceFiles] = useState<AttachedReferenceFile[]>([
     {
       id: 'ref-default-1',
@@ -95,6 +124,60 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     { id: 'crit_3', criterion: 'Documentation & Code Quality', maxPoints: 20 }
   ]);
 
+  // Synchronize on modal open or when defaultCourseId/defaultChannelId change
+  useEffect(() => {
+    if (isOpen) {
+      if (defaultCourseId) {
+        setSelectedCourseId(defaultCourseId);
+        if (defaultChannelId) {
+          setSelectedChannelId(defaultChannelId);
+        } else {
+          const c = courses.find(item => item.id === defaultCourseId);
+          const firstSub = c?.channels.find(ch => !ch.isGeneral);
+          setSelectedChannelId(firstSub?.id || c?.channels[0]?.id || '');
+        }
+      } else {
+        const first = eligibleCourses[0] || selectedCourse;
+        setSelectedCourseId(first.id);
+        const firstSub = (first.channels || []).find(ch => {
+          if (ch.isGeneral || ch.name.toLowerCase() === 'announcements' || ch.name.toLowerCase() === 'general') return false;
+          if (currentUser.role === 'admin' || currentUser.role === 'developer') return true;
+          if (first.instructor.id === currentUser.id || first.coOwners?.some(co => co.id === currentUser.id)) return true;
+          return (
+            ch.subjectLecturerId === currentUser.id ||
+            (ch.subjectLecturerName && ch.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase()))
+          );
+        });
+        setSelectedChannelId(firstSub?.id || '');
+      }
+    }
+  }, [isOpen, defaultCourseId, defaultChannelId]);
+
+  // When active class changes in global picker mode, update eligible subject channels
+  const activeCourse = courses.find(c => c.id === selectedCourseId) || eligibleCourses[0] || selectedCourse;
+
+  const eligibleChannels = (activeCourse?.channels || []).filter(ch => {
+    if (ch.isGeneral || ch.name.toLowerCase() === 'announcements' || ch.name.toLowerCase() === 'general') {
+      return false;
+    }
+    if (currentUser.role === 'admin' || currentUser.role === 'developer') return true;
+    if (activeCourse.instructor.id === currentUser.id || activeCourse.coOwners?.some(co => co.id === currentUser.id)) {
+      return true;
+    }
+    return (
+      ch.subjectLecturerId === currentUser.id ||
+      (ch.subjectLecturerName && ch.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase()))
+    );
+  });
+
+  useEffect(() => {
+    if (!defaultCourseId && selectedCourseId) {
+      if (!eligibleChannels.some(ch => ch.id === selectedChannelId)) {
+        setSelectedChannelId(eligibleChannels[0]?.id || '');
+      }
+    }
+  }, [selectedCourseId, eligibleChannels.length]);
+
   if (!isOpen) return null;
 
   // File Upload Handlers
@@ -115,9 +198,10 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
       else if (['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext)) type = 'image';
       else if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css'].includes(ext)) type = 'code';
 
-      const sizeFormatted = file.size > 1024 * 1024
-        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.max(1, Math.round(file.size / 1024))} KB`;
+      const sizeFormatted =
+        file.size > 1024 * 1024
+          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.max(1, Math.round(file.size / 1024))} KB`;
 
       return {
         id: `ref_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -190,9 +274,27 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     setRubric(prev => prev.filter(r => r.id !== id));
   };
 
+  const activeChannel = activeCourse?.channels.find(ch => ch.id === selectedChannelId) || eligibleChannels[0];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    if (!selectedChannelId || !activeChannel) {
+      showDialog('Please select an authorized subject channel to publish this assignment.', {
+        type: 'warning',
+        title: 'Subject Required'
+      });
+      return;
+    }
+
+    if (activeChannel.isGeneral) {
+      showDialog('Assignments cannot be published to the Announcements channel. Please select a specific Subject channel.', {
+        type: 'warning',
+        title: 'Invalid Channel'
+      });
+      return;
+    }
 
     const now = new Date();
     const publishedAtFormatted = now.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
@@ -202,12 +304,19 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
       : undefined;
 
     createAssignment({
-      courseId: selectedCourse.id,
-      courseCode: selectedCourse.code,
+      institutionName: activeCourse.institutionName || userInstitution,
+      facultyId: activeCourse.facultyId || 'fac_cs',
+      courseId: activeCourse.id,
+      courseCode: activeCourse.code,
+      channelId: activeChannel.id,
+      targetChannelId: activeChannel.id,
+      subjectName: activeChannel.name,
+      createdByEmail: currentUser.email,
       title: title.trim(),
-      instructions: instructions.trim() || 'Please follow all specifications in the attached problem sheet and turn in your solution before the close cutoff.',
+      instructions:
+        instructions.trim() ||
+        'Please follow all specifications in the attached problem sheet and turn in your solution before the close cutoff.',
       points: Number(points),
-      targetChannelId,
       referenceMaterialMode: 'students-cant-edit',
       referenceFiles: referenceFiles.map(rf => ({
         id: rf.id,
@@ -227,8 +336,10 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     onClose();
     showDialog(
       isScheduled
-        ? `Assignment "${title}" scheduled for release on ${new Date(scheduleDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.`
-        : `Assignment "${title}" published and routed to ${selectedCourse.channels.find(c => c.id === targetChannelId)?.name || 'General'}!`,
+        ? `Assignment "${title}" scheduled for release in ${activeCourse.name} • ${activeChannel.name} on ${new Date(
+            scheduleDate
+          ).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.`
+        : `Assignment "${title}" published and locked to ${activeCourse.code} • ${activeChannel.name}!`,
       { type: 'success', title: isScheduled ? 'Assignment Scheduled' : 'Assignment Published' }
     );
   };
@@ -245,7 +356,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
             <div>
               <h2 className="font-bold text-sm sm:text-base text-zinc-900">Create & Publish Assignment</h2>
               <p className="text-[11px] text-zinc-500">
-                Course: <span className="font-semibold text-zinc-700">{selectedCourse.code}</span> — {selectedCourse.name}
+                Strict 4-Level Scoping: Bound strictly to Organization, Faculty, Class, and Subject.
               </p>
             </div>
           </div>
@@ -260,6 +371,80 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
 
         {/* Scrollable Form Body */}
         <form id="create-assignment-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-xs">
+          {/* Class & Subject Scoping Header / Selectors */}
+          {isContextLocked ? (
+            <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
+                  <BookOpen className="w-4 h-4 text-[#5b5fc7]" />
+                  <span>{activeCourse.name} ({activeCourse.code})</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-indigo-700">
+                  <Layers className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                  <span>Subject: <strong className="font-semibold text-zinc-900">{activeChannel?.name || 'Subject Channel'}</strong></span>
+                </div>
+              </div>
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-indigo-200 text-indigo-700 text-[10px] font-bold self-start sm:self-center shadow-2xs">
+                <Lock className="w-3 h-3 text-[#5b5fc7]" />
+                <span>Context Locked</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-zinc-800 text-xs flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-[#5b5fc7]" />
+                  Target Class & Subject Channel *
+                </span>
+                <span className="text-[10px] text-zinc-400">Never leaks to other subjects</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Select Class */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
+                    Select Class / Section:
+                  </label>
+                  <select
+                    value={selectedCourseId}
+                    onChange={e => setSelectedCourseId(e.target.value)}
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7]"
+                  >
+                    {eligibleCourses.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} - {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Select Subject Channel */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
+                    Select Subject Channel:
+                  </label>
+                  {eligibleChannels.length === 0 ? (
+                    <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                      No taught subjects found for your account in this class.
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedChannelId}
+                      onChange={e => setSelectedChannelId(e.target.value)}
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7]"
+                    >
+                      {eligibleChannels.map(ch => (
+                        <option key={ch.id} value={ch.id}>
+                          {ch.name} {ch.subjectLecturerName ? `(Lecturer: ${ch.subjectLecturerName})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Assignment Title */}
           <div>
             <label className="block font-semibold text-zinc-700 mb-1">Assignment Title *</label>
@@ -362,30 +547,6 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Channel Notification Routing */}
-          <div className="flex items-center justify-between bg-zinc-50 p-3 rounded-xl border border-zinc-200">
-            <div>
-              <span className="font-semibold text-zinc-800 flex items-center gap-1.5 text-xs">
-                <Share2 className="w-4 h-4 text-[#5b5fc7]" />
-                Channel Notification Routing
-              </span>
-              <p className="text-[10px] text-zinc-500">
-                Post automated assignment announcement to this subject channel.
-              </p>
-            </div>
-            <select
-              value={targetChannelId}
-              onChange={e => setTargetChannelId(e.target.value)}
-              className="bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7]"
-            >
-              {selectedCourse.channels.map(ch => (
-                <option key={ch.id} value={ch.id}>
-                  {ch.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Assignment Dates & Deadlines */}
@@ -610,7 +771,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
             <button
               type="submit"
               form="create-assignment-form"
-              className="bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-5 py-2 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              disabled={!selectedChannelId || eligibleChannels.length === 0}
+              className="bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:bg-zinc-300 disabled:cursor-not-allowed text-white px-5 py-2 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <FileCheck className="w-4 h-4" />
               <span>{isScheduled ? 'Schedule Assignment' : 'Publish Assignment'}</span>

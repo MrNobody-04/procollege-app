@@ -106,6 +106,7 @@ export interface CourseTeam {
   name: string;
   department: string;
   institutionName?: string;
+  facultyId?: string;
   term: string;
   color: string;
   icon: string;
@@ -179,12 +180,17 @@ export interface RubricCriterion {
 
 export interface Assignment {
   id: string;
-  courseId: string;
+  institutionName: string; // 1. Organization boundary
+  facultyId: string; // 2. Faculty/Department boundary
+  courseId: string; // 3. Class/Section boundary (e.g. BIT Sem 5 - Sec A)
   courseCode: string;
+  channelId: string; // 4. Exact Subject ID inside that class (e.g. Operating Systems vs Database Systems)
+  targetChannelId?: string; // Routing: General vs specific subject channel (alias for channelId)
+  subjectName: string; // Display name of the subject
+  createdByEmail: string; // The lecturer who published it
   title: string;
   instructions: string;
   points: number;
-  targetChannelId?: string; // Routing: General vs specific subject channel
   referenceMaterialMode?: 'students-cant-edit' | 'students-edit-own-copy'; // Permission setting beside attached file
   referenceFiles?: Attachment[];
   publishedAt?: string; // Auto-selected timestamp when published
@@ -232,8 +238,10 @@ export interface ActivityNotification {
   title: string;
   detail: string;
   timestamp: string;
+  courseId?: string;
   courseCode?: string;
   channelId?: string;
+  institutionName?: string;
   isRead: boolean;
   author?: User;
 }

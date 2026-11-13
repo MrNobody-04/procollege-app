@@ -2,6 +2,7 @@ name = "procollege-app"
 main = "src/worker.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
+keep_vars = true
 
 [assets]
 directory = "./dist"
@@ -10,4 +11,4 @@ binding = "ASSETS"
 
 [vars]
 TURSO_DB_URL = "libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io"
-
+VITE_ABLY_SUBSCRIBE_KEY = "wbIoLQ.X8L0qQ:LYTf7p-Isq-UIhJoZ-xv9-JqwkwmQd5v6Awwb8GC-jw"

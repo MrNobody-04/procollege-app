@@ -88,7 +88,15 @@ export const ChannelView: React.FC = () => {
   };
 
   const currentChannelPosts = posts[selectedChannel.id] || [];
-  const currentCourseAssignments = assignments.filter(a => a.courseId === selectedCourse.id);
+  const activeInstitution = currentUser.institutionName || selectedCourse.institutionName || 'ProCollege University Network';
+  const currentSubjectAssignments = assignments.filter(a => {
+    if (currentUser.role !== 'developer') {
+      if (a.institutionName && activeInstitution && a.institutionName !== activeInstitution) return false;
+    }
+    if (a.courseId !== selectedCourse.id) return false;
+    const asgnChannelId = a.channelId || a.targetChannelId;
+    return asgnChannelId === selectedChannel.id;
+  });
   const currentCourseFiles = courseFiles.filter(f => f.courseId === selectedCourse.id);
 
   const handleCreatePost = (e: React.FormEvent) => {
@@ -138,7 +146,28 @@ export const ChannelView: React.FC = () => {
     { id: 'grades', label: 'Grades', icon: <GraduationCap className="w-3.5 h-3.5" /> }
   ];
 
-  const isOwner = currentUser.role === 'professor' || currentUser.role === 'lecturer';
+  const isOwner =
+    currentUser.role === 'professor' ||
+    currentUser.role === 'lecturer' ||
+    currentUser.role === 'admin' ||
+    (currentUser as unknown as { role: string }).role === 'teacher';
+
+  const isGeneralChannel = Boolean(
+    selectedChannel.isGeneral ||
+    selectedChannel.name.toLowerCase() === 'announcements' ||
+    selectedChannel.name.toLowerCase() === 'general'
+  );
+
+  const canPublishInSubject = Boolean(
+    !isGeneralChannel && (
+      currentUser.role === 'developer' ||
+      currentUser.role === 'admin' ||
+      selectedChannel.subjectLecturerId === currentUser.id ||
+      (selectedChannel.subjectLecturerName && selectedChannel.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase())) ||
+      selectedCourse.instructor.id === currentUser.id ||
+      selectedCourse.coOwners?.some(co => co.id === currentUser.id)
+    )
+  );
 
   return (
     <div className={`flex-1 flex flex-col h-full bg-[#f5f5f5] min-w-0 overflow-hidden select-none ${mobileSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
@@ -177,10 +206,10 @@ export const ChannelView: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {isOwner && channelTab === 'assignments' && (
+          {canPublishInSubject && channelTab === 'assignments' && (
             <button
               onClick={() => setShowCreateAsgnModal(true)}
-              className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create</span>
@@ -446,87 +475,131 @@ export const ChannelView: React.FC = () => {
         {/* ASSIGNMENTS TAB */}
         {channelTab === 'assignments' && (
           <div className="max-w-4xl mx-auto space-y-3">
-            <div className="bg-white rounded-lg border border-zinc-200 p-5">
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
+            {isGeneralChannel ? (
+              <div className="bg-white rounded-lg border border-zinc-200 p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#5b5fc7] flex items-center justify-center mx-auto">
+                  <FileCheck className="w-6 h-6" />
+                </div>
                 <div>
-                  <h2 className="font-semibold text-sm text-zinc-900">
-                    Assignments
-                  </h2>
-                  <p className="text-xs text-zinc-500">Coursework for {selectedCourse.code}</p>
+                  <h3 className="font-bold text-sm text-zinc-900">General Noticeboard Channel</h3>
+                  <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
+                    Assignments and problem sets are strictly organized inside specific subject channels (e.g., Database Systems, Operating Systems). Please select a subject channel from the left sidebar to view or publish coursework.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg border border-zinc-200 p-5">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
+                  <div>
+                    <h2 className="font-semibold text-sm text-zinc-900">
+                      Assignments: {selectedChannel.name}
+                    </h2>
+                    <p className="text-xs text-zinc-500">
+                      {selectedCourse.code} • {selectedCourse.name} {selectedChannel.subjectLecturerName ? `• Lecturer: ${selectedChannel.subjectLecturerName}` : ''}
+                    </p>
+                  </div>
+
+                  {canPublishInSubject && (
+                    <button
+                      onClick={() => setShowCreateAsgnModal(true)}
+                      className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Create Assignment
+                    </button>
+                  )}
                 </div>
 
-                {isOwner && (
-                  <button
-                    onClick={() => setShowCreateAsgnModal(true)}
-                    className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Create
-                  </button>
+                {/* Assignment Cards List - Natural Teams Clean Look */}
+                {currentSubjectAssignments.length === 0 ? (
+                  <div className="py-12 text-center text-zinc-500 text-xs">
+                    <FileCheck className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+                    <p className="font-medium text-zinc-700">No assignments in {selectedChannel.name} yet</p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      Coursework assigned specifically for this subject will appear here.
+                    </p>
+                    {canPublishInSubject && (
+                      <button
+                        onClick={() => setShowCreateAsgnModal(true)}
+                        className="mt-3 inline-flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Publish First Assignment
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-zinc-100 mt-2">
+                    {currentSubjectAssignments.map(asgn => {
+                      const studentSub = asgn.submissions.find(s => s.studentId === currentUser.id);
+                      const isSubmitted = studentSub?.status === 'turned-in' || studentSub?.status === 'graded';
+                      const isPassed = Boolean(asgn.dueTimestamp && currentTime > asgn.dueTimestamp);
+
+                      return (
+                        <div
+                          key={asgn.id}
+                          onClick={() => {
+                            if (currentUser.role === 'student') {
+                              setActiveStudentAsgn(asgn);
+                            } else {
+                              setActiveSpeedGraderAsgn(asgn);
+                              setSpeedGraderStudentId(asgn.submissions[0]?.studentId);
+                            }
+                          }}
+                          className="py-3.5 px-3 flex items-center justify-between hover:bg-zinc-50 cursor-pointer rounded transition-colors"
+                        >
+                          <div className="min-w-0 pr-4">
+                            <h3 className="font-semibold text-xs text-zinc-900 truncate hover:text-[#5b5fc7]">
+                              {asgn.title}
+                            </h3>
+                            <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-1">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-zinc-400" />
+                                Due {asgn.dueAt}
+                              </span>
+                              <span>•</span>
+                              <span>{asgn.points} points</span>
+                              {asgn.referenceFiles && asgn.referenceFiles.length > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1 text-zinc-600">
+                                    <Paperclip className="w-3 h-3 text-zinc-400" />
+                                    {asgn.referenceFiles.length} {asgn.referenceFiles.length === 1 ? 'file' : 'files'}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Clean Natural Status Text */}
+                          <div className="shrink-0 text-right">
+                            {currentUser.role === 'student' ? (
+                              isSubmitted ? (
+                                <span className="text-xs font-medium text-emerald-700">
+                                  Turned in
+                                </span>
+                              ) : isPassed ? (
+                                <span className="text-xs font-medium text-rose-600">
+                                  Due date passed
+                                </span>
+                              ) : (
+                                <span className="text-xs font-medium text-zinc-600">
+                                  Assigned
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs font-medium text-zinc-600">
+                                {asgn.submissions.length} submitted
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-
-              {/* Assignment Cards List - Natural Teams Clean Look */}
-              <div className="divide-y divide-zinc-100 mt-2">
-                {currentCourseAssignments.map(asgn => {
-                  const studentSub = asgn.submissions.find(s => s.studentId === currentUser.id);
-                  const isSubmitted = studentSub?.status === 'turned-in' || studentSub?.status === 'graded';
-                  const isPassed = Boolean(asgn.dueTimestamp && currentTime > asgn.dueTimestamp);
-
-                  return (
-                    <div
-                      key={asgn.id}
-                      onClick={() => {
-                        if (currentUser.role === 'student') {
-                          setActiveStudentAsgn(asgn);
-                        } else {
-                          setActiveSpeedGraderAsgn(asgn);
-                          setSpeedGraderStudentId(asgn.submissions[0]?.studentId);
-                        }
-                      }}
-                      className="py-3.5 px-3 flex items-center justify-between hover:bg-zinc-50 cursor-pointer rounded transition-colors"
-                    >
-                      <div className="min-w-0 pr-4">
-                        <h3 className="font-semibold text-xs text-zinc-900 truncate hover:text-[#5b5fc7]">
-                          {asgn.title}
-                        </h3>
-                        <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-1">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-zinc-400" />
-                            Due {asgn.dueAt}
-                          </span>
-                          <span>•</span>
-                          <span>{asgn.points} points</span>
-                        </div>
-                      </div>
-
-                      {/* Clean Natural Status Text */}
-                      <div className="shrink-0 text-right">
-                        {currentUser.role === 'student' ? (
-                          isSubmitted ? (
-                            <span className="text-xs font-medium text-emerald-700">
-                              Turned in
-                            </span>
-                          ) : isPassed ? (
-                            <span className="text-xs font-medium text-rose-600">
-                              Due date passed
-                            </span>
-                          ) : (
-                            <span className="text-xs font-medium text-zinc-600">
-                              Assigned
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-xs font-medium text-zinc-600">
-                            {asgn.submissions.length} submitted
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -566,6 +639,7 @@ export const ChannelView: React.FC = () => {
       <CreateAssignmentModal
         isOpen={showCreateAsgnModal}
         onClose={() => setShowCreateAsgnModal(false)}
+        defaultCourseId={selectedCourse.id}
         defaultChannelId={selectedChannel.id}
       />
 

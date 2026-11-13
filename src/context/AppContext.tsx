@@ -113,12 +113,17 @@ interface AppContextType {
 
   assignments: Assignment[];
   createAssignment: (newAsgn: {
+    institutionName?: string;
+    facultyId?: string;
     courseId: string;
     courseCode: string;
+    channelId?: string;
+    targetChannelId?: string;
+    subjectName?: string;
+    createdByEmail?: string;
     title: string;
     instructions: string;
     points: number;
-    targetChannelId?: string;
     referenceMaterialMode?: 'students-cant-edit' | 'students-edit-own-copy';
     referenceFiles?: { id: string; name: string; size: string; type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt' }[];
     publishedAt?: string;
@@ -961,14 +966,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ASSIGNMENTS ENGINE (Phase 2, 3, 4)
   // ==========================================
 
-  // Phase 2: Create & Publish Assignment
+  // Phase 2: Create & Publish Assignment with Strict 4-Level Scoping
   const createAssignment = (newAsgn: {
+    institutionName?: string;
+    facultyId?: string;
     courseId: string;
     courseCode: string;
+    channelId?: string;
+    targetChannelId?: string;
+    subjectName?: string;
+    createdByEmail?: string;
     title: string;
     instructions: string;
     points: number;
-    targetChannelId?: string;
     referenceMaterialMode?: 'students-cant-edit' | 'students-edit-own-copy';
     referenceFiles?: { id: string; name: string; size: string; type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt' }[];
     publishedAt?: string;
@@ -980,19 +990,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     rubric: RubricCriterion[];
   }) => {
     const asgnId = `asgn_${Date.now()}`;
-    const targetChannel = newAsgn.targetChannelId || selectedCourse.channels[0].id;
+    const targetCourse = courses.find(c => c.id === newAsgn.courseId) || selectedCourse;
+    const channelId = newAsgn.channelId || newAsgn.targetChannelId || targetCourse.channels[0].id;
+    const channelObj = targetCourse.channels.find(ch => ch.id === channelId) || targetCourse.channels[0];
+    const subjectName = newAsgn.subjectName || channelObj.name;
+    const institutionName = newAsgn.institutionName || targetCourse.institutionName || currentUser.institutionName || 'ProCollege University Network';
+    const facultyId = newAsgn.facultyId || targetCourse.facultyId || 'fac_cs';
+    const createdByEmail = newAsgn.createdByEmail || currentUser.email;
+
     const now = new Date();
     const publishedAt = newAsgn.publishedAt || now.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
     const dueTimestamp = new Date(newAsgn.dueAt).getTime() || (Date.now() + 7 * 86400000);
 
     const fullAssignment: Assignment = {
       id: asgnId,
-      courseId: newAsgn.courseId,
-      courseCode: newAsgn.courseCode,
+      institutionName,
+      facultyId,
+      courseId: targetCourse.id,
+      courseCode: newAsgn.courseCode || targetCourse.code,
+      channelId,
+      targetChannelId: channelId,
+      subjectName,
+      createdByEmail,
       title: newAsgn.title,
       instructions: newAsgn.instructions,
       points: newAsgn.points,
-      targetChannelId: targetChannel,
       referenceMaterialMode: newAsgn.referenceMaterialMode || 'students-cant-edit',
       referenceFiles: (newAsgn.referenceFiles || []).map(f => ({
         ...f,
@@ -1012,46 +1034,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAssignments(prev => [fullAssignment, ...prev]);
 
-    // Sync to live Turso assignments table
+    // Sync to live Turso assignments table with strict boundary data
     fetch('/api/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: asgnId,
-        college_id: 'padmashree-demo',
-        section_id: 'sec-sem5-a',
+        institution_name: institutionName,
+        institutionName,
+        faculty_id: facultyId,
+        facultyId,
+        course_id: targetCourse.id,
+        courseId: targetCourse.id,
+        course_code: targetCourse.code,
+        courseCode: targetCourse.code,
+        channel_id: channelId,
+        channelId,
+        subject_name: subjectName,
+        subjectName,
+        created_by: currentUser.name,
+        created_by_email: createdByEmail,
+        createdByEmail,
         title: newAsgn.title,
-        description: newAsgn.instructions,
+        instructions: newAsgn.instructions,
         due_at: newAsgn.dueAt,
         dueTimestamp,
         max_points: newAsgn.points,
-        created_by: currentUser.name,
+        rubric: newAsgn.rubric
       }),
     }).catch(() => {});
 
     // Channel Notification Routing: Post automated assignment card in target channel
     addPost(
-      targetChannel,
+      channelId,
       newAsgn.isScheduled
         ? `🗓️ Scheduled Assignment: ${newAsgn.title}`
         : `📋 Assignment: ${newAsgn.title}`,
       newAsgn.isScheduled
-        ? `A new assignment has been scheduled for ${newAsgn.courseCode}.\n\n• Release: ${new Date(newAsgn.scheduleDate!).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}\n• Due: ${newAsgn.dueAt}\n• Points: ${newAsgn.points} pts`
-        : `A new assignment has been posted for ${newAsgn.courseCode}.\n\n• Published: ${publishedAt}\n• Due: ${newAsgn.dueAt}\n• Points: ${newAsgn.points} pts\n\nReview instructions in the Assignments tab.`,
+        ? `A new assignment has been scheduled in ${subjectName} (${targetCourse.code}).\n\n• Release: ${new Date(newAsgn.scheduleDate!).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}\n• Due: ${newAsgn.dueAt}\n• Points: ${newAsgn.points} pts`
+        : `A new assignment has been posted in ${subjectName} (${targetCourse.code}).\n\n• Published: ${publishedAt}\n• Due: ${newAsgn.dueAt}\n• Points: ${newAsgn.points} pts\n\nReview instructions in the Assignments tab.`,
       true,
       asgnId
     );
 
-    // Synchronized Student Alert: Activity Bell notification
+    // Synchronized Student Alert: Activity Bell notification (Scoped to class and subject)
     const newNotif: ActivityNotification = {
       id: `notif_${Date.now()}`,
       type: 'assignment',
-      title: newAsgn.isScheduled ? `Scheduled Assignment in ${newAsgn.courseCode}` : `New Assignment in ${newAsgn.courseCode}`,
-      detail: newAsgn.isScheduled
-        ? `"${newAsgn.title}" is scheduled to release on ${new Date(newAsgn.scheduleDate!).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}.`
-        : `"${newAsgn.title}" is due on ${newAsgn.dueAt}.`,
+      title: newAsgn.isScheduled
+        ? `Scheduled assignment in ${subjectName} (${targetCourse.code})`
+        : `New assignment in ${subjectName} (${targetCourse.code})`,
+      detail: `New assignment in ${subjectName} (${targetCourse.name || targetCourse.code}): "${newAsgn.title}"`,
       timestamp: 'Just now',
-      courseCode: newAsgn.courseCode,
+      courseId: targetCourse.id,
+      courseCode: targetCourse.code,
+      channelId,
+      institutionName,
       isRead: false,
       author: currentUser
     };

@@ -3,7 +3,16 @@ import { Bell, CheckCheck, Megaphone, AtSign, FileCheck, PhoneCall, Award, Rotat
 import { useApp } from '../context/AppContext';
 
 export const ActivityView: React.FC = () => {
-  const { notifications, markNotificationsAsRead, courses, setSelectedCourse, setSelectedChannel, setActiveTab, setChannelTab } = useApp();
+  const {
+    notifications,
+    markNotificationsAsRead,
+    courses,
+    setSelectedCourse,
+    setSelectedChannel,
+    setActiveTab,
+    setChannelTab,
+    currentUser
+  } = useApp();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -24,16 +33,37 @@ export const ActivityView: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = (courseCode?: string) => {
-    if (!courseCode) return;
-    const course = courses.find(c => c.code === courseCode);
+  const handleNotificationClick = (n: (typeof notifications)[number]) => {
+    const course = courses.find(c => (n.courseId && c.id === n.courseId) || (n.courseCode && c.code === n.courseCode));
     if (course) {
       setSelectedCourse(course);
-      setSelectedChannel(course.channels[0]);
-      setChannelTab('posts');
+      const targetChannel = (n.channelId && course.channels.find(ch => ch.id === n.channelId)) || course.channels[0];
+      setSelectedChannel(targetChannel);
+      if (n.type === 'assignment') {
+        setChannelTab('assignments');
+      } else {
+        setChannelTab('posts');
+      }
       setActiveTab('teams');
     }
   };
+
+  // Strictly scope notifications to current user's organization and enrollment
+  const visibleNotifications = notifications.filter(n => {
+    // 1. Institution boundary
+    if (currentUser.role !== 'developer' && n.institutionName && currentUser.institutionName) {
+      if (n.institutionName !== currentUser.institutionName) return false;
+    }
+    // 2. Student enrollment boundary for assignment alerts
+    if (currentUser.role === 'student' && n.type === 'assignment' && n.courseId) {
+      const course = courses.find(c => c.id === n.courseId);
+      if (course && course.enrolledStudents && course.enrolledStudents.length > 0) {
+        const isEnrolled = course.enrolledStudents.some(s => s.id === currentUser.id);
+        if (!isEnrolled) return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <div className="flex-1 bg-[#f0f2f5] p-3 sm:p-5 md:p-6 overflow-y-auto select-none">
@@ -63,14 +93,21 @@ export const ActivityView: React.FC = () => {
 
         {/* Notifications List */}
         <div className="bg-white rounded-2xl border border-zinc-200 shadow-xs divide-y divide-zinc-100 overflow-hidden">
-          {notifications.map(n => (
-            <div
-              key={n.id}
-              onClick={() => handleNotificationClick(n.courseCode)}
-              className={`p-4 flex items-start gap-3.5 cursor-pointer transition-colors ${
-                !n.isRead ? 'bg-indigo-50/40 hover:bg-indigo-50/70' : 'hover:bg-zinc-50'
-              }`}
-            >
+          {visibleNotifications.length === 0 ? (
+            <div className="p-8 text-center text-zinc-500 text-xs">
+              <Bell className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+              <p className="font-semibold text-zinc-700">All caught up!</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">No new alerts for your enrolled subjects.</p>
+            </div>
+          ) : (
+            visibleNotifications.map(n => (
+              <div
+                key={n.id}
+                onClick={() => handleNotificationClick(n)}
+                className={`p-4 flex items-start gap-3.5 cursor-pointer transition-colors ${
+                  !n.isRead ? 'bg-indigo-50/40 hover:bg-indigo-50/70' : 'hover:bg-zinc-50'
+                }`}
+              >
               <div className="relative">
                 <img
                   src={n.author?.avatar || 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80'}
@@ -99,7 +136,8 @@ export const ActivityView: React.FC = () => {
                 <div className="w-2 h-2 rounded-full bg-[#5b5fc7] shrink-0 mt-2" />
               )}
             </div>
-          ))}
+          ))
+        )}
         </div>
       </div>
     </div>

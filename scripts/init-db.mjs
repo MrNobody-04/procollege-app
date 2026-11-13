@@ -237,9 +237,12 @@ async function init() {
         id TEXT PRIMARY KEY,
         college_id TEXT NOT NULL,
         institution_name TEXT,
+        faculty_id TEXT,
         section_id TEXT,
         course_id TEXT,
         course_code TEXT,
+        channel_id TEXT,
+        subject_name TEXT,
         title TEXT NOT NULL,
         instructions TEXT,
         description TEXT,
@@ -252,17 +255,22 @@ async function init() {
         rubric TEXT,
         max_points INTEGER DEFAULT 100,
         created_by TEXT,
+        created_by_email TEXT,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
     await ensureColumn('assignments', 'institution_name', 'TEXT');
+    await ensureColumn('assignments', 'faculty_id', 'TEXT');
     await ensureColumn('assignments', 'course_id', 'TEXT');
     await ensureColumn('assignments', 'course_code', 'TEXT');
+    await ensureColumn('assignments', 'channel_id', 'TEXT');
+    await ensureColumn('assignments', 'subject_name', 'TEXT');
     await ensureColumn('assignments', 'instructions', 'TEXT');
     await ensureColumn('assignments', 'due_at', 'TEXT');
     await ensureColumn('assignments', 'due_timestamp', 'INTEGER');
     await ensureColumn('assignments', 'close_at', 'TEXT');
     await ensureColumn('assignments', 'is_strict_no_late', 'INTEGER DEFAULT 0');
+    await ensureColumn('assignments', 'created_by_email', 'TEXT');
     await ensureColumn('assignments', 'rubric', 'TEXT');
     console.log('   ✔ Table `assignments` created / verified');
 

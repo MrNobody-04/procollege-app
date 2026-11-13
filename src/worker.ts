@@ -629,15 +629,22 @@ app.get('/api/workspace/bootstrap', async (c) => {
       }
 
       const asgnSubs = allSubmissions.filter(s => s.assignmentId === String(a.id));
+      const channelId = String(a.channel_id || a.target_channel_id || 'ch_cs301_lec');
+      const subjectName = String(a.subject_name || a.subject || '');
 
       return {
         id: String(a.id),
-        courseId: String(a.course_id || 'course_padma_bit_sem5'),
-        courseCode: String(a.course_code || 'BIT 501'),
+        institutionName: String(a.institution_name || institutionParam || 'ProCollege University Network'),
+        facultyId: String(a.faculty_id || ''),
+        courseId: String(a.course_id || 'course_cs301'),
+        courseCode: String(a.course_code || 'CS 301'),
+        channelId,
+        targetChannelId: channelId,
+        subjectName,
+        createdByEmail: String(a.created_by_email || a.created_by || ''),
         title: String(a.title),
         instructions: String(a.instructions || a.description || ''),
         points: Number(a.max_points || 100),
-        targetChannelId: a.target_channel_id ? String(a.target_channel_id) : 'ch_padma_announcements',
         referenceMaterialMode: 'students-cant-edit' as const,
         referenceFiles: [],
         dueAt: String(a.due_at || a.due_date || 'Nov 25, 2026, 11:59 PM'),
@@ -888,15 +895,18 @@ app.post('/api/courses/rollover', async (c) => {
   }
 });
 
-// 11. Create assignment in Turso
+// 11. Create assignment in Turso with strict 4-level scoping
 app.post('/api/assignments', async (c) => {
   try {
     const body = await c.req.json();
     const id = body.id || `asgn_${Date.now()}`;
     const collegeId = body.college_id || body.collegeId || 'padmashree-demo';
-    const institutionName = body.institutionName || 'Padmashree College';
-    const courseId = body.courseId || body.course_id || 'course_padma_bit_sem5';
-    const courseCode = body.courseCode || body.course_code || 'BIT 501';
+    const institutionName = body.institution_name || body.institutionName || 'ProCollege University Network';
+    const facultyId = body.faculty_id || body.facultyId || 'fac_cs';
+    const courseId = body.course_id || body.courseId || 'course_cs301';
+    const courseCode = body.course_code || body.courseCode || 'CS 301';
+    const channelId = body.channel_id || body.channelId || body.targetChannelId || 'ch_cs301_lec';
+    const subjectName = body.subject_name || body.subjectName || 'Subject Coursework';
     const sectionId = body.section_id || body.sectionId || 'sec-sem5-a';
     const title = (body.title || '').trim();
     const instructions = (body.instructions || body.description || '').trim();
@@ -904,22 +914,37 @@ app.post('/api/assignments', async (c) => {
     const dueTimestamp = body.dueTimestamp || (body.due_at ? new Date(body.due_at).getTime() : 1795651140000);
     const maxPoints = Number(body.max_points || body.points || 100);
     const rubric = body.rubric ? JSON.stringify(body.rubric) : null;
-    let createdBy = body.created_by || body.createdBy || 'usr-teacher-01';
+    let createdBy = body.created_by || body.createdBy || 'Course Lecturer';
+    let createdByEmail = body.created_by_email || body.createdByEmail || '';
 
     if (!title) {
       return c.json({ error: 'Assignment title is required' }, 400);
     }
 
     const db = getDb(c);
+
+    // Safely ensure new boundary columns exist
+    const colsToEnsure = [
+      { name: 'faculty_id', type: 'TEXT' },
+      { name: 'channel_id', type: 'TEXT' },
+      { name: 'subject_name', type: 'TEXT' },
+      { name: 'created_by_email', type: 'TEXT' }
+    ];
+    for (const col of colsToEnsure) {
+      try {
+        await db.execute(`ALTER TABLE assignments ADD COLUMN ${col.name} ${col.type};`);
+      } catch {}
+    }
+
     await db.execute({
-      sql: `INSERT INTO assignments (id, college_id, institution_name, course_id, course_code, section_id, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, rubric, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?);`,
-      args: [id, collegeId, institutionName, courseId, courseCode, sectionId, title, instructions, instructions, dueAt, dueTimestamp, dueAt, maxPoints, rubric, createdBy],
+      sql: `INSERT INTO assignments (id, college_id, institution_name, faculty_id, course_id, course_code, section_id, channel_id, subject_name, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, rubric, created_by, created_by_email)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?);`,
+      args: [id, collegeId, institutionName, facultyId, courseId, courseCode, sectionId, channelId, subjectName, title, instructions, instructions, dueAt, dueTimestamp, dueAt, maxPoints, rubric, createdBy, createdByEmail],
     });
 
     return c.json({
       success: true,
-      assignment: { id, title, courseCode, dueAt, dueTimestamp, maxPoints },
+      assignment: { id, title, courseCode, channelId, subjectName, dueAt, dueTimestamp, maxPoints },
     }, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
