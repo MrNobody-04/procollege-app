@@ -32,9 +32,9 @@ export const NavigationRail: React.FC = () => {
   // Dedicated Developer Sidebar (strictly isolates platform tools and hides student/teacher items)
   const devNavItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'dev-overview', label: 'Overview', icon: <Globe className="w-5 h-5" /> },
-    { id: 'dev-organizations', label: 'Campuses', icon: <Building2 className="w-5 h-5" /> },
-    { id: 'dev-billing', label: 'Billing & Flow', icon: <CreditCard className="w-5 h-5" /> },
-    { id: 'dev-system', label: 'Logs & Vault', icon: <Database className="w-5 h-5" /> },
+    { id: 'dev-organizations', label: 'Organizations', icon: <Building2 className="w-5 h-5" /> },
+    { id: 'dev-billing', label: 'Subscriptions', icon: <CreditCard className="w-5 h-5" /> },
+    { id: 'dev-system', label: 'Backups', icon: <Database className="w-5 h-5" /> },
   ];
 
   // Standard Academic Sidebar for Students, Lecturers, Deans, Campus Admins

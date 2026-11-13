@@ -28,12 +28,8 @@ import {
   Globe,
   CreditCard,
   Database,
-  PauseCircle,
-  PlayCircle,
   ShieldCheck,
-  Activity,
-  RefreshCw,
-  Server
+  RefreshCw
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
@@ -114,13 +110,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [organizations, setOrganizations] = useState<PlatformOrg[]>([]);
   const [searchOrgQuery, setSearchOrgQuery] = useState('');
   const [newAdminPlan, setNewAdminPlan] = useState<'campus-pro' | 'enterprise'>('campus-pro');
-  const [healthData, setHealthData] = useState<{
-    database?: string;
-    collegesCount?: number;
-    d1Vault?: { status?: string };
-    storage?: { cloudName?: string };
-  } | null>(null);
-  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const [backupSnapshot, setBackupSnapshot] = useState<{
     timestamp?: string;
     results?: { colleges?: number; users?: number; courses?: number; course_files?: number };
@@ -340,24 +329,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       showDialog(`Reset failed: ${msg}`, { type: 'error' });
     } finally {
       setIsResettingPassword(false);
-    }
-  };
-
-  const handleRunDiagnostics = async () => {
-    setIsCheckingHealth(true);
-    try {
-      const res = await fetch('/api/health');
-      const data = await res.json();
-      setHealthData(data);
-      showDialog(
-        `Multi-Cloud Health Verified!\nTurso DB: Online (colleges: ${data.collegesCount})\nCloudflare D1 Vault: ${data.d1Vault?.status}\nCloudinary Storage: ${data.storage?.cloudName}`,
-        { type: 'success', title: 'System Diagnostics Healthy' }
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      showDialog(`Diagnostics check failed: ${msg}`, { type: 'error' });
-    } finally {
-      setIsCheckingHealth(false);
     }
   };
 
@@ -1096,30 +1067,24 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold text-zinc-900">
-                  {isDeveloper ? 'Platform Creator & Developer Console' : 'Campus Administration Center'}
+                  {isDeveloper ? 'Developer Console' : 'Campus Administration Center'}
                 </h1>
                 {isDeveloper ? (
-                  <>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 shadow-2xs">
-                      <Sparkles className="w-3 h-3 text-purple-600" />
-                      Developer Master (Root Access)
-                    </span>
-                    <div className="flex items-center gap-1.5 bg-zinc-100 border border-zinc-200 rounded-lg px-2.5 py-1 text-xs">
-                      <span className="text-[11px] text-zinc-500 font-semibold">Scope:</span>
-                      <select
-                        value={selectedInstitution}
-                        onChange={e => setSelectedInstitution(e.target.value)}
-                        className="bg-transparent text-zinc-800 text-xs font-semibold focus:outline-none cursor-pointer"
-                      >
-                        <option value="all">All Real Institutions (Master Overview)</option>
-                        {allInstitutions.map(inst => (
-                          <option key={inst} value={inst}>
-                            {inst}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-1.5 bg-zinc-100 border border-zinc-200 rounded-lg px-2.5 py-1 text-xs">
+                    <span className="text-[11px] text-zinc-500 font-semibold">Scope:</span>
+                    <select
+                      value={selectedInstitution}
+                      onChange={e => setSelectedInstitution(e.target.value)}
+                      className="bg-transparent text-zinc-800 text-xs font-semibold focus:outline-none cursor-pointer"
+                    >
+                      <option value="all">All Real Institutions (Master Overview)</option>
+                      {allInstitutions.map(inst => (
+                        <option key={inst} value={inst}>
+                          {inst}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 ) : (
                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1 shadow-2xs">
                     <Building className="w-3 h-3 text-indigo-600" />
@@ -1129,15 +1094,15 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
                 {isDeveloper
-                  ? 'Master platform governance: direct provisioning of university campus admins, university inquiries approval, and campus architecture.'
+                  ? 'Manage institutional tenants, administrative accounts, subscriptions, and platform settings.'
                   : `Manage academic faculties, classes, assign dedicated lecturers to subjects, enroll students, and execute automated semester rollovers for ${currentUser.institutionName || 'your university'}.`}
               </p>
             </div>
           </div>
 
-          {/* Prominent Admin Quick Action Buttons */}
+          {/* Quick Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap shrink-0">
-            {isDeveloper && (
+            {isDeveloper ? (
               <>
                 <button
                   onClick={() => setShowCreateAdminModal(true)}
@@ -1159,62 +1124,63 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <span>Requests ({institutionalRequests.filter(r => r.status === 'pending').length} Pending)</span>
                 </button>
               </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowAddFacultyModal(true)}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="Add a new academic faculty / department"
+                >
+                  <FolderTree className="w-3.5 h-3.5" />
+                  <span>Add Faculty</span>
+                </button>
+
+                <button
+                  onClick={() => setShowNewClassModal(true)}
+                  className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="Add a new class with subjects and dedicated teachers"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Class</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const source = courses.find(c => c.name.includes('Semester 3')) || courses[0];
+                    if (source) openRolloverForCourse(source);
+                    else setShowRolloverModal(true);
+                  }}
+                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="Clone a class to next semester: automatically keeps all students without manual entry"
+                >
+                  <Repeat className="w-4 h-4" />
+                  <span>Semester Rollover</span>
+                </button>
+
+                <button
+                  onClick={() => setShowRegisterUserModal(true)}
+                  className="flex items-center gap-1.5 bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-300 text-xs font-semibold px-3 py-2 rounded-lg transition-colors cursor-pointer"
+                  title="Register student or faculty identity"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-zinc-600" />
+                  <span>Register ID</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveAdminTab('roster')}
+                  className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="Bulk import student roster from Excel (.xlsx/.csv) with auto-generated passwords"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Import Roster</span>
+                </button>
+              </>
             )}
-
-            <button
-              onClick={() => setShowAddFacultyModal(true)}
-              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
-              title="Add a new academic faculty / department"
-            >
-              <FolderTree className="w-3.5 h-3.5" />
-              <span>Add Faculty</span>
-            </button>
-
-            <button
-              onClick={() => setShowNewClassModal(true)}
-              className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
-              title="Add a new class with subjects and dedicated teachers"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Class</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const source = courses.find(c => c.name.includes('Semester 3')) || courses[0];
-                if (source) openRolloverForCourse(source);
-                else setShowRolloverModal(true);
-              }}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
-              title="Clone a class to next semester: automatically keeps all students without manual entry"
-            >
-              <Repeat className="w-4 h-4" />
-              <span>Semester Rollover</span>
-            </button>
-
-            <button
-              onClick={() => setShowRegisterUserModal(true)}
-              className="flex items-center gap-1.5 bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-300 text-xs font-semibold px-3 py-2 rounded-lg transition-colors cursor-pointer"
-              title="Register student or faculty identity"
-            >
-              <UserPlus className="w-3.5 h-3.5 text-zinc-600" />
-              <span>Register ID</span>
-            </button>
-
-            <button
-              onClick={() => setActiveAdminTab('roster')}
-              className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
-              title="Bulk import student roster from Excel (.xlsx/.csv) with auto-generated passwords"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Import Roster</span>
-            </button>
           </div>
         </div>
 
         {/* Master Navigation Tabs */}
         {isDeveloper ? (
-          /* Developer Master Navigation Toolbar */
           <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
             <button
               onClick={() => switchDevSection('dev-overview')}
@@ -1225,7 +1191,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <Globe className="w-4 h-4" />
-              <span>Platform Overview & Metrics</span>
+              <span>Overview</span>
             </button>
 
             <button
@@ -1237,7 +1203,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Manage Organizations ({organizations.length})</span>
+              <span>Organizations ({organizations.length})</span>
             </button>
 
             <button
@@ -1249,7 +1215,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              <span>Billing & Flow</span>
+              <span>Subscriptions</span>
             </button>
 
             <button
@@ -1261,7 +1227,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <Database className="w-4 h-4" />
-              <span>Global Logs & Vault Backup</span>
+              <span>Backups</span>
             </button>
 
             <button
@@ -1273,7 +1239,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <School className="w-4 h-4" />
-              <span>Inspect Campus Operations</span>
+              <span>Campus View</span>
             </button>
           </div>
         ) : (
@@ -1323,7 +1289,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               Excel Roster Import
             </button>
-            {isDeveloperOrAdmin && (
+            {isDeveloper && (
               <button
                 onClick={() => setActiveAdminTab('requests')}
                 className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
@@ -1414,7 +1380,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         )}
 
         {/* ========================================================= */}
-        {/* DEVELOPER SECTION 1: PLATFORM OVERVIEW & METRICS          */}
+        {/* DEVELOPER SECTION 1: OVERVIEW                             */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-overview' && (
           <div className="space-y-5">
@@ -1422,178 +1388,164 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
                 <div className="flex items-center justify-between text-zinc-500 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Campuses</span>
-                  <Building2 className="w-4 h-4 text-purple-600" />
+                  <span className="text-xs font-medium text-zinc-500">Total Organizations</span>
+                  <Building2 className="w-4 h-4 text-zinc-400" />
                 </div>
-                <div className="text-2xl font-black text-zinc-900">{organizations.length}</div>
-                <p className="text-[11px] text-zinc-500 mt-1">Multi-tenant institutional nodes</p>
+                <div className="text-2xl font-bold text-zinc-900">{organizations.length}</div>
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  {organizations.filter(o => o.status !== 'paused').length} active institutions
+                </p>
               </div>
 
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
                 <div className="flex items-center justify-between text-zinc-500 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Total Students</span>
-                  <Users className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-medium text-zinc-500">Enrolled Students</span>
+                  <Users className="w-4 h-4 text-zinc-400" />
                 </div>
-                <div className="text-2xl font-black text-zinc-900">
+                <div className="text-2xl font-bold text-zinc-900">
                   {organizations.reduce((acc: number, o: PlatformOrg) => acc + (o.studentCount || 0), 0)}
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-1">Across all registered universities</p>
+                <p className="text-[11px] text-zinc-500 mt-1">Across all registered campuses</p>
               </div>
 
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
                 <div className="flex items-center justify-between text-zinc-500 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Faculties</span>
-                  <FolderTree className="w-4 h-4 text-[#5b5fc7]" />
+                  <span className="text-xs font-medium text-zinc-500">Faculties & Departments</span>
+                  <FolderTree className="w-4 h-4 text-zinc-400" />
                 </div>
-                <div className="text-2xl font-black text-zinc-900">{faculties.length}</div>
-                <p className="text-[11px] text-zinc-500 mt-1">Collegiate departments active</p>
+                <div className="text-2xl font-bold text-zinc-900">{faculties.length}</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Academic faculties configured</p>
               </div>
 
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
                 <div className="flex items-center justify-between text-zinc-500 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Multi-Cloud Storage</span>
-                  <Server className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-medium text-zinc-500">Active Subscriptions</span>
+                  <CreditCard className="w-4 h-4 text-zinc-400" />
                 </div>
-                <div className="text-2xl font-black text-emerald-600 flex items-center gap-1.5">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <span>3 / 3 Online</span>
+                <div className="text-2xl font-bold text-zinc-900">
+                  {organizations.filter(o => o.status !== 'paused').length}
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-1">Turso • CF D1 Vault • Cloudinary</p>
+                <p className="text-[11px] text-zinc-500 mt-1">Good standing / active billing</p>
               </div>
             </div>
 
-            {/* Multi-Cloud Health & Edge Diagnostics */}
-            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
-                    <Activity className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-zinc-900">Multi-Cloud Infrastructure Health & Edge Telemetry</h2>
-                    <p className="text-xs text-zinc-500">Live operational status of primary database, failover vault, binary storage, and edge workers.</p>
-                  </div>
+            {/* Organizations Summary Table */}
+            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-zinc-900">Institutions & Campuses</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Overview of registered tenants and administrator accounts.</p>
                 </div>
                 <button
-                  onClick={handleRunDiagnostics}
-                  disabled={isCheckingHealth}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                  onClick={() => switchDevSection('dev-organizations')}
+                  className="text-xs font-semibold text-purple-700 hover:text-purple-800 transition-colors cursor-pointer"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isCheckingHealth ? 'animate-spin' : ''}`} />
-                  <span>{isCheckingHealth ? 'Testing Clusters...' : 'Run Diagnostics'}</span>
+                  Manage all ({organizations.length}) →
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-800">Primary Database</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Online</span>
-                  </div>
-                  <p className="text-xs font-semibold text-zinc-900">Turso LibSQL Cluster</p>
-                  <p className="text-[11px] text-zinc-500">Region: AWS Mumbai (aws-ap-south-1)</p>
-                  <p className="text-[11px] text-zinc-500 font-mono">Tenant Isolation: SQL College ID</p>
-                </div>
-
-                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-800">Backup SQL Vault</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">Bound</span>
-                  </div>
-                  <p className="text-xs font-semibold text-zinc-900">Cloudflare D1 Serverless</p>
-                  <p className="text-[11px] text-zinc-500">Binding: <code className="bg-zinc-200 px-1 rounded text-[10px]">procollege_vault</code></p>
-                  <p className="text-[11px] text-zinc-500 font-mono">UUID: 605f2e0f...2686</p>
-                </div>
-
-                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-800">Asset Storage CDN</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">25GB Free</span>
-                  </div>
-                  <p className="text-xs font-semibold text-zinc-900">Cloudinary Binary Vault</p>
-                  <p className="text-[11px] text-zinc-500">Cloud Name: <code className="bg-zinc-200 px-1 rounded text-[10px]">pf66y0wq</code></p>
-                  <p className="text-[11px] text-zinc-500">Signed Uploads & Edge Caching</p>
-                </div>
-
-                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-800">Real-Time Messaging</span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">WebSockets</span>
-                  </div>
-                  <p className="text-xs font-semibold text-zinc-900">Ably Edge Network</p>
-                  <p className="text-[11px] text-zinc-500">Pub/Sub Presence & Class Alerts</p>
-                  <p className="text-[11px] text-zinc-500 font-mono">Live Sync: Active</p>
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-200 font-semibold text-zinc-700">
+                      <th className="py-3 px-4">Organization</th>
+                      <th className="py-3 px-4">Administrator</th>
+                      <th className="py-3 px-4 text-center">Students</th>
+                      <th className="py-3 px-4 text-center">Faculties</th>
+                      <th className="py-3 px-4">Plan</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {organizations.map((org: PlatformOrg) => {
+                      const isPaused = org.status === 'paused';
+                      return (
+                        <tr key={org.id} className="hover:bg-zinc-50/80 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-700 text-xs shrink-0">
+                                {org.code ? org.code.slice(0, 3) : org.name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-zinc-900">{org.name}</div>
+                                <div className="text-[11px] text-zinc-500 font-mono">{org.code || org.id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-zinc-800">{org.adminName}</div>
+                            <div className="text-[11px] text-zinc-500">{org.contactEmail}</div>
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-zinc-700">
+                            {org.studentCount || 0}
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-zinc-700">
+                            {org.facultyCount || 0}
+                          </td>
+                          <td className="py-3 px-4 text-zinc-800 font-medium">
+                            {org.billingPlan === 'enterprise' ? 'Enterprise' : 'Campus Pro'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-700">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                              <span>{isPaused ? 'Paused' : 'Active'}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => {
+                                setSelectedInstitution(org.name);
+                                switchDevSection('campus-ops');
+                              }}
+                              className="px-2.5 py-1 text-xs font-semibold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-100 rounded transition-colors cursor-pointer"
+                            >
+                              Inspect
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Quick Navigation Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div
-                onClick={() => switchDevSection('dev-organizations')}
-                className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
-              >
-                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
-                  <Building2 className="w-4 h-4" />
-                  <span>Manage University Campuses</span>
+            {/* Platform Services Status Bar (Clean & Real) */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-6 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-zinc-500">Database Engine:</span>
+                  <span className="font-medium text-zinc-800">Connected</span>
                 </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  View all collegiate tenants, verify student rosters, provision institutional deans and admins, and toggle tenant status.
-                </p>
-                <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
-                  <span>Go to Campuses</span>
-                  <span>→</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-zinc-500">Secondary Vault:</span>
+                  <span className="font-medium text-zinc-800">Operational</span>
                 </div>
-              </div>
-
-              <div
-                onClick={() => switchDevSection('dev-billing')}
-                className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
-              >
-                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
-                  <CreditCard className="w-4 h-4" />
-                  <span>Campus Subscriptions & Billing</span>
-                </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  Manage annual subscriptions, start/expiry dates, 1-year renewal cycles, and active/paused workflow state.
-                </p>
-                <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
-                  <span>Go to Billing & Flow</span>
-                  <span>→</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-zinc-500">Media Storage:</span>
+                  <span className="font-medium text-zinc-800">Operational</span>
                 </div>
               </div>
-
-              <div
-                onClick={() => switchDevSection('dev-system')}
-                className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
-              >
-                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
-                  <Database className="w-4 h-4" />
-                  <span>Global Logs & Vault Backup</span>
-                </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  Trigger live Cloudflare D1 Vault snapshots, inspect storage synchronization, and review tenant isolation integrity logs.
-                </p>
-                <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
-                  <span>Go to Logs & Vault</span>
-                  <span>→</span>
-                </div>
-              </div>
+              <span className="text-[11px] text-zinc-400 font-mono">Edge Compute Runtime</span>
             </div>
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* DEVELOPER SECTION 2: MANAGE ORGANIZATIONS / CAMPUSES      */}
+        {/* DEVELOPER SECTION 2: ORGANIZATIONS                        */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-organizations' && (
           <div className="space-y-4">
             {/* Header & Search */}
             <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-bold text-zinc-900">Collegiate Organizations & University Tenants</h2>
+                <h2 className="text-sm font-bold text-zinc-900">Organizations</h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Oversee all university campuses, registered deans, active student bodies, and platform workflow states.
+                  Manage registered institutional accounts, administrators, student bodies, and access status.
                 </p>
               </div>
 
@@ -1628,8 +1580,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <th className="py-3 px-4">Primary Administrator</th>
                       <th className="py-3 px-4 text-center">Students</th>
                       <th className="py-3 px-4 text-center">Faculties</th>
-                      <th className="py-3 px-4">Plan / Tier</th>
-                      <th className="py-3 px-4">Workflow Status</th>
+                      <th className="py-3 px-4">Plan</th>
+                      <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -1640,95 +1592,70 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         <tr key={org.id} className="hover:bg-zinc-50/80 transition-colors">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-purple-700 text-xs shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-700 text-xs shrink-0">
                                 {org.code ? org.code.slice(0, 3) : org.name.slice(0, 2).toUpperCase()}
                               </div>
                               <div>
-                                <div className="font-bold text-zinc-900">{org.name}</div>
-                                <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1">
-                                  <span>ID: {org.id}</span>
-                                  {org.code && <span className="bg-zinc-100 px-1 rounded text-zinc-600 font-bold">{org.code}</span>}
+                                <div className="font-semibold text-zinc-900">{org.name}</div>
+                                <div className="text-[11px] text-zinc-500 font-mono">
+                                  {org.code ? `${org.code} • ` : ''}ID: {org.id}
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <div className="font-semibold text-zinc-800">{org.adminName}</div>
+                            <div className="font-medium text-zinc-800">{org.adminName}</div>
                             <div className="text-[11px] text-zinc-500">{org.contactEmail}</div>
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded-full font-mono text-xs">
-                              {org.studentCount || 0}
-                            </span>
+                          <td className="py-3 px-4 text-center font-mono text-zinc-700">
+                            {org.studentCount || 0}
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded-full font-mono text-xs">
-                              {org.facultyCount || 0}
-                            </span>
+                          <td className="py-3 px-4 text-center font-mono text-zinc-700">
+                            {org.facultyCount || 0}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase">
-                              {org.billingPlan || 'campus-pro'}
-                            </span>
+                          <td className="py-3 px-4 text-zinc-800 font-medium">
+                            {org.billingPlan === 'enterprise' ? 'Enterprise' : 'Campus Pro'}
                           </td>
                           <td className="py-3 px-4">
-                            {isPaused ? (
-                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 w-fit">
-                                <PauseCircle className="w-3 h-3 text-rose-600" />
-                                Paused (403 Blocked)
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-fit">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Active (Normal)
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-700">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                              <span>{isPaused ? 'Paused' : 'Active'}</span>
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => handleToggleOrgStatus(org.id, org.status)}
-                                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                                   isPaused
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
-                                    : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                    : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
                                 }`}
-                                title={isPaused ? 'Resume workflows for this university' : 'Pause workflows (blocks logins & APIs with HTTP 403)'}
+                                title={isPaused ? 'Resume workflows for this university' : 'Pause workflows'}
                               >
-                                {isPaused ? (
-                                  <>
-                                    <PlayCircle className="w-3.5 h-3.5" />
-                                    <span>Activate</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <PauseCircle className="w-3.5 h-3.5" />
-                                    <span>Pause Workflow</span>
-                                  </>
-                                )}
+                                {isPaused ? 'Activate' : 'Pause'}
                               </button>
                               <button
                                 onClick={() => {
                                   setSelectedInstitution(org.name);
                                   switchDevSection('campus-ops');
                                 }}
-                                className="px-2.5 py-1 rounded text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                                className="px-2.5 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
                                 title="Inspect academic classes and faculties for this campus"
                               >
                                 Inspect
                               </button>
                               <button
                                 onClick={() => handleResetOrgAdminPassword(org)}
-                                className="px-2 py-1 rounded text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer flex items-center gap-1"
-                                title={`Reset administrator password & 2FA OTP for ${org.name}`}
+                                className="px-2 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                                title={`Reset administrator password for ${org.name}`}
                               >
-                                <Key className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Reset</span>
+                                Reset
                               </button>
                               <button
                                 onClick={() => handleDeleteOrg(org)}
-                                className="p-1 rounded text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                                title={`Permanently delete ${org.name}`}
+                                className="p-1.5 rounded text-xs text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title={`Delete ${org.name}`}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1745,23 +1672,21 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         )}
 
         {/* ========================================================= */}
-        {/* DEVELOPER SECTION 3: BILLING & FLOW                       */}
+        {/* DEVELOPER SECTION 3: SUBSCRIPTIONS & BILLING              */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-billing' && (
           <div className="space-y-4">
             {/* Header & Overview */}
             <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-bold text-zinc-900">Campus Subscriptions & Billing Status</h2>
+                <h2 className="text-sm font-bold text-zinc-900">Subscriptions & Billing</h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Manage institutional subscription plans, start/expiry dates, renewal cycles, and workflow status.
+                  Manage institutional subscription plans, renewal cycles, and workflow status.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">
-                  {organizations.filter(o => o.status !== 'paused').length} of {organizations.length} Campuses Active
-                </span>
+              <div className="text-xs text-zinc-600">
+                {organizations.filter(o => o.status !== 'paused').length} of {organizations.length} Subscriptions Active
               </div>
             </div>
 
@@ -1789,94 +1714,68 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         <tr key={org.id} className="hover:bg-zinc-50/80 transition-colors">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-purple-700 text-xs shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center font-bold text-zinc-700 text-xs shrink-0">
                                 {org.code ? org.code.slice(0, 3) : org.name.slice(0, 2).toUpperCase()}
                               </div>
                               <div>
-                                <div className="font-bold text-zinc-900">{org.name}</div>
+                                <div className="font-semibold text-zinc-900">{org.name}</div>
                                 <div className="text-[11px] text-zinc-500">{org.contactEmail || org.adminName}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
-                              {org.billingPlan === 'enterprise' ? 'Enterprise' : 'Campus Pro'}
-                            </span>
+                          <td className="py-3 px-4 text-zinc-800 font-medium">
+                            {org.billingPlan === 'enterprise' ? 'Enterprise' : 'Campus Pro'}
                           </td>
-                          <td className="py-3 px-4 font-mono text-zinc-700">
+                          <td className="py-3 px-4 font-mono text-zinc-600">
                             {startDate}
                           </td>
-                          <td className="py-3 px-4 font-mono text-zinc-700">
-                            <div className="flex items-center gap-1.5">
-                              <span>{expiryDate}</span>
-                              <span className="text-[10px] font-sans font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                                Valid
-                              </span>
-                            </div>
+                          <td className="py-3 px-4 font-mono text-zinc-600">
+                            {expiryDate}
                           </td>
                           <td className="py-3 px-4">
-                            {isPaused ? (
-                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 w-fit">
-                                <PauseCircle className="w-3 h-3 text-rose-600" />
-                                Paused
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-fit">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Active
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-700">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${isPaused ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                              <span>{isPaused ? 'Paused' : 'Active'}</span>
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {/* Pause / Activate Button */}
                               <button
                                 onClick={() => handleToggleOrgStatus(org.id, org.status)}
-                                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
                                   isPaused
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
-                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300'
+                                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                    : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700'
                                 }`}
                                 title={isPaused ? 'Activate organization workflow' : 'Pause organization workflow'}
                               >
-                                {isPaused ? (
-                                  <>
-                                    <PlayCircle className="w-3.5 h-3.5" />
-                                    <span>Activate</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <PauseCircle className="w-3.5 h-3.5" />
-                                    <span>Pause</span>
-                                  </>
-                                )}
+                                {isPaused ? 'Activate' : 'Pause'}
                               </button>
 
                               {/* Renew (+1 Year) Button */}
                               <button
                                 onClick={() => handleRenewOrg(org)}
-                                className="px-2.5 py-1 rounded text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors cursor-pointer flex items-center gap-1"
-                                title="Extend subscription contract by 1 year and ensure active status"
+                                className="px-2.5 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                                title={`Renew subscription for 1 year`}
                               >
-                                <RefreshCw className="w-3.5 h-3.5 text-purple-600" />
-                                <span>Renew</span>
+                                +1 Year
                               </button>
 
                               {/* Reset Admin Password & OTP Button */}
                               <button
                                 onClick={() => handleResetOrgAdminPassword(org)}
-                                className="px-2 py-1 rounded text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer flex items-center gap-1"
-                                title={`Reset administrator password & 2FA OTP for ${org.name}`}
+                                className="px-2 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                                title={`Reset administrator password for ${org.name}`}
                               >
-                                <Key className="w-3.5 h-3.5 text-blue-600" />
-                                <span>Reset</span>
+                                Reset
                               </button>
 
                               {/* Delete Button */}
                               <button
                                 onClick={() => handleDeleteOrg(org)}
-                                className="p-1 rounded text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                                title={`Permanently delete ${org.name}`}
+                                className="p-1.5 rounded text-xs text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title={`Delete ${org.name}`}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1893,115 +1792,102 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         )}
 
         {/* ========================================================= */}
-        {/* DEVELOPER SECTION 4: GLOBAL LOGS & VAULT BACKUP           */}
+        {/* DEVELOPER SECTION 4: BACKUPS                              */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-system' && (
           <div className="space-y-5">
-            {/* Cloudflare D1 Vault Automated Backup Section */}
+            {/* Database Backup & Snapshot Engine */}
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700">
                     <Database className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-zinc-900">Cloudflare D1 Vault Automated Snapshot Engine</h2>
-                    <p className="text-xs text-zinc-500">Dual-database high-availability pipeline syncing Turso records to Cloudflare D1 serverless SQL.</p>
+                    <h2 className="text-sm font-bold text-zinc-900">Database Snapshots & Backups</h2>
+                    <p className="text-xs text-zinc-500">Synchronize database records to secondary storage for disaster recovery.</p>
                   </div>
                 </div>
 
                 <button
                   onClick={handleTriggerBackup}
                   disabled={isTriggeringBackup}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isTriggeringBackup ? 'animate-spin' : ''}`} />
-                  <span>{isTriggeringBackup ? 'Backing up...' : 'Trigger Instant D1 Snapshot'}</span>
+                  <span>{isTriggeringBackup ? 'Syncing...' : 'Trigger Backup Snapshot'}</span>
                 </button>
               </div>
 
               {backupSnapshot ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
+                <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                    <div className="flex items-center gap-2 text-zinc-900 font-semibold text-xs">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>D1 Vault Snapshot Successfully Synchronized</span>
+                      <span>Snapshot synchronized successfully</span>
                     </div>
-                    <span className="text-[10px] text-emerald-700 font-mono">
+                    <span className="text-[11px] text-zinc-500 font-mono">
                       {backupSnapshot.timestamp || new Date().toISOString()}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
-                      <span className="text-zinc-500 text-[10px] block">Colleges Stored</span>
-                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.colleges ?? 0}</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-white p-3 rounded-lg border border-zinc-200">
+                      <span className="text-zinc-500 text-[11px] block">Organizations</span>
+                      <span className="font-bold text-zinc-900 text-base font-mono">{backupSnapshot.results?.colleges ?? 0}</span>
                     </div>
-                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
-                      <span className="text-zinc-500 text-[10px] block">Users Stored</span>
-                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.users ?? 0}</span>
+                    <div className="bg-white p-3 rounded-lg border border-zinc-200">
+                      <span className="text-zinc-500 text-[11px] block">User Accounts</span>
+                      <span className="font-bold text-zinc-900 text-base font-mono">{backupSnapshot.results?.users ?? 0}</span>
                     </div>
-                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
-                      <span className="text-zinc-500 text-[10px] block">Courses Stored</span>
-                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.courses ?? 0}</span>
+                    <div className="bg-white p-3 rounded-lg border border-zinc-200">
+                      <span className="text-zinc-500 text-[11px] block">Classes</span>
+                      <span className="font-bold text-zinc-900 text-base font-mono">{backupSnapshot.results?.courses ?? 0}</span>
                     </div>
-                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
-                      <span className="text-zinc-500 text-[10px] block">Files Stored</span>
-                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.course_files ?? 0}</span>
+                    <div className="bg-white p-3 rounded-lg border border-zinc-200">
+                      <span className="text-zinc-500 text-[11px] block">Course Files</span>
+                      <span className="font-bold text-zinc-900 text-base font-mono">{backupSnapshot.results?.course_files ?? 0}</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-600">
                   <div>
-                    <span className="font-bold text-zinc-800 block">D1 Vault Database: procollege-vault</span>
-                    <span className="text-[11px] text-zinc-500 font-mono">ID: 605f2e0f-a519-4ba6-a050-48b32ad02686 • Status: Ready</span>
+                    <span className="font-semibold text-zinc-800 block">Automated Backup Pipeline</span>
+                    <span className="text-[11px] text-zinc-500">Secondary database replica is configured and ready.</span>
                   </div>
-                  <span className="text-[11px] text-zinc-500">Click "Trigger Instant D1 Snapshot" to generate a live full backup.</span>
+                  <span className="text-[11px] text-zinc-500">Click &ldquo;Trigger Backup Snapshot&rdquo; to execute a manual sync.</span>
                 </div>
               )}
             </div>
 
-            {/* Multi-Cloud Health Diagnostics response */}
-            {healthData && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3.5 text-xs space-y-1.5">
-                <div className="font-bold text-purple-900 flex items-center gap-1.5">
-                  <Activity className="w-4 h-4 text-purple-700" />
-                  <span>Live Cluster Health Audit Verified</span>
-                </div>
-                <div className="text-[11px] text-purple-800 font-mono">
-                  Turso: {healthData.database || 'Online'} • Registered Colleges: {healthData.collegesCount ?? 0} • D1 Vault: {healthData.d1Vault?.status || 'Bound'} • Cloudinary: {healthData.storage?.cloudName || 'pf66y0wq'}
-                </div>
-              </div>
-            )}
-
-            {/* Multi-Cloud Architecture Specs */}
+            {/* Clean System Configuration Panel */}
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
               <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                Production Cluster Architecture & Secrets
+                Backup Policies & Storage Configuration
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
-                  <span className="text-[11px] font-bold text-zinc-700">Primary Database Engine</span>
-                  <p className="font-mono text-[11px] text-zinc-900">Turso LibSQL (AWS Mumbai ap-south-1)</p>
-                  <p className="text-[10px] text-zinc-500">libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io</p>
+                <div className="p-3.5 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-semibold text-zinc-500">Scheduled Backups</span>
+                  <p className="font-medium text-zinc-900">Automated Daily Sync (00:00 UTC)</p>
+                  <p className="text-[11px] text-zinc-500">All institutional schemas, users, and class records.</p>
                 </div>
 
-                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
-                  <span className="text-[11px] font-bold text-zinc-700">Disaster Recovery Vault</span>
-                  <p className="font-mono text-[11px] text-zinc-900">Cloudflare D1 procollege-vault</p>
-                  <p className="text-[10px] text-zinc-500">Binding: procollege_vault (605f2e0f-a519-4ba6-a050-48b32ad02686)</p>
+                <div className="p-3.5 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-semibold text-zinc-500">Disaster Recovery</span>
+                  <p className="font-medium text-zinc-900">Multi-Region Secondary SQL Vault</p>
+                  <p className="text-[11px] text-zinc-500">Instant failover replica with point-in-time state.</p>
                 </div>
 
-                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
-                  <span className="text-[11px] font-bold text-zinc-700">Media CDN Storage</span>
-                  <p className="font-mono text-[11px] text-zinc-900">Cloudinary Binary Cloud</p>
-                  <p className="text-[10px] text-zinc-500">Cloud Name: pf66y0wq (25GB Free Storage Tier)</p>
+                <div className="p-3.5 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-semibold text-zinc-500">File & Document Storage</span>
+                  <p className="font-medium text-zinc-900">Distributed Cloud Media Storage</p>
+                  <p className="text-[11px] text-zinc-500">Encrypted binary uploads with CDN distribution.</p>
                 </div>
 
-                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
-                  <span className="text-[11px] font-bold text-zinc-700">Edge Compute Runtime</span>
-                  <p className="font-mono text-[11px] text-zinc-900">Cloudflare Workers with Hono.js</p>
-                  <p className="text-[10px] text-zinc-500">Compatibility: 2024-11-01 nodejs_compat, keep_vars = true</p>
+                <div className="p-3.5 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-semibold text-zinc-500">Data Encryption & Compliance</span>
+                  <p className="font-medium text-zinc-900">AES-256 at Rest & TLS 1.3 in Transit</p>
+                  <p className="text-[11px] text-zinc-500">Strict multi-tenant isolation per institution boundary.</p>
                 </div>
               </div>
             </div>
@@ -3023,60 +2909,54 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs">
               <h2 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-[#5b5fc7]" />
-                <span>Roles & Academic Access Governance</span>
+                <span>Roles & Permissions</span>
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Multi-tier academic governance matrix governing Developer Creator, Institutional Administrators, Teaching Faculty, and Students.
+                Overview of user roles and operational capabilities across academic classes and campus administration.
               </p>
             </div>
 
             {/* Role Cards Breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl border border-purple-200 p-4 shadow-xs space-y-2">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${isDeveloper ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
+              {isDeveloper && (
+                <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-zinc-900">Platform Administrator</span>
+                    <span className="text-[11px] font-medium text-purple-700">Developer</span>
+                  </div>
+                  <p className="text-xs text-zinc-600 leading-relaxed">
+                    Platform owner. Provisions institutional admins, oversees university inquiries, and manages platform infrastructure.
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-purple-900">Developer Creator</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
-                    Superior Root
-                  </span>
+                  <span className="font-bold text-sm text-zinc-900">Institutional Admin</span>
+                  <span className="text-[11px] font-medium text-indigo-700">Campus Admin</span>
                 </div>
                 <p className="text-xs text-zinc-600 leading-relaxed">
-                  Platform owner with supreme cross-campus authority. Provisions college institutional admins, oversees tenant requests, and governs infrastructure.
+                  Campus administrator. Manages faculties, classes, lecturer subject assignments, student enrollment, and semester rollovers.
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl border border-indigo-200 p-4 shadow-xs space-y-2">
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-indigo-900">Institutional Admin</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
-                    Campus Admin
-                  </span>
+                  <span className="font-bold text-sm text-zinc-900">Professor / Lecturer</span>
+                  <span className="text-[11px] font-medium text-blue-700">Faculty</span>
                 </div>
                 <p className="text-xs text-zinc-600 leading-relaxed">
-                  Campus administrator. Creates faculties and departments, provisions classes, assigns lecturers to subjects, registers students, and executes semester rollovers.
+                  Course instructors. Post class announcements, upload syllabus and lecture resources, publish assignments, and grade submissions.
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-xs space-y-2">
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-blue-900">Professor / Lecturer</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                    Teaching Staff
-                  </span>
+                  <span className="font-bold text-sm text-zinc-900">Student</span>
+                  <span className="text-[11px] font-medium text-emerald-700">Enrolled Member</span>
                 </div>
                 <p className="text-xs text-zinc-600 leading-relaxed">
-                  Course & subject instructors. Broadcast class announcements and notices, publish syllabus and lecture files, create assignments, and grade student submissions.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl border border-emerald-200 p-4 shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-emerald-900">Student</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    Enrolled Member
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Enrolled learners. View announcements and read-only class materials, interact in discussions, submit coursework with attachments, and view graded feedback.
+                  Enrolled learners. View class notices, access study materials, participate in discussions, and submit assignments.
                 </p>
               </div>
             </div>
@@ -3085,40 +2965,39 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
               <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50">
                 <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                  Operational Permissions Matrix
+                  Role Capabilities & Access Scope
                 </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead>
                     <tr className="bg-zinc-50/50 border-b border-zinc-200 font-semibold text-zinc-700">
-                      <th className="py-2.5 px-3">Academic Tier</th>
-                      <th className="py-2.5 px-3">Create Faculties & Classes</th>
-                      <th className="py-2.5 px-3">Assign Subject Teachers</th>
-                      <th className="py-2.5 px-3">Announcements & Alerts</th>
+                      <th className="py-2.5 px-3">Role</th>
+                      <th className="py-2.5 px-3">Faculties & Classes</th>
+                      <th className="py-2.5 px-3">Assign Lecturers</th>
+                      <th className="py-2.5 px-3">Announcements</th>
                       <th className="py-2.5 px-3">Assignments & Grading</th>
-                      <th className="py-2.5 px-3">Multi-Campus Provisioning</th>
+                      <th className="py-2.5 px-3">Campus Settings</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    <tr className="bg-purple-50/20">
-                      <td className="py-2.5 px-3 font-bold text-purple-900 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                        Developer Master
-                      </td>
-                      <td className="py-2.5 px-3 text-purple-800 font-semibold">Full Root Control</td>
-                      <td className="py-2.5 px-3 text-purple-800 font-semibold">Allowed</td>
-                      <td className="py-2.5 px-3 text-purple-800 font-semibold">Global Broadcast</td>
-                      <td className="py-2.5 px-3 text-purple-800 font-semibold">Full System Access</td>
-                      <td className="py-2.5 px-3 text-emerald-700 font-bold">Exclusive Root</td>
-                    </tr>
+                    {isDeveloper && (
+                      <tr>
+                        <td className="py-2.5 px-3 font-semibold text-zinc-900">Platform Administrator</td>
+                        <td className="py-2.5 px-3 text-zinc-700">Full Access</td>
+                        <td className="py-2.5 px-3 text-zinc-700">Full Access</td>
+                        <td className="py-2.5 px-3 text-zinc-700">Global Broadcast</td>
+                        <td className="py-2.5 px-3 text-zinc-700">Full Access</td>
+                        <td className="py-2.5 px-3 text-emerald-700 font-medium">Multi-Campus Root</td>
+                      </tr>
+                    )}
                     <tr>
-                      <td className="py-2.5 px-3 font-semibold text-indigo-900">Institutional Admin</td>
+                      <td className="py-2.5 px-3 font-semibold text-zinc-900">Institutional Admin</td>
                       <td className="py-2.5 px-3 text-emerald-700 font-medium">Campus-wide Allowed</td>
                       <td className="py-2.5 px-3 text-emerald-700 font-medium">Campus-wide Allowed</td>
                       <td className="py-2.5 px-3 text-emerald-700 font-medium">Campus-wide Allowed</td>
                       <td className="py-2.5 px-3 text-emerald-700 font-medium">Gradebook Supervise</td>
-                      <td className="py-2.5 px-3 text-zinc-400 font-medium">Restricted (Developer Only)</td>
+                      <td className="py-2.5 px-3 text-zinc-500 font-medium">Campus Only</td>
                     </tr>
                     <tr>
                       <td className="py-2.5 px-3 font-semibold text-zinc-900">Professor / Lecturer</td>

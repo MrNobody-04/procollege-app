@@ -193,7 +193,7 @@ export const TopHeader: React.FC = () => {
                   >
                     <Shield className="w-4 h-4 text-[#5b5fc7] shrink-0" />
                     <span className="font-semibold text-zinc-800">
-                      {currentUser.role === 'developer' ? 'Platform Creator Console' : 'Campus Administration Center'}
+                      {currentUser.role === 'developer' ? 'Developer Console' : 'Campus Administration Center'}
                     </span>
                   </button>
                 )}
