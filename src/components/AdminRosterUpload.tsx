@@ -157,8 +157,8 @@ export const AdminRosterUpload: React.FC = () => {
         body: JSON.stringify({
           students: parsedRows,
           courseId: targetCourse?.id,
-          institutionId: currentUser.institutionName === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network',
-          institutionName: currentUser.institutionName || 'Padmashree College'
+          institutionId: currentUser.institutionId || currentUser.collegeId,
+          institutionName: currentUser.institutionName || currentUser.collegeName || 'Academic Institution',
         })
       });
 
@@ -210,8 +210,8 @@ export const AdminRosterUpload: React.FC = () => {
     if (generatedCredentials.length === 0) return;
     let text = `📢 OFFICIAL PROCOLLEGE CREDENTIAL DISTRIBUTION\n`;
     text += `Class: ${targetCourse?.name || 'Academic Course'} (${targetCourse?.code || 'PDC'})\n`;
-    text += `Institution: ${currentUser.institutionName || 'Padmashree College'}\n\n`;
-    text += `Please find your official login credentials below. You will be prompted to verify via OTP on first sign in.\n\n`;
+    text += `Institution: ${currentUser.institutionName || currentUser.collegeName || 'Academic Institution'}\n\n`;
+    text += `Please find your official login credentials below. When you sign in, an email 2FA verification code will be sent directly to your Gmail, and you will set your permanent password.\n\n`;
     text += `--------------------------------------------------------\n`;
     text += `NAME | GMAIL | TEMPORARY PASSWORD\n`;
     text += `--------------------------------------------------------\n`;

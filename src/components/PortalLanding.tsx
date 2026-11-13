@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Video,
@@ -52,8 +52,20 @@ export const PortalLanding: React.FC = () => {
   // OTP State
   const [otpEmail, setOtpEmail] = useState<string>('');
   const [otpCode, setOtpCode] = useState<string>('');
-  const [otpDevHint, setOtpDevHint] = useState<string>('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [isResending, setIsResending] = useState<boolean>(false);
+  const [resendMessage, setResendMessage] = useState<string>('');
+
+  useEffect(() => {
+    let timer: any;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown(prev => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // First-time Password Change State
   const [newPassword, setNewPassword] = useState<string>('');
@@ -82,7 +94,6 @@ export const PortalLanding: React.FC = () => {
     setLoginError('');
     setOtpCode('');
     setOtpEmail('');
-    setOtpDevHint('');
     setNewPassword('');
     setConfirmPassword('');
     setPendingAuthResponse(null);
@@ -145,6 +156,7 @@ export const PortalLanding: React.FC = () => {
   const performLogin = async (emailToUse: string, passwordToUse: string) => {
     setIsLoggingIn(true);
     setLoginError('');
+    setResendMessage('');
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -154,36 +166,51 @@ export const PortalLanding: React.FC = () => {
       });
 
       const data = await res.json();
+
+      // Check requireOtp FIRST: triggers 2FA flow for student/admin
+      if (data.requireOtp) {
+        setAuthStep('otp');
+        setOtpEmail(data.email || emailToUse);
+        setOtpCode(''); // Blank code input - user must enter from email
+        setResendCooldown(60);
+        return;
+      }
+
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Login failed. Please check your credentials.');
       }
 
-      if (data.requireOtp) {
-        setAuthStep('otp');
-        setOtpEmail(data.email || emailToUse);
-        setOtpDevHint(data.devOtp || '');
-        setOtpCode(data.devOtp || '');
-        return;
-      }
-
       finishLoginSession(data);
     } catch (err: unknown) {
-      const fallbackUser = availableUsers.find(
-        u => u.email.toLowerCase() === emailToUse.toLowerCase()
-      );
-      if (fallbackUser) {
-        setIsDemoMode(false);
-        setCurrentUser(fallbackUser);
-        resetAuthModal();
-        setShowRequestModal(false);
-        setMobileMenuOpen(false);
-        setViewMode('app');
-        return;
-      }
       const message = err instanceof Error ? err.message : String(err);
       setLoginError(message);
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || isResending) return;
+    setIsResending(true);
+    setResendMessage('');
+    setLoginError('');
+    try {
+      const res = await fetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to resend verification code');
+      }
+      setResendMessage(data.message || `A new 6-digit verification code has been dispatched to ${otpEmail}.`);
+      setResendCooldown(60);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not resend verification code';
+      setLoginError(msg);
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -389,62 +416,62 @@ export const PortalLanding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-white text-[#101b46] font-dmsans selection:bg-[#173bff] selection:text-white antialiased overflow-x-hidden">
-      {/* 1. Header Navigation Bar (header-surface) */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-zinc-100 transition-all">
+    <div className="min-h-screen w-full bg-[#080808] text-[#CDCBCA] font-dmsans selection:bg-[#D41514] selection:text-white antialiased overflow-x-hidden relative">
+      {/* 1. Header Navigation Bar (header-surface: obsidian #080808 with chrome border) */}
+      <header className="sticky top-0 z-40 bg-[#080808]/92 backdrop-blur-md border-b border-[#CDCBCA]/15 transition-all">
         <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-3">
-          {/* Brand Logo & Name (header-brand) */}
+          {/* Brand Logo & Name */}
           <div
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none shrink-0"
           >
-            <ProCollegeLogo size="sm" className="sm:hidden" />
-            <ProCollegeLogo size="md" className="hidden sm:flex" />
+            <ProCollegeLogo size="sm" variant="crimson-text" className="sm:hidden" />
+            <ProCollegeLogo size="md" variant="crimson-text" className="hidden sm:flex" />
           </div>
 
-          {/* Center Navigation Links (desktop & tablet landscape) */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-9 text-[15px] lg:text-[16px] font-normal text-[#44536c]">
+          {/* Center Navigation Links */}
+          <nav className="hidden md:flex items-center gap-6 lg:gap-9 text-[15px] lg:text-[16px] font-medium text-[#CDCBCA]">
             <button
               onClick={() => scrollTo('solutions')}
-              className="hover:text-[#173bff] transition-colors cursor-pointer"
+              className="hover:text-[#D41514] transition-colors cursor-pointer"
             >
               Solutions
             </button>
             <button
               onClick={() => scrollTo('features')}
-              className="hover:text-[#173bff] transition-colors cursor-pointer"
+              className="hover:text-[#D41514] transition-colors cursor-pointer"
             >
               Features
             </button>
             <button
               onClick={() => scrollTo('perspectives')}
-              className="hover:text-[#173bff] transition-colors cursor-pointer"
+              className="hover:text-[#D41514] transition-colors cursor-pointer"
             >
               Perspectives
             </button>
             <button
               onClick={() => scrollTo('pricing')}
-              className="hover:text-[#173bff] transition-colors cursor-pointer"
+              className="hover:text-[#D41514] transition-colors cursor-pointer"
             >
               Pricing
             </button>
           </nav>
 
-          {/* Right Action Buttons: Sign In + header-cta (Explore plans ↗) */}
+          {/* Right Action Buttons */}
           <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 shrink-0">
             <button
               onClick={() => {
                 setShowSignInModal(true);
               }}
-              className="text-xs sm:text-sm md:text-[15px] font-bold text-[#101b46] hover:text-[#173bff] px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-transparent hover:border-zinc-200 hover:bg-zinc-100/70 active:scale-95 transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="text-xs sm:text-sm md:text-[15px] font-bold text-[#CDCBCA] hover:text-white px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-[#CDCBCA]/20 hover:border-[#CDCBCA]/50 hover:bg-[#141416] active:scale-95 transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0"
             >
-              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#173bff] shrink-0" />
+              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D41514] shrink-0" />
               <span>Sign In</span>
             </button>
 
             <button
               onClick={() => scrollTo('pricing')}
-              className="btn-hive-cyan bg-gradient-to-r from-[#18d6ff] via-[#45e4ff] to-[#00c5ee] text-[#091538] text-xs sm:text-sm md:text-[15px] font-black px-3.5 xs:px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-full border border-cyan-200/90 shadow-[0_2px_14px_rgba(24,214,255,0.45)] hover:shadow-[0_4px_22px_rgba(24,214,255,0.7)] flex items-center gap-1.5 cursor-pointer leading-none shrink-0 group"
+              className="btn-hive-crimson bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm md:text-[15px] font-black px-3.5 xs:px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-full border border-[#D41514]/50 shadow-[0_0_20px_rgba(212,21,20,0.45)] hover:shadow-[0_0_30px_rgba(212,21,20,0.65)] flex items-center gap-1.5 cursor-pointer leading-none shrink-0 group"
             >
               <span className="hidden xs:inline tracking-tight">Explore plans</span>
               <span className="xs:hidden tracking-tight">Plans</span>
@@ -454,52 +481,52 @@ export const PortalLanding: React.FC = () => {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 sm:p-2 rounded-lg text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0"
+              className="md:hidden p-1.5 sm:p-2 rounded-lg text-[#CDCBCA] hover:text-white hover:bg-[#141416] border border-[#CDCBCA]/20 transition-colors cursor-pointer shrink-0"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? (
-                <X className="w-5 h-5 text-zinc-800" />
+                <X className="w-5 h-5 text-white" />
               ) : (
-                <Menu className="w-5 h-5 text-zinc-800" />
+                <Menu className="w-5 h-5 text-white" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu (compact and touch-friendly) */}
+        {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white/98 backdrop-blur-md border-b border-zinc-200 px-5 py-4 space-y-3 animate-in slide-in-from-top-2 shadow-lg">
-            <div className="flex flex-col space-y-1 text-base font-medium text-[#44536c]">
+          <div className="md:hidden bg-[#0c0c0e]/98 backdrop-blur-md border-b border-[#CDCBCA]/20 px-5 py-4 space-y-3 animate-in slide-in-from-top-2 shadow-2xl">
+            <div className="flex flex-col space-y-1 text-base font-medium text-[#CDCBCA]">
               <button
                 onClick={() => scrollTo('solutions')}
-                className="w-full text-left py-2 px-2 hover:bg-zinc-50 rounded-lg hover:text-[#173bff] transition-colors"
+                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
               >
                 Solutions
               </button>
               <button
                 onClick={() => scrollTo('features')}
-                className="w-full text-left py-2 px-2 hover:bg-zinc-50 rounded-lg hover:text-[#173bff] transition-colors"
+                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollTo('perspectives')}
-                className="w-full text-left py-2 px-2 hover:bg-zinc-50 rounded-lg hover:text-[#173bff] transition-colors"
+                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
               >
                 Perspectives
               </button>
               <button
                 onClick={() => scrollTo('pricing')}
-                className="w-full text-left py-2 px-2 hover:bg-zinc-50 rounded-lg hover:text-[#173bff] transition-colors"
+                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
               >
                 Pricing
               </button>
             </div>
 
-            <div className="pt-3 border-t border-zinc-100 flex flex-col gap-2.5">
+            <div className="pt-3 border-t border-[#CDCBCA]/15 flex flex-col gap-2.5">
               <button
                 onClick={() => launchDemoMode()}
-                className="btn-hive w-full bg-gradient-to-r from-[#173bff] to-[#0d2ee6] text-white py-3 px-4 rounded-xl font-bold text-sm text-center shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="btn-hive-crimson w-full bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white py-3 px-4 rounded-xl font-bold text-sm text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#D41514]/40"
               >
                 <span>Explore the platform</span>
                 <span>→</span>
@@ -509,9 +536,9 @@ export const PortalLanding: React.FC = () => {
                   setShowRequestModal(true);
                   setMobileMenuOpen(false);
                 }}
-                className="w-full bg-white hover:bg-blue-50/70 border-2 border-[#173bff]/30 text-[#101b46] py-3 px-4 rounded-xl font-bold text-sm text-center transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                className="w-full bg-[#121215] hover:bg-[#18181c] border-2 border-[#CDCBCA]/30 text-[#CDCBCA] hover:text-white py-3 px-4 rounded-xl font-bold text-sm text-center transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               >
-                <Building2 className="w-4 h-4 text-[#173bff]" />
+                <Building2 className="w-4 h-4 text-[#D41514]" />
                 <span>Request Campus Access</span>
               </button>
             </div>
@@ -519,30 +546,31 @@ export const PortalLanding: React.FC = () => {
         )}
       </header>
 
-      {/* 2. Hero Section (hero-surface: gradient #f9fbff to #e6faff, 125deg) */}
+      {/* 2. Hero Section (hero-surface: obsidian #080808 with atmospheric crimson & silver glow) */}
       <section
         id="solutions"
-        className="relative overflow-hidden pt-8 pb-12 sm:pt-14 sm:pb-18 lg:pt-20 lg:pb-24 border-b border-blue-50"
+        className="relative overflow-hidden pt-8 pb-12 sm:pt-14 sm:pb-18 lg:pt-20 lg:pb-24 border-b border-[#CDCBCA]/15"
         style={{
-          background: 'linear-gradient(125deg, #f9fbff 0%, #e6faff 100%)'
+          background: 'radial-gradient(ellipse 70% 60% at 75% 25%, rgba(212, 21, 20, 0.12), transparent), radial-gradient(ellipse 50% 50% at 20% 75%, rgba(205, 203, 202, 0.05), transparent), #080808'
         }}
       >
-        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 xl:gap-12 items-center">
             {/* Left Content Column */}
             <div className="lg:col-span-7 space-y-3.5 sm:space-y-6 text-left">
               {/* Eyebrow (hero-eyebrow) */}
-              <div className="inline-block text-[#173bff] font-black text-[10px] sm:text-[11px] tracking-[0.16em] uppercase">
-                THE CAMPUS MANAGEMENT SYSTEM
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/35 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase shadow-[0_0_16px_rgba(212,21,20,0.25)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D41514] animate-pulse" />
+                <span>THE CAMPUS MANAGEMENT SYSTEM</span>
               </div>
 
-              {/* Title (hero-title) - fully fluid responsive */}
-              <h1 className="font-fraunces font-bold text-[#101b46] text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-[54px] xl:text-[62px] leading-[1.12] tracking-tight break-words">
-                A more connected way to campus.
+              {/* Title (hero-title) */}
+              <h1 className="font-fraunces font-bold text-white text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-[54px] xl:text-[62px] leading-[1.12] tracking-tight break-words">
+                A more connected way to <span className="bg-gradient-to-r from-white via-[#CDCBCA] to-[#CDCBCA] bg-clip-text text-transparent">campus.</span>
               </h1>
 
               {/* Description (hero-description) */}
-              <p className="text-[#52627c] text-sm sm:text-base md:text-lg lg:text-[19px] leading-relaxed max-w-xl">
+              <p className="text-[#CDCBCA] text-sm sm:text-base md:text-lg lg:text-[19px] leading-relaxed max-w-xl">
                 Bring conversations, classrooms, coursework, and campus resources together in one
                 thoughtfully designed experience.
               </p>
@@ -551,7 +579,7 @@ export const PortalLanding: React.FC = () => {
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:max-w-xl">
                 <button
                   onClick={() => launchDemoMode()}
-                  className="btn-hive w-full sm:w-auto bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-sm sm:text-[16px] font-black px-7 sm:px-9 py-3.5 sm:py-4 rounded-full shadow-[0_6px_22px_rgba(23,59,255,0.42)] hover:shadow-[0_12px_32px_rgba(23,59,255,0.58)] border border-blue-300/30 transition-all flex items-center justify-center gap-2.5 group cursor-pointer text-center"
+                  className="btn-hive-crimson w-full sm:w-auto bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-sm sm:text-[16px] font-black px-7 sm:px-9 py-3.5 sm:py-4 rounded-full shadow-[0_0_28px_rgba(212,21,20,0.55)] hover:shadow-[0_0_40px_rgba(212,21,20,0.75)] border border-[#D41514]/60 transition-all flex items-center justify-center gap-2.5 group cursor-pointer text-center"
                 >
                   <span>Explore the platform</span>
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:translate-x-1.5" />
@@ -559,43 +587,44 @@ export const PortalLanding: React.FC = () => {
 
                 <button
                   onClick={() => setShowRequestModal(true)}
-                  className="w-full sm:w-auto bg-white/95 hover:bg-blue-50/70 border-2 border-[#173bff]/25 hover:border-[#173bff] text-[#101b46] hover:text-[#173bff] text-sm sm:text-[16px] font-black px-6 sm:px-8 py-3.5 sm:py-4 rounded-full shadow-xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer text-center"
+                  className="w-full sm:w-auto bg-[#121214] hover:bg-[#1a1a1d] border-2 border-[#CDCBCA]/30 hover:border-[#CDCBCA]/80 text-[#CDCBCA] hover:text-white text-sm sm:text-[16px] font-black px-6 sm:px-8 py-3.5 sm:py-4 rounded-full shadow-[0_0_20px_rgba(205,203,202,0.08)] hover:shadow-[0_0_25px_rgba(205,203,202,0.18)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer text-center"
                 >
-                  <Building2 className="w-4 h-4 text-[#173bff] group-hover:scale-110 transition-transform duration-300" />
+                  <Building2 className="w-4 h-4 text-[#D41514] group-hover:scale-110 transition-transform duration-300" />
                   <span>Request Campus Access</span>
                 </button>
               </div>
 
               {/* Note below buttons (hero-note) */}
-              <p className="text-[#63748e] text-xs sm:text-[13px] pt-1">
+              <p className="text-[#8E8C8B] text-xs sm:text-[13px] pt-1">
                 One place for the moments that move learning forward.
               </p>
             </div>
 
-            {/* Right Media Column (hero-image + preview-card) */}
+            {/* Right Media Column */}
             <div className="lg:col-span-5 relative mt-4 lg:mt-0">
               {/* Main Photo Card with Caption */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl border-2 sm:border-4 border-white/80 group">
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_12px_45px_rgba(0,0,0,0.8)] border-2 sm:border-4 border-[#CDCBCA]/30 group">
                 <img
                   src="https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=1280"
                   alt="Students gathered on a university campus"
-                  className="w-full h-[210px] xs:h-[260px] sm:h-[320px] md:h-[380px] lg:h-[420px] object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-[210px] xs:h-[260px] sm:h-[320px] md:h-[380px] lg:h-[420px] object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-90 contrast-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-3 left-4 right-4 sm:bottom-4 sm:left-5 sm:right-5 text-white font-dmsans font-bold text-xs sm:text-[14px]">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-3 left-4 right-4 sm:bottom-4 sm:left-5 sm:right-5 text-[#CDCBCA] font-dmsans font-bold text-xs sm:text-[14px]">
                   A campus experience that feels connected.
                 </div>
               </div>
 
-              {/* Floating Campus Overview Preview Card (responsive position to avoid overflow) */}
-              <div className="relative sm:absolute mt-3 sm:mt-0 sm:-bottom-6 sm:-left-6 lg:-left-8 bg-white rounded-2xl p-4 sm:p-5 shadow-lg sm:shadow-xl border border-blue-100/90 max-w-full sm:max-w-[260px] animate-in fade-in slide-in-from-bottom-3 duration-300">
-                <div className="text-[10px] sm:text-[11px] font-bold text-[#6b7991] uppercase tracking-wider">
-                  CAMPUS OVERVIEW
+              {/* Floating Campus Overview Preview Card */}
+              <div className="relative sm:absolute mt-3 sm:mt-0 sm:-bottom-6 sm:-left-6 lg:-left-8 bg-[#0e0e11]/95 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.8)] border border-[#CDCBCA]/30 max-w-full sm:max-w-[260px] animate-in fade-in slide-in-from-bottom-3 duration-300">
+                <div className="text-[10px] sm:text-[11px] font-bold text-[#D41514] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#D41514]" />
+                  <span>CAMPUS OVERVIEW</span>
                 </div>
-                <div className="text-base sm:text-[18px] font-black text-[#101b46] mt-0.5">
+                <div className="text-base sm:text-[18px] font-black text-white mt-1">
                   Everything in sync
                 </div>
-                <div className="text-xs sm:text-[12px] text-[#6b7991] mt-0.5">
+                <div className="text-xs sm:text-[12px] text-[#CDCBCA] mt-1">
                   Learning, people, and progress—together.
                 </div>
               </div>
@@ -604,45 +633,45 @@ export const PortalLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. The Unified Suite (features-surface: #ffffff) */}
-      <section id="features" className="py-12 sm:py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 bg-white">
+      {/* 3. The Unified Suite (features-surface: obsidian #080808) */}
+      <section id="features" className="py-12 sm:py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 bg-[#080808]">
         <div className="max-w-3xl mb-8 sm:mb-12 lg:mb-14 text-left">
-          {/* Kicker (features-kicker) */}
-          <div className="text-[#173bff] font-black text-[10px] sm:text-[11px] tracking-[0.16em] uppercase mb-2 sm:mb-3">
-            THE UNIFIED SUITE
+          {/* Kicker */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase mb-2 sm:mb-3 shadow-[0_0_12px_rgba(212,21,20,0.2)]">
+            <span>THE UNIFIED SUITE</span>
           </div>
 
-          {/* Title (features-title) */}
-          <h2 className="font-fraunces font-bold text-[#101b46] text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
+          {/* Title */}
+          <h2 className="font-fraunces font-bold text-white text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
             Everything your campus needs. Finally together.
           </h2>
 
-          {/* Description (features-description) */}
-          <p className="mt-2.5 sm:mt-4 text-[#586680] text-sm sm:text-base lg:text-[17px] leading-relaxed">
+          {/* Description */}
+          <p className="mt-2.5 sm:mt-4 text-[#CDCBCA] text-sm sm:text-base lg:text-[17px] leading-relaxed">
             Less switching between tools. More room to teach, learn, collaborate, and get things done.
           </p>
         </div>
 
-        {/* 4 Feature Cards Grid: 1 col on mobile, 2 cols on tablet, 4 cols on desktop */}
+        {/* 4 Feature Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Card 1: ProCollege Teams */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-[#173bff] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
+          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
+              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
                 <Users className="w-5 h-5" />
               </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#7081a2]">
+              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
                 COMMUNICATE
               </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-[#101b46] mt-1 group-hover:text-[#173bff] transition-colors">
+              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
                 ProCollege Teams
               </h3>
-              <p className="text-[#586680] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
+              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
                 Channels and conversations that keep classes, clubs, and departments on the same page.
               </p>
             </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
+            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
                 <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
@@ -650,23 +679,23 @@ export const PortalLanding: React.FC = () => {
           </div>
 
           {/* Card 2: ProCollege Meet */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-cyan-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
+          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
-              <div className="w-10 h-10 rounded-xl bg-cyan-50 group-hover:bg-cyan-500 text-cyan-600 group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
+              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
                 <Video className="w-5 h-5" />
               </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#7081a2]">
+              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
                 CONNECT
               </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-[#101b46] mt-1 group-hover:text-cyan-600 transition-colors">
+              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
                 ProCollege Meet
               </h3>
-              <p className="text-[#586680] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
+              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
                 A welcoming space for virtual lectures, discussion, and participation wherever you are.
               </p>
             </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-50 group-hover:bg-cyan-600 text-cyan-700 group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
+            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
                 <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
@@ -674,23 +703,23 @@ export const PortalLanding: React.FC = () => {
           </div>
 
           {/* Card 3: ProCollege LMS */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-emerald-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
+          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
+              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
                 <FileCheck className="w-5 h-5" />
               </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#7081a2]">
+              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
                 TEACH
               </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-[#101b46] mt-1 group-hover:text-emerald-600 transition-colors">
+              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
                 ProCollege LMS
               </h3>
-              <p className="text-[#586680] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
+              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
                 Bring assignments, feedback, and learning progress into a clearer academic workflow.
               </p>
             </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
+            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
                 <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
@@ -698,23 +727,23 @@ export const PortalLanding: React.FC = () => {
           </div>
 
           {/* Card 4: ProCollege Cloud */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-purple-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
+          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
-              <div className="w-10 h-10 rounded-xl bg-purple-50 group-hover:bg-purple-600 text-purple-600 group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
+              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
                 <FolderOpen className="w-5 h-5" />
               </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#7081a2]">
+              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
                 ORGANIZE
               </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-[#101b46] mt-1 group-hover:text-purple-600 transition-colors">
+              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
                 ProCollege Cloud
               </h3>
-              <p className="text-[#586680] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
+              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
                 Give documents, research, and shared resources a place everyone can find.
               </p>
             </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 group-hover:bg-purple-600 text-purple-700 group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
+            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
                 <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
@@ -1548,34 +1577,33 @@ export const PortalLanding: React.FC = () => {
               </>
             )}
 
-            {/* Step 2: 6-Digit Student OTP Verification */}
+            {/* Step 2: 6-Digit Email 2FA OTP Verification */}
             {authStep === 'otp' && (
               <>
                 <div className="mt-5">
                   <div className="w-10 h-10 rounded-xl bg-[#173bff]/10 text-[#173bff] flex items-center justify-center mb-3">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Security Verification</h3>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Two-Factor Security Verification</h3>
                   <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
-                    A 6-digit security OTP has been issued for <span className="font-semibold text-zinc-800">{otpEmail}</span>. Enter the code to continue.
+                    A 6-digit security code was dispatched directly to <span className="font-semibold text-zinc-900">{otpEmail}</span>. Please check your inbox and spam folder.
                   </p>
                 </div>
 
-                {otpDevHint && (
-                  <div className="mt-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-blue-900">OTP Code: </span>
-                      <span className="font-mono font-bold tracking-widest text-[#173bff] ml-1 bg-white px-2 py-0.5 rounded border border-blue-200">
-                        {otpDevHint}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setOtpCode(otpDevHint)}
-                      className="text-xs font-semibold text-[#173bff] hover:underline cursor-pointer"
-                    >
-                      Auto-fill
-                    </button>
+                <div className="mt-4 p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs text-blue-900 flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 text-[#173bff] shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-blue-950">Check Your Registered Mailbox</p>
+                    <p className="text-blue-800/80 leading-relaxed">
+                      Enter the 6-digit code received via email to verify your identity and access your dashboard.
+                    </p>
+                  </div>
+                </div>
+
+                {resendMessage && (
+                  <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{resendMessage}</span>
                   </div>
                 )}
 
@@ -1588,7 +1616,7 @@ export const PortalLanding: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-zinc-700 mb-1.5 text-center">
-                      6-Digit Security Code
+                      Enter 6-Digit Verification Code
                     </label>
                     <input
                       type="text"
@@ -1597,9 +1625,21 @@ export const PortalLanding: React.FC = () => {
                       required
                       value={otpCode}
                       onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="000000"
+                      placeholder="• • • • • •"
                       className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-3 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-zinc-500 px-1">
+                    <span>Didn't get the code?</span>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendCooldown > 0 || isResending}
+                      className="font-semibold text-[#173bff] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
+                    >
+                      {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : isResending ? 'Sending...' : 'Resend Code'}
+                    </button>
                   </div>
 
                   <button
@@ -1626,6 +1666,7 @@ export const PortalLanding: React.FC = () => {
                       onClick={() => {
                         setAuthStep('credentials');
                         setLoginError('');
+                        setResendMessage('');
                       }}
                       className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
                     >

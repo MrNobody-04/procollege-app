@@ -89,6 +89,254 @@ function extractUserFromHeader(c: any): { id?: string; email?: string; role?: st
   return null;
 }
 
+// --- 2FA Multi-Provider Email Dispatch Engine ---
+async function send2FAEmail(params: {
+  to: string;
+  name?: string;
+  code: string;
+  role?: string;
+  institutionName?: string;
+  env: Env;
+  db: any;
+}): Promise<{ success: boolean; provider: string; error?: string }> {
+  const recipientEmail = params.to.trim().toLowerCase();
+  const recipientName = params.name || 'User';
+  const orgName = params.institutionName || 'Academic Institution';
+
+  // 1. Fetch settings from platform_settings table in Turso
+  let dbProvider = '';
+  let dbApiKey = '';
+  let dbSenderEmail = '';
+  let dbSenderName = '';
+  let dbRelayUrl = '';
+
+  try {
+    const settingsRes = await params.db.execute({
+      sql: `SELECT key, value FROM platform_settings WHERE key IN ('email_provider', 'email_api_key', 'email_sender_email', 'email_sender_name', 'email_relay_url');`
+    });
+    for (const r of settingsRes.rows) {
+      if (r.key === 'email_provider') dbProvider = String(r.value || '').trim().toLowerCase();
+      if (r.key === 'email_api_key') dbApiKey = String(r.value || '').trim();
+      if (r.key === 'email_sender_email') dbSenderEmail = String(r.value || '').trim();
+      if (r.key === 'email_sender_name') dbSenderName = String(r.value || '').trim();
+      if (r.key === 'email_relay_url') dbRelayUrl = String(r.value || '').trim();
+    }
+  } catch (err) {
+    console.warn('[EMAIL] Failed to fetch platform_settings:', err);
+  }
+
+  // Environment variables override Turso DB settings
+  const brevoKey = (params.env as any).BREVO_API_KEY || (dbProvider === 'brevo' ? dbApiKey : '');
+  const resendKey = (params.env as any).RESEND_API_KEY || (dbProvider === 'resend' ? dbApiKey : '');
+  const plunkKey = (params.env as any).PLUNK_SECRET_KEY || (params.env as any).PLUNK_API_KEY || (dbProvider === 'plunk' ? dbApiKey : '');
+  const relayUrl = (params.env as any).EMAIL_RELAY_URL || dbRelayUrl || (dbProvider === 'relay' ? dbApiKey : '');
+
+  const senderEmail = dbSenderEmail || (params.env as any).EMAIL_SENDER || 'security@procollege.edu.np';
+  const senderName = dbSenderName || (params.env as any).EMAIL_SENDER_NAME || 'ProCollege Security';
+
+  const subject = `Your ProCollege 2FA Verification Code: ${params.code}`;
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your ProCollege 2FA Code</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f4f6fa;padding:30px 12px;">
+    <tr>
+      <td align="center">
+        <table width="100%" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.07);border:1px solid #e5e9f2;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#173bff 0%,#0d2282 100%);padding:28px 24px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">PROCOLLEGE</h1>
+              <p style="margin:4px 0 0 0;color:rgba(255,255,255,0.9);font-size:13px;font-weight:500;">Multi-Campus Academic Platform</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 28px 24px 28px;">
+              <h2 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:700;">Two-Factor Authentication (2FA)</h2>
+              <p style="margin:0 0 16px 0;color:#4b5563;font-size:14px;line-height:1.6;">
+                Hello <strong>${recipientName}</strong>,<br>
+                A sign-in request was initiated for your <strong>${orgName}</strong> account (<strong>${recipientEmail}</strong>).
+              </p>
+              <p style="margin:0 0 8px 0;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Your 6-Digit Verification Code</p>
+              
+              <div style="background-color:#f0f4ff;border:2px dashed #173bff;border-radius:12px;padding:18px;text-align:center;margin-bottom:20px;">
+                <span style="font-family:'SFMono-Regular',Consolas,'Courier New',monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#173bff;display:inline-block;">
+                  ${params.code}
+                </span>
+              </div>
+
+              <div style="background-color:#fef3c7;border-left:4px solid #f59e0b;padding:12px 14px;border-radius:6px;margin-bottom:20px;">
+                <p style="margin:0;color:#92400e;font-size:12px;line-height:1.5;">
+                  ⏳ This security code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
+                </p>
+              </div>
+
+              <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.5;">
+                If you did not make this request, please contact your campus IT administrator immediately.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f9fafb;padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0;color:#9ca3af;font-size:11px;">
+                © 2026 ProCollege Multi-Campus Platform. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  let providerUsed = 'none';
+  let success = false;
+  let lastError = '';
+
+  // Strategy 1: Google Apps Script Webhook / Custom Relay
+  if (relayUrl) {
+    providerUsed = 'relay';
+    try {
+      const res = await fetch(relayUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: recipientEmail,
+          subject,
+          html: emailHtml,
+          text: `Your ProCollege 2FA verification code is: ${params.code} (valid for 10 minutes).`,
+          code: params.code,
+          name: recipientName,
+          institution: orgName,
+        }),
+      });
+      if (res.ok) {
+        success = true;
+      } else {
+        const txt = await res.text().catch(() => '');
+        lastError = `Relay returned HTTP ${res.status}: ${txt}`;
+      }
+    } catch (e: unknown) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  // Strategy 2: Brevo (Sendinblue) API
+  if (!success && brevoKey) {
+    providerUsed = 'brevo';
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: recipientEmail, name: recipientName }],
+          subject,
+          htmlContent: emailHtml,
+        }),
+      });
+      if (res.ok) {
+        success = true;
+      } else {
+        const txt = await res.text().catch(() => '');
+        lastError = `Brevo returned HTTP ${res.status}: ${txt}`;
+      }
+    } catch (e: unknown) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  // Strategy 3: Resend API
+  if (!success && resendKey) {
+    providerUsed = 'resend';
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `${senderName} <${senderEmail.includes('@resend.dev') ? senderEmail : 'onboarding@resend.dev'}>`,
+          to: [recipientEmail],
+          subject,
+          html: emailHtml,
+        }),
+      });
+      if (res.ok) {
+        success = true;
+      } else {
+        const txt = await res.text().catch(() => '');
+        lastError = `Resend returned HTTP ${res.status}: ${txt}`;
+      }
+    } catch (e: unknown) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  // Strategy 4: Plunk API
+  if (!success && plunkKey) {
+    providerUsed = 'plunk';
+    try {
+      const res = await fetch('https://next-api.useplunk.com/v1/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${plunkKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: recipientEmail,
+          subject,
+          body: emailHtml,
+        }),
+      });
+      if (res.ok) {
+        success = true;
+      } else {
+        const txt = await res.text().catch(() => '');
+        lastError = `Plunk returned HTTP ${res.status}: ${txt}`;
+      }
+    } catch (e: unknown) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  // Log to email_logs in Turso
+  try {
+    const logId = `eml_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    await params.db.execute({
+      sql: `INSERT INTO email_logs (id, recipient_email, recipient_name, subject, otp_code, provider, status, error_message, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));`,
+      args: [
+        logId,
+        recipientEmail,
+        recipientName,
+        subject,
+        params.code,
+        providerUsed,
+        success ? 'delivered' : 'failed',
+        lastError || (success ? null : 'No active email provider configured (configure in Platform Settings)'),
+      ],
+    });
+  } catch (err) {
+    console.warn('[EMAIL-LOG] Failed to write log:', err);
+  }
+
+  console.log(`[EMAIL-2FA] Dispatched 2FA code ${params.code} to ${recipientEmail} via ${providerUsed}: success=${success}`);
+  return { success, provider: providerUsed, error: lastError };
+}
+
 // Global API Workflow Enforcement Middleware: Checks if an organization workflow is paused
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
@@ -96,6 +344,7 @@ app.use('/api/*', async (c, next) => {
     path === '/api/health' ||
     path === '/api/auth/login' ||
     path === '/api/auth/verify-otp' ||
+    path === '/api/auth/resend-otp' ||
     path === '/api/auth/change-password' ||
     path.startsWith('/api/platform/') ||
     path.startsWith('/api/colleges/request-access')
@@ -423,28 +672,37 @@ app.post('/api/auth/login', async (c) => {
     const requires2FA = (userRole === 'student' || userRole === 'admin' || mustChangePassword) && !skipOtp && !isDeveloper;
 
     if (requires2FA) {
-      // If user already has a valid unexpired OTP code, we can reuse or refresh it
-      let otpCode = String(userRow.otp_code || '');
-      const existingExpires = userRow.otp_expires_at ? new Date(String(userRow.otp_expires_at)).getTime() : 0;
-
-      if (!otpCode || existingExpires < Date.now()) {
-        otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      }
-      const otpExpires = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min window
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min window
 
       await db.execute({
         sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
         args: [otpCode, otpExpires, userRow.id],
       });
 
-      console.log(`[AUTH-OTP] Generated 2FA OTP ${otpCode} for ${userRow.email} (valid for 30 min)`);
+      console.log(`[AUTH-OTP] Generated fresh 2FA OTP ${otpCode} for ${userRow.email} (valid for 10 min)`);
+
+      // Dispatch real 2FA email directly to recipient's email address
+      const emailResult = await send2FAEmail({
+        to: String(userRow.email),
+        name: String(userRow.name || 'User'),
+        code: otpCode,
+        role: userRole,
+        institutionName: String(userRow.college_name || userRow.institution_name || 'Academic Institution'),
+        env: c.env,
+        db,
+      });
 
       return c.json({
+        success: true,
         requireOtp: true,
         email: userRow.email,
         mustChangePassword,
-        message: 'A 6-digit 2FA OTP verification code has been dispatched to your registered email address.',
-        devOtp: otpCode, // surfaced for frictionless verification & demo testing
+        emailSent: emailResult.success,
+        emailProvider: emailResult.provider,
+        message: emailResult.success
+          ? `A 6-digit verification code has been dispatched directly to ${userRow.email}. Please check your inbox and spam folder.`
+          : `A 6-digit verification code has been generated. Please check your email inbox.`,
       });
     }
 
@@ -488,6 +746,62 @@ app.post('/api/auth/login', async (c) => {
       token,
       user,
       college,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.05 Resend fresh 2FA OTP code to user's registered email
+app.post('/api/auth/resend-otp', async (c) => {
+  try {
+    const body = await c.req.json();
+    const email = (body.email || '').trim().toLowerCase();
+    if (!email) {
+      return c.json({ error: 'Email address is required to resend verification code' }, 400);
+    }
+
+    const db = getDb(c);
+    const userRes = await db.execute({
+      sql: `SELECT u.id, u.name, u.email, u.role, u.institution_name, u.college_id, u.institution_id, c.name as college_name
+            FROM users u
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
+            WHERE LOWER(u.email) = LOWER(?)
+            LIMIT 1;`,
+      args: [email],
+    });
+
+    if (userRes.rows.length === 0) {
+      return c.json({ error: 'Account not found with provided email' }, 404);
+    }
+
+    const userRow = userRes.rows[0];
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await db.execute({
+      sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
+      args: [otpCode, otpExpires, userRow.id],
+    });
+
+    const emailResult = await send2FAEmail({
+      to: String(userRow.email),
+      name: String(userRow.name || 'User'),
+      code: otpCode,
+      role: String(userRow.role),
+      institutionName: String(userRow.college_name || userRow.institution_name || 'Academic Institution'),
+      env: c.env,
+      db,
+    });
+
+    return c.json({
+      success: true,
+      emailSent: emailResult.success,
+      emailProvider: emailResult.provider,
+      message: emailResult.success
+        ? `A new 6-digit verification code has been dispatched directly to ${userRow.email}. Please check your inbox and spam folder.`
+        : `A new 6-digit security code has been generated. Please check your email.`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1013,6 +1327,142 @@ app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
   }
 });
 
+// 1.81 Get Platform Email Gateway Settings
+app.get('/api/platform/email-settings', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+    const db = getDb(c);
+    const settingsRes = await db.execute({
+      sql: `SELECT key, value FROM platform_settings WHERE key IN ('email_provider', 'email_api_key', 'email_sender_email', 'email_sender_name', 'email_relay_url');`
+    });
+    const map: Record<string, string> = {};
+    for (const r of settingsRes.rows) {
+      map[String(r.key)] = String(r.value || '');
+    }
+
+    const rawKey = map.email_api_key || '';
+    const maskedKey = rawKey.length > 8 ? `${rawKey.slice(0, 4)}••••••••${rawKey.slice(-4)}` : (rawKey ? '••••••••' : '');
+
+    return c.json({
+      provider: map.email_provider || 'relay',
+      apiKey: maskedKey,
+      senderEmail: map.email_sender_email || '',
+      senderName: map.email_sender_name || 'ProCollege Security',
+      relayUrl: map.email_relay_url || '',
+      hasEnvKey: Boolean((c.env as any).BREVO_API_KEY || (c.env as any).RESEND_API_KEY || (c.env as any).PLUNK_SECRET_KEY || (c.env as any).EMAIL_RELAY_URL),
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.82 Update Platform Email Gateway Settings
+app.post('/api/platform/email-settings', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+    const body = await c.req.json();
+    const provider = String(body.provider || 'relay').trim().toLowerCase();
+    const apiKey = String(body.apiKey || '').trim();
+    const senderEmail = String(body.senderEmail || '').trim();
+    const senderName = String(body.senderName || 'ProCollege Security').trim();
+    const relayUrl = String(body.relayUrl || '').trim();
+
+    const db = getDb(c);
+    const updates: [string, string][] = [
+      ['email_provider', provider],
+      ['email_sender_email', senderEmail],
+      ['email_sender_name', senderName],
+      ['email_relay_url', relayUrl],
+    ];
+    if (apiKey && !apiKey.includes('•••')) {
+      updates.push(['email_api_key', apiKey]);
+    }
+
+    for (const [k, v] of updates) {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'));`,
+        args: [k, v]
+      });
+    }
+
+    return c.json({ success: true, message: 'Platform email gateway settings updated successfully.' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.83 Send Test 2FA Verification Email
+app.post('/api/platform/send-test-email', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+    const body = await c.req.json();
+    const targetEmail = (body.email || caller.email || 'gcsujan321@gmail.com').trim().toLowerCase();
+    const testCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const db = getDb(c);
+    const result = await send2FAEmail({
+      to: targetEmail,
+      name: 'Platform Developer',
+      code: testCode,
+      role: 'developer',
+      institutionName: 'ProCollege Platform Operations',
+      env: c.env,
+      db,
+    });
+
+    if (result.success) {
+      return c.json({
+        success: true,
+        provider: result.provider,
+        code: testCode,
+        message: `Test 2FA verification email sent successfully to ${targetEmail} via ${result.provider}! Check your inbox.`,
+      });
+    } else {
+      return c.json({
+        success: false,
+        provider: result.provider,
+        code: testCode,
+        error: result.error || 'Failed to dispatch test email. Please check your email gateway credentials in Platform Settings.',
+      }, 400);
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.84 Get Recent Email Delivery Audit Logs
+app.get('/api/platform/email-logs', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+    const db = getDb(c);
+    const logsRes = await db.execute({
+      sql: `SELECT id, recipient_email, recipient_name, subject, otp_code, provider, status, error_message, created_at
+            FROM email_logs
+            ORDER BY created_at DESC
+            LIMIT 30;`
+    });
+    return c.json({ logs: logsRes.rows });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
 // 1.3 Admin Bulk Excel/CSV Roster Import & Credential Distribution
 app.post('/api/admin/import-roster', async (c) => {
   try {
@@ -1039,24 +1489,40 @@ app.post('/api/admin/import-roster', async (c) => {
       return c.json({ error: 'No student records found in uploaded roster' }, 400);
     }
 
-    const targetCourseId = body.courseId || body.course_id || 'course_padma_bit_sem5';
-    let institutionId = body.institutionId || body.institution_id || body.collegeId || 'padmashree-demo';
-    const institutionName = body.institutionName || 'Padmashree College';
+    const callerInstId = caller.institution_id || caller.college_id;
+    let institutionId = body.institutionId || body.institution_id || body.collegeId || callerInstId;
+    let institutionName = body.institutionName || caller.institution_name;
 
     const db = getDb(c);
 
-    // Ensure institutionId is a valid college_id (fallback to 'padmashree-demo' if not found)
-    try {
-      const colCheck = await db.execute({
-        sql: 'SELECT id FROM colleges WHERE id = ? LIMIT 1;',
-        args: [institutionId]
-      });
-      if (colCheck.rows.length === 0) {
-        institutionId = 'padmashree-demo';
-      }
-    } catch {
-      institutionId = 'padmashree-demo';
+    // If still missing, query db for caller's institution
+    if (!institutionId || institutionId === 'padmashree-demo' || institutionId === 'col_procollege_network') {
+      try {
+        const uRes = await db.execute({
+          sql: 'SELECT institution_id, college_id, institution_name FROM users WHERE id = ? LIMIT 1;',
+          args: [caller.id || '']
+        });
+        if (uRes.rows.length > 0) {
+          institutionId = String(uRes.rows[0].institution_id || uRes.rows[0].college_id || '');
+          institutionName = String(uRes.rows[0].institution_name || institutionName || 'Academic Institution');
+        }
+      } catch {}
     }
+
+    if (institutionId) {
+      try {
+        const colCheck = await db.execute({
+          sql: 'SELECT id, name FROM colleges WHERE id = ? UNION SELECT id, name FROM institutions WHERE id = ? LIMIT 1;',
+          args: [institutionId, institutionId]
+        });
+        if (colCheck.rows.length > 0) {
+          institutionId = String(colCheck.rows[0].id);
+          institutionName = String(colCheck.rows[0].name || institutionName);
+        }
+      } catch {}
+    }
+
+    const targetCourseId = body.courseId || body.course_id || null;
 
     const credentialsList: Array<{
       id: string;
@@ -1072,11 +1538,11 @@ app.post('/api/admin/import-roster', async (c) => {
     const enrolledStudentsToAdd: Array<{ id: string; name: string; email: string }> = [];
 
     for (const row of students) {
-      const name = (row.name || row.Name || '').trim();
-      const phone = (row.phone || row.Phone || '').trim();
-      const email = (row.email || row.Gmail || '').trim().toLowerCase();
-      const faculty = (row.faculty || row.Faculty || 'Faculty of Information Technology (BIT)').trim();
-      const className = (row.class || row.Class || 'Sem 5 - Sec A').trim();
+      const name = (row.name || row.Name || (row as any)['Student Name'] || (row as any)['Full Name'] || '').trim();
+      const phone = (row.phone || row.Phone || (row as any)['Mobile'] || (row as any)['Phone Number'] || '').trim();
+      const email = (row.email || row.Gmail || (row as any).gmail || (row as any).Email || (row as any)['Gmail Address'] || '').trim().toLowerCase();
+      const faculty = (row.faculty || row.Faculty || '').trim() || 'General Academic Faculty';
+      const className = (row.class || row.Class || (row as any)['Class Name'] || '').trim() || 'Standard Class';
 
       if (!name || !email) continue;
 

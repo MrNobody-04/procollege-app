@@ -20,6 +20,9 @@ export interface User {
   license: LicenseSku;
   department: string;
   institutionName?: string;
+  institutionId?: string;
+  collegeId?: string;
+  collegeName?: string;
   avatar: string;
   status: PresenceStatus;
   statusMessage?: string;

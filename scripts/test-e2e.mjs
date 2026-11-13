@@ -57,9 +57,35 @@ async function testSuite() {
   }
   console.log('   ✅ Test 2 Passed: No demo organizations exist! Only legitimate institutions returned.');
 
-  // 3. Reset Admin Password & 2FA OTP for Public English School
-  console.log('\n3️⃣ Testing Developer Reset Admin Password & 2FA OTP for Public English School...');
-  const resetRes = await fetch(`${BASE}/api/platform/institutions/col_public-english-school_9m3f/reset-admin-password`, {
+  // 3. Ensure Public English School is Provisioned by Developer
+  console.log('\n3️⃣ Testing Developer Organization Provisioning & Master Admin Credential Reset...');
+  let targetOrg = orgsData.organizations?.find(o => o.name.toLowerCase().includes('public english school'));
+  let adminTempPassword = '';
+
+  if (!targetOrg) {
+    console.log('   Provisioning fresh Public English School via Developer API...');
+    const provRes = await fetch(`${BASE}/api/platform/institutions/provision`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${devLoginData.token}`
+      },
+      body: JSON.stringify({
+        name: 'Public English School',
+        contactName: 'Asmit',
+        email: 'gamerlush11@gmail.com',
+        department: 'Academic Operations',
+        plan: 'campus-pro'
+      })
+    });
+    const provData = await provRes.json();
+    targetOrg = { id: provData.institution.id, name: provData.institution.name };
+    adminTempPassword = provData.admin.temporaryPassword;
+    console.log(`   Provisioned ${targetOrg.name} (ID: ${targetOrg.id}) with Admin ${provData.admin.email}`);
+  }
+
+  // Now test Developer Master Reset Password endpoint on this organization
+  const resetRes = await fetch(`${BASE}/api/platform/institutions/${targetOrg.id}/reset-admin-password`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${devLoginData.token}` }
   });
@@ -67,37 +93,47 @@ async function testSuite() {
   console.log('   Reset status:', resetRes.status);
   console.log('   Admin Email:', resetData.adminEmail);
   console.log('   Generated Temp Password:', resetData.temporaryPassword);
-  console.log('   Generated 2FA OTP:', resetData.otpCode);
+  adminTempPassword = resetData.temporaryPassword;
 
-  if (!resetData.success || !resetData.temporaryPassword || !resetData.otpCode) {
+  if (!resetData.success || !resetData.temporaryPassword) {
     throw new Error('❌ Test 3 Failed: Developer reset password failed');
   }
-  console.log('   ✅ Test 3 Passed: Fresh temporary password and 2FA OTP generated!');
+  console.log('   ✅ Test 3 Passed: Organization provisioned and temporary password generated!');
 
   // 4. Admin Login with Reset Credentials
   console.log('\n4️⃣ Testing Public English School Admin Login with Reset Credentials...');
   const adminLoginRes = await fetch(`${BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'gamerlush11@gmail.com', password: resetData.temporaryPassword })
+    body: JSON.stringify({ email: 'gamerlush11@gmail.com', password: adminTempPassword })
   });
   const adminLoginData = await adminLoginRes.json();
   console.log('   Login status:', adminLoginRes.status);
   console.log('   requireOtp:', adminLoginData.requireOtp);
   console.log('   mustChangePassword:', adminLoginData.mustChangePassword);
-  console.log('   OTP matches generated:', adminLoginData.devOtp === resetData.otpCode);
 
-  if (!adminLoginData.requireOtp || adminLoginData.devOtp !== resetData.otpCode) {
-    throw new Error('❌ Test 4 Failed: Expected 2FA OTP requirement matching generated OTP');
+  if (!adminLoginData.requireOtp || !adminLoginData.mustChangePassword) {
+    throw new Error('❌ Test 4 Failed: Expected 2FA OTP requirement and mustChangePassword flag');
   }
-  console.log('   ✅ Test 4 Passed: 2FA OTP verified on admin login!');
+
+  // Fetch the fresh OTP code from Turso database (which was dispatched via email)
+  const dbOtpRes = await client.execute({
+    sql: 'SELECT otp_code FROM users WHERE LOWER(email) = LOWER(?);',
+    args: ['gamerlush11@gmail.com']
+  });
+  const currentOtp = String(dbOtpRes.rows[0]?.otp_code || '');
+  console.log('   Live Turso Dispatched 2FA OTP Code:', currentOtp);
+  if (!currentOtp || currentOtp.length !== 6) {
+    throw new Error('❌ Test 4 Failed: Expected 6-digit OTP code in Turso database');
+  }
+  console.log('   ✅ Test 4 Passed: 2FA OTP generated and dispatched for admin login!');
 
   // 5. Verify OTP
   console.log('\n5️⃣ Testing 2FA OTP Verification...');
   const verifyRes = await fetch(`${BASE}/api/auth/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'gamerlush11@gmail.com', otp: resetData.otpCode })
+    body: JSON.stringify({ email: 'gamerlush11@gmail.com', otp: currentOtp })
   });
   const verifyData = await verifyRes.json();
   console.log('   Verify status:', verifyRes.status);
@@ -149,7 +185,135 @@ async function testSuite() {
   }
   console.log('   ✅ Test 7 Passed: Pristine, clean dashboard with zero demo data leakage!');
 
-  console.log('\n🎉 ALL 7 PRODUCTION AUDIT TESTS PASSED WITH 100% SUCCESS!\n');
+  // 8. Admin Excel Roster Import
+  console.log('\n8️⃣ Testing Admin Bulk Excel Roster Import & Credential Distribution...');
+  const rosterRes = await fetch(`${BASE}/api/admin/import-roster`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${verifyData.token}`
+    },
+    body: JSON.stringify({
+      students: [
+        { Name: 'Aarav Sharma', Phone: '+977-9841234567', Gmail: 'aarav.sharma2026@gmail.com', Faculty: 'Faculty of Information Technology', Class: 'BIT 101' },
+        { Name: 'Pooja Thapa', Phone: '+977-9812345678', Gmail: 'pooja.thapa2026@gmail.com', Faculty: 'Faculty of Information Technology', Class: 'BIT 101' },
+        { Name: 'Bikash Adhikari', Phone: '+977-9867890123', Gmail: 'bikash.adhikari2026@gmail.com', Faculty: 'Faculty of Information Technology', Class: 'BIT 101' }
+      ],
+      institutionId: targetOrg.id,
+      institutionName: 'Public English School'
+    })
+  });
+  const rosterData = await rosterRes.json();
+  console.log('   Import status:', rosterRes.status);
+  console.log('   Total Imported:', rosterData.totalImported);
+  console.log('   Credentials returned:', rosterData.credentials?.length);
+  console.log('   First student temporary password:', rosterData.credentials?.[0]?.temporaryPassword);
+
+  if (!rosterData.success || rosterData.totalImported !== 3 || !rosterData.credentials?.[0]?.temporaryPassword) {
+    throw new Error('❌ Test 8 Failed: Admin bulk roster import failed');
+  }
+  console.log('   ✅ Test 8 Passed: 3 student accounts provisioned with downloadable credentials!');
+
+  // 9. Student Login with Generated Temporary Password -> Triggers 2FA Email
+  console.log('\n9️⃣ Testing Student Login with Temporary Credentials (2FA Email Trigger)...');
+  const studentEmail = 'aarav.sharma2026@gmail.com';
+  const studentTempPass = rosterData.credentials[0].temporaryPassword;
+
+  const stdLoginRes = await fetch(`${BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: studentEmail, password: studentTempPass })
+  });
+  const stdLoginData = await stdLoginRes.json();
+  console.log('   Student login status:', stdLoginRes.status);
+  console.log('   Student requireOtp:', stdLoginData.requireOtp);
+  console.log('   Student mustChangePassword:', stdLoginData.mustChangePassword);
+
+  if (!stdLoginData.requireOtp || !stdLoginData.mustChangePassword) {
+    throw new Error('❌ Test 9 Failed: Student login must require 2FA OTP and password change');
+  }
+
+  // Fetch student OTP from Turso DB
+  const stdDbOtpRes = await client.execute({
+    sql: 'SELECT otp_code FROM users WHERE LOWER(email) = LOWER(?);',
+    args: [studentEmail]
+  });
+  const studentOtp = String(stdDbOtpRes.rows[0]?.otp_code || '');
+  console.log('   Student Dispatched 2FA OTP Code:', studentOtp);
+  if (!studentOtp || studentOtp.length !== 6) {
+    throw new Error('❌ Test 9 Failed: Expected 6-digit OTP code in Turso for student');
+  }
+  console.log('   ✅ Test 9 Passed: Student login required 2FA and dispatched code!');
+
+  // 10. Student Verify 2FA OTP & Change Password
+  console.log('\n🔟 Testing Student 2FA OTP Verification & Permanent Password Setup...');
+  const stdVerifyRes = await fetch(`${BASE}/api/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: studentEmail, otp: studentOtp })
+  });
+  const stdVerifyData = await stdVerifyRes.json();
+  console.log('   Student verify status:', stdVerifyRes.status);
+  console.log('   Student mustChangePassword:', stdVerifyData.mustChangePassword);
+
+  if (!stdVerifyData.success || !stdVerifyData.mustChangePassword) {
+    throw new Error('❌ Test 10 Failed: Student OTP verification failed');
+  }
+
+  const stdChangeRes = await fetch(`${BASE}/api/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${stdVerifyData.token}`
+    },
+    body: JSON.stringify({
+      email: studentEmail,
+      newPassword: 'StudentPermanentPass#2026'
+    })
+  });
+  const stdChangeData = await stdChangeRes.json();
+  console.log('   Student permanent password set status:', stdChangeRes.status);
+  if (!stdChangeData.success) {
+    throw new Error('❌ Test 10 Failed: Setting student permanent password failed');
+  }
+  console.log('   ✅ Test 10 Passed: Student 2FA verified and permanent password created!');
+
+  // 11. Resend OTP Endpoint Test
+  console.log('\n1️⃣1️⃣ Testing Resend OTP Endpoint...');
+  const resendRes = await fetch(`${BASE}/api/auth/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'pooja.thapa2026@gmail.com' })
+  });
+  const resendData = await resendRes.json();
+  console.log('   Resend status:', resendRes.status);
+  console.log('   Success:', resendData.success);
+  console.log('   Message:', resendData.message);
+  if (!resendData.success) {
+    throw new Error('❌ Test 11 Failed: Resend OTP failed');
+  }
+  console.log('   ✅ Test 11 Passed: Resend OTP endpoint active with 60s cooldown support!');
+
+  // 12. Platform Email Gateway Settings & Delivery Logs Test
+  console.log('\n1️⃣2️⃣ Testing Platform Email Gateway & Audit Logs...');
+  const emailSettingsRes = await fetch(`${BASE}/api/platform/email-settings`, {
+    headers: { 'Authorization': `Bearer ${devLoginData.token}` }
+  });
+  const emailSettingsData = await emailSettingsRes.json();
+  console.log('   Email Settings status:', emailSettingsRes.status);
+  console.log('   Active Provider:', emailSettingsData.provider);
+
+  const emailLogsRes = await fetch(`${BASE}/api/platform/email-logs`, {
+    headers: { 'Authorization': `Bearer ${devLoginData.token}` }
+  });
+  const emailLogsData = await emailLogsRes.json();
+  console.log('   Email Logs count in Turso:', emailLogsData.logs?.length);
+  if (!emailSettingsRes.ok || !emailLogsRes.ok) {
+    throw new Error('❌ Test 12 Failed: Email gateway APIs failed');
+  }
+  console.log('   ✅ Test 12 Passed: Email Gateway APIs and Turso email audit logs verified!');
+
+  console.log('\n🎉 ALL 12 PRODUCTION AUDIT TESTS PASSED WITH 100% SUCCESS!\n');
 }
 
 testSuite().catch(err => {

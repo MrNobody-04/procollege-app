@@ -369,6 +369,32 @@ async function init() {
     `);
     console.log('   ✔ Table `college_requests` created / verified');
 
+    // 14. platform_settings
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS platform_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    console.log('   ✔ Table `platform_settings` created / verified');
+
+    // 15. email_logs (Track 2FA OTP emails & delivery status)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id TEXT PRIMARY KEY,
+        recipient_email TEXT NOT NULL,
+        recipient_name TEXT,
+        subject TEXT,
+        otp_code TEXT,
+        provider TEXT,
+        status TEXT,
+        error_message TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    console.log('   ✔ Table `email_logs` created / verified');
+
     console.log('\n🔍 2. Creating Composite & Foreign Key Indexes...');
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_notices_college_time ON notices(college_id, created_at);`);

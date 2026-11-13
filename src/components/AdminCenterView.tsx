@@ -29,7 +29,11 @@ import {
   CreditCard,
   Database,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  Send,
+  AlertTriangle,
+  Copy
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
@@ -89,7 +93,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin';
 
   // Dedicated Developer Navigation Section - seamlessly kept in sync with activeTab
-  const [currentDevSection, setCurrentDevSection] = useState<ActiveTab | 'campus-ops'>(
+  const [currentDevSection, setCurrentDevSection] = useState<ActiveTab | 'campus-ops' | 'dev-email'>(
     activeTab?.startsWith('dev-') ? activeTab : (activeDevTab?.startsWith('dev-') ? activeDevTab : 'dev-overview')
   );
 
@@ -99,10 +103,124 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     }
   }, [activeTab]);
 
-  const switchDevSection = (section: ActiveTab | 'campus-ops') => {
+  const switchDevSection = (section: ActiveTab | 'campus-ops' | 'dev-email') => {
     setCurrentDevSection(section);
-    if (section !== 'campus-ops') {
+    if (section !== 'campus-ops' && section !== 'dev-email') {
       setActiveTab(section);
+    }
+  };
+
+  // Developer Platform 2FA Email Gateway State
+  const [emailSettings, setEmailSettings] = useState<{
+    provider: string;
+    apiKey: string;
+    senderEmail: string;
+    senderName: string;
+    relayUrl: string;
+    hasEnvKey?: boolean;
+  }>({
+    provider: 'relay',
+    apiKey: '',
+    senderEmail: 'security@procollege.edu.np',
+    senderName: 'ProCollege Security',
+    relayUrl: '',
+    hasEnvKey: false
+  });
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [isLoadingEmailSettings, setIsLoadingEmailSettings] = useState(false);
+  const [isSavingEmailSettings, setIsSavingEmailSettings] = useState(false);
+  const [testEmailTarget, setTestEmailTarget] = useState(currentUser.email || 'gcsujan321@gmail.com');
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string; provider?: string } | null>(null);
+  const [copiedScript, setCopiedScript] = useState(false);
+
+  const fetchEmailSettings = async () => {
+    setIsLoadingEmailSettings(true);
+    try {
+      const token = localStorage.getItem('procollege_token') || '';
+      const [settingsRes, logsRes] = await Promise.all([
+        fetch('/api/platform/email-settings', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/platform/email-logs', { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+      if (settingsRes.ok) {
+        const data = await settingsRes.json();
+        setEmailSettings(data);
+      }
+      if (logsRes.ok) {
+        const data = await logsRes.json();
+        setEmailLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch email settings:', err);
+    } finally {
+      setIsLoadingEmailSettings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isDeveloper && currentDevSection === 'dev-email') {
+      fetchEmailSettings();
+    }
+  }, [isDeveloper, currentDevSection]);
+
+  const handleSaveEmailSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingEmailSettings(true);
+    try {
+      const token = localStorage.getItem('procollege_token') || '';
+      const res = await fetch('/api/platform/email-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(emailSettings)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update email settings');
+      showDialog('2FA Email Gateway settings saved successfully!', { type: 'success', title: 'Settings Updated' });
+      fetchEmailSettings();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showDialog(`Failed to save settings: ${msg}`, { type: 'error', title: 'Update Error' });
+    } finally {
+      setIsSavingEmailSettings(false);
+    }
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testEmailTarget.trim()) return;
+    setIsSendingTestEmail(true);
+    setTestEmailResult(null);
+    try {
+      const token = localStorage.getItem('procollege_token') || '';
+      const res = await fetch('/api/platform/send-test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ email: testEmailTarget.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Test email failed');
+      }
+      setTestEmailResult({
+        success: true,
+        message: data.message,
+        provider: data.provider
+      });
+      fetchEmailSettings();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setTestEmailResult({
+        success: false,
+        message: msg
+      });
+    } finally {
+      setIsSendingTestEmail(false);
     }
   };
 
@@ -1193,6 +1311,18 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </button>
 
             <button
+              onClick={() => switchDevSection('dev-email')}
+              className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                currentDevSection === 'dev-email'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              <span>2FA Email Gateway</span>
+            </button>
+
+            <button
               onClick={() => switchDevSection('campus-ops')}
               className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 currentDevSection === 'campus-ops'
@@ -1852,6 +1982,378 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <p className="text-[11px] text-zinc-500">Strict multi-tenant isolation per institution boundary.</p>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* DEVELOPER SECTION 5: 2FA EMAIL & OTP DISPATCH GATEWAY      */}
+        {/* ========================================================= */}
+        {isDeveloper && currentDevSection === 'dev-email' && (
+          <div className="space-y-6">
+            {/* Top Gateway Overview Card */}
+            <div className="bg-gradient-to-r from-purple-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+              <div className="relative z-10 max-w-2xl">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 text-xs font-semibold mb-3">
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Production 2FA Email Delivery Engine</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Two-Factor Authentication Email Gateway</h2>
+                <p className="text-xs sm:text-sm text-purple-200/90 mt-2 leading-relaxed">
+                  When new organization administrators or enrolled students log in using their temporary credentials, ProCollege automatically generates a 6-digit OTP code and dispatches it directly to their registered Gmail / email address for verification.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                    emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    {emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'Gateway Connected' : 'Configuration Recommended'}
+                  </span>
+                  <span className="text-xs text-purple-200/70">
+                    Active Provider: <strong className="text-white uppercase font-mono">{emailSettings.provider || 'Relay'}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Gateway Configuration & Test Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Provider Settings Form (7 cols) */}
+              <div className="lg:col-span-7 bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900">Email Dispatch Provider</h3>
+                      <p className="text-xs text-zinc-500">Select and configure your transactional email service.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchEmailSettings}
+                    disabled={isLoadingEmailSettings}
+                    className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-500 transition-colors cursor-pointer"
+                    title="Refresh Settings"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isLoadingEmailSettings ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveEmailSettings} className="space-y-4">
+                  {/* Provider Radio Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-2">Delivery Method</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: 'relay', name: 'Google Apps Script', badge: '100% Free' },
+                        { id: 'brevo', name: 'Brevo (Sendinblue)', badge: '300/day' },
+                        { id: 'resend', name: 'Resend API', badge: '3,000/mo' },
+                        { id: 'plunk', name: 'Plunk', badge: '30,000/mo' },
+                      ].map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setEmailSettings(prev => ({ ...prev, provider: p.id }))}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                            emailSettings.provider === p.id
+                              ? 'border-purple-600 bg-purple-50/60 ring-1 ring-purple-600 shadow-xs'
+                              : 'border-zinc-200 hover:border-zinc-300 bg-white'
+                          }`}
+                        >
+                          <span className="block text-xs font-bold text-zinc-900">{p.name}</span>
+                          <span className="inline-block mt-1 text-[10px] font-semibold text-purple-700 bg-purple-100/70 px-1.5 py-0.5 rounded">
+                            {p.badge}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Provider Details based on selection */}
+                  {emailSettings.provider === 'relay' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                          Google Apps Script Webhook URL (Recommended)
+                        </label>
+                        <input
+                          type="url"
+                          value={emailSettings.relayUrl}
+                          onChange={e => setEmailSettings(prev => ({ ...prev, relayUrl: e.target.value }))}
+                          placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
+                          className="w-full text-xs font-mono border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                        />
+                        <p className="text-[11px] text-zinc-500 mt-1">
+                          Sends directly from your Gmail account to any student/admin address with 100% inbox delivery and zero spam filtering.
+                        </p>
+                      </div>
+
+                      {/* Google Apps Script 1-Click Code Snippet */}
+                      <div className="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs space-y-2 border border-slate-800">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-purple-300 text-[11px] uppercase tracking-wider">
+                            30-Second Google Apps Script Setup
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const code = `function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    MailApp.sendEmail({
+      to: data.to,
+      subject: data.subject,
+      htmlBody: data.html
+    });
+    return ContentService.createTextOutput(JSON.stringify({ success: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+                              navigator.clipboard.writeText(code);
+                              setCopiedScript(true);
+                              setTimeout(() => setCopiedScript(false), 2000);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>{copiedScript ? 'Copied!' : 'Copy Script'}</span>
+                          </button>
+                        </div>
+                        <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] leading-relaxed">
+                          <li>Open <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-purple-400 underline font-semibold">script.google.com</a> and create a <strong>New Project</strong>.</li>
+                          <li>Paste the copied script and click <strong>Deploy &gt; New deployment</strong>.</li>
+                          <li>Select <strong>Web app</strong>, set <em>Who has access</em> to <strong>Anyone</strong>, click Deploy, and paste the generated URL above!</li>
+                        </ol>
+                      </div>
+                    </div>
+                  )}
+
+                  {emailSettings.provider !== 'relay' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                          API Key / Secret Key
+                        </label>
+                        <input
+                          type="password"
+                          value={emailSettings.apiKey}
+                          onChange={e => setEmailSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                          placeholder={emailSettings.provider === 'brevo' ? 'xkeysib-...' : emailSettings.provider === 'resend' ? 're_...' : 'sk_...'}
+                          className="w-full text-xs font-mono border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-zinc-700 mb-1">Sender Email</label>
+                          <input
+                            type="email"
+                            value={emailSettings.senderEmail}
+                            onChange={e => setEmailSettings(prev => ({ ...prev, senderEmail: e.target.value }))}
+                            placeholder="notifications@procollege.edu.np"
+                            className="w-full text-xs border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-zinc-700 mb-1">Sender Name</label>
+                          <input
+                            type="text"
+                            value={emailSettings.senderName}
+                            onChange={e => setEmailSettings(prev => ({ ...prev, senderName: e.target.value }))}
+                            placeholder="ProCollege Security"
+                            className="w-full text-xs border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSavingEmailSettings}
+                    className="w-full py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isSavingEmailSettings ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving Configuration...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Save Email Gateway Settings</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Right Column: Live Test & Diagnostics (5 cols) */}
+              <div className="lg:col-span-5 space-y-5">
+                {/* Send Live Test Email Card */}
+                <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center gap-2.5 pb-3 border-b border-zinc-100">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                      <Send className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900">Send Test 2FA Verification</h3>
+                      <p className="text-xs text-zinc-500">Verify real email delivery to your inbox.</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSendTestEmail} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-700 mb-1">Target Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={testEmailTarget}
+                        onChange={e => setTestEmailTarget(e.target.value)}
+                        placeholder="gcsujan321@gmail.com"
+                        className="w-full text-xs border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSendingTestEmail || !testEmailTarget.trim()}
+                      className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {isSendingTestEmail ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Dispatching Test Email...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Send Test 2FA Email</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {testEmailResult && (
+                    <div className={`p-3.5 rounded-xl border text-xs ${
+                      testEmailResult.success
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                        : 'bg-rose-50 border-rose-200 text-rose-900'
+                    }`}>
+                      <div className="flex items-start gap-2">
+                        {testEmailResult.success ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="font-semibold">{testEmailResult.success ? 'Email Delivered Successfully!' : 'Email Dispatch Failed'}</p>
+                          <p className="text-[11px] mt-0.5 leading-relaxed opacity-90">{testEmailResult.message}</p>
+                          {testEmailResult.provider && (
+                            <span className="inline-block mt-1 text-[10px] font-mono font-bold bg-white/80 px-2 py-0.5 rounded border">
+                              via {testEmailResult.provider}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick Architecture Guide Card */}
+                <div className="bg-zinc-50 rounded-xl border border-zinc-200 p-4 text-xs space-y-2">
+                  <span className="font-bold text-zinc-900 block">How ProCollege 2FA Operates</span>
+                  <ul className="space-y-1.5 text-zinc-600 text-[11px] leading-relaxed">
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-purple-600 font-bold">•</span>
+                      <span><strong>Campus Admins:</strong> Upon creation or password reset, logging in sends a fresh 6-digit OTP code to their official email.</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-purple-600 font-bold">•</span>
+                      <span><strong>Imported Students:</strong> Entering their temporary roster credentials triggers a 6-digit OTP sent to their Gmail, followed by mandatory permanent password creation.</span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-purple-600 font-bold">•</span>
+                      <span><strong>Multi-Campus Security:</strong> Zero demo accounts exist; all institutions operate strictly within their own encrypted database boundary.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Row: Live 2FA & Email Audit Logs Table */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700">
+                    <ClipboardList className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-900">Recent 2FA OTP & Email Delivery Logs</h3>
+                    <p className="text-xs text-zinc-500">Live audit of security codes issued across all organizations.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={fetchEmailSettings}
+                  className="px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh Logs</span>
+                </button>
+              </div>
+
+              {emailLogs.length === 0 ? (
+                <div className="p-8 text-center text-zinc-400 text-xs bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200">
+                  <Mail className="w-8 h-8 mx-auto mb-2 text-zinc-300" />
+                  <p className="font-semibold text-zinc-600">No email delivery events recorded yet.</p>
+                  <p className="text-[11px] text-zinc-400 mt-1">Send a test email above or log in with an admin or student account to trigger 2FA.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-zinc-500 text-[11px] font-semibold bg-zinc-50/70">
+                        <th className="py-2.5 px-3">Recipient Email</th>
+                        <th className="py-2.5 px-3">Name / Role</th>
+                        <th className="py-2.5 px-3">2FA Code</th>
+                        <th className="py-2.5 px-3">Provider</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 font-mono text-[11px]">
+                      {emailLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="py-2.5 px-3 font-semibold text-zinc-900">{log.recipient_email}</td>
+                          <td className="py-2.5 px-3 font-sans text-zinc-600">{log.recipient_name || 'User'}</td>
+                          <td className="py-2.5 px-3 font-bold text-purple-700 tracking-wider bg-purple-50/50 rounded px-1.5">
+                            {log.otp_code || '••••••'}
+                          </td>
+                          <td className="py-2.5 px-3 uppercase text-zinc-500 font-bold">{log.provider || 'none'}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              log.status === 'delivered'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {log.status === 'delivered' ? '✓ Delivered' : '✗ Failed'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-sans text-zinc-400 text-[10px]">
+                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
