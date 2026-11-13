@@ -350,7 +350,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         {/* Fixed Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 shrink-0 bg-white">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#5b5fc7]/10 text-[#5b5fc7] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#26394D]/10 text-[#26394D] flex items-center justify-center shrink-0">
               <FileCheck className="w-5 h-5" />
             </div>
             <div>
@@ -376,16 +376,16 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
             <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
-                  <BookOpen className="w-4 h-4 text-[#5b5fc7]" />
+                  <BookOpen className="w-4 h-4 text-[#26394D]" />
                   <span>{activeCourse.name} ({activeCourse.code})</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-indigo-700">
-                  <Layers className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                  <Layers className="w-3.5 h-3.5 text-[#26394D]" />
                   <span>Subject: <strong className="font-semibold text-zinc-900">{activeChannel?.name || 'Subject Channel'}</strong></span>
                 </div>
               </div>
               <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-indigo-200 text-indigo-700 text-[10px] font-bold self-start sm:self-center shadow-2xs">
-                <Lock className="w-3 h-3 text-[#5b5fc7]" />
+                <Lock className="w-3 h-3 text-[#26394D]" />
                 <span>Context Locked</span>
               </div>
             </div>
@@ -393,7 +393,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3.5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-zinc-800 text-xs flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-[#5b5fc7]" />
+                  <Layers className="w-4 h-4 text-[#26394D]" />
                   Target Class & Subject Channel *
                 </span>
                 <span className="text-[10px] text-zinc-400">Never leaks to other subjects</span>
@@ -408,7 +408,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   <select
                     value={selectedCourseId}
                     onChange={e => setSelectedCourseId(e.target.value)}
-                    className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7]"
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#26394D]"
                   >
                     {eligibleCourses.map(c => (
                       <option key={c.id} value={c.id}>
@@ -431,7 +431,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                     <select
                       value={selectedChannelId}
                       onChange={e => setSelectedChannelId(e.target.value)}
-                      className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7]"
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#26394D]"
                     >
                       {eligibleChannels.map(ch => (
                         <option key={ch.id} value={ch.id}>
@@ -453,7 +453,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Lab 4: B-Tree Indexing Engine Implementation"
-              className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 font-medium focus:ring-1 focus:ring-[#5b5fc7] focus:outline-none"
+              className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 font-medium focus:ring-1 focus:ring-[#26394D] focus:outline-none"
               required
             />
           </div>
@@ -466,7 +466,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               value={instructions}
               onChange={e => setInstructions(e.target.value)}
               placeholder="State problem statements, expected deliverables, submission guidelines, and constraints..."
-              className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7] focus:outline-none resize-none"
+              className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:ring-1 focus:ring-[#26394D] focus:outline-none resize-none"
             />
           </div>
 
@@ -474,7 +474,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
           <div className="bg-zinc-50/80 rounded-xl p-3.5 border border-zinc-200 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-zinc-800 flex items-center gap-1.5 text-xs">
-                <Paperclip className="w-4 h-4 text-[#5b5fc7]" />
+                <Paperclip className="w-4 h-4 text-[#26394D]" />
                 Assignment Files & Reference Materials
               </span>
               <span className="text-[10px] text-zinc-400">PDF, DOC, PPT, ZIP</span>
@@ -498,8 +498,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-3.5 text-center cursor-pointer transition-colors ${
                 isDragging
-                  ? 'border-[#5b5fc7] bg-indigo-50/50'
-                  : 'border-zinc-300 hover:border-[#5b5fc7]/60 bg-white hover:bg-zinc-50'
+                  ? 'border-[#26394D] bg-indigo-50/50'
+                  : 'border-zinc-300 hover:border-[#26394D]/60 bg-white hover:bg-zinc-50'
               }`}
             >
               <Upload className="w-5 h-5 text-zinc-400 mx-auto mb-1.5" />
@@ -552,7 +552,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
           {/* Assignment Dates & Deadlines */}
           <div className="bg-zinc-50/80 border border-zinc-200 rounded-xl p-3.5 sm:p-4 space-y-3.5">
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#5b5fc7]" />
+              <Clock className="w-4 h-4 text-[#26394D]" />
               <span className="font-bold text-xs text-zinc-900">Assignment Dates & Deadlines</span>
             </div>
 
@@ -566,7 +566,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   onClick={() => setIsScheduled(false)}
                   className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
                     !isScheduled
-                      ? 'bg-white border-[#5b5fc7] shadow-xs'
+                      ? 'bg-white border-[#26394D] shadow-xs'
                       : 'bg-white/60 border-zinc-200 hover:border-zinc-300'
                   }`}
                 >
@@ -576,7 +576,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                       name="release-option"
                       checked={!isScheduled}
                       onChange={() => setIsScheduled(false)}
-                      className="text-[#5b5fc7]"
+                      className="text-[#26394D]"
                     />
                     <span className="font-semibold text-zinc-900 text-xs">Publish Immediately</span>
                   </div>
@@ -589,7 +589,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                   onClick={() => setIsScheduled(true)}
                   className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
                     isScheduled
-                      ? 'bg-white border-[#5b5fc7] shadow-xs'
+                      ? 'bg-white border-[#26394D] shadow-xs'
                       : 'bg-white/60 border-zinc-200 hover:border-zinc-300'
                   }`}
                 >
@@ -599,7 +599,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                       name="release-option"
                       checked={isScheduled}
                       onChange={() => setIsScheduled(true)}
-                      className="text-[#5b5fc7]"
+                      className="text-[#26394D]"
                     />
                     <span className="font-semibold text-zinc-900 text-xs">Schedule for Future</span>
                   </div>
@@ -619,7 +619,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                     type="datetime-local"
                     value={scheduleDate}
                     onChange={e => setScheduleDate(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 font-medium focus:ring-1 focus:ring-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 font-medium focus:ring-1 focus:ring-[#26394D]"
                     required={isScheduled}
                   />
                   <p className="text-[10px] text-zinc-400">
@@ -646,7 +646,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                     setCloseDate(e.target.value);
                   }
                 }}
-                className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-900 focus:ring-1 focus:ring-[#5b5fc7]"
+                className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-900 focus:ring-1 focus:ring-[#26394D]"
                 required
               />
             </div>
@@ -665,7 +665,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                       setCloseDate(dueDate);
                     }
                   }}
-                  className="mt-0.5 rounded text-[#5b5fc7]"
+                  className="mt-0.5 rounded text-[#26394D]"
                 />
                 <div>
                   <span className="font-semibold text-zinc-800 text-xs">
@@ -686,7 +686,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                     type="datetime-local"
                     value={closeDate}
                     onChange={e => setCloseDate(e.target.value)}
-                    className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 focus:ring-1 focus:ring-[#5b5fc7]"
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 focus:ring-1 focus:ring-[#26394D]"
                   />
                   <p className="text-[10px] text-zinc-400">
                     Submissions between Due Date and Close Date are recorded as late. Submissions lock at Close Date.
@@ -743,7 +743,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddCriterion}
-                className="text-[11px] font-semibold text-[#5b5fc7] hover:underline flex items-center gap-1 mt-1 cursor-pointer"
+                className="text-[11px] font-semibold text-[#26394D] hover:underline flex items-center gap-1 mt-1 cursor-pointer"
               >
                 <Plus className="w-3 h-3" />
                 Add Rubric Criterion
@@ -772,7 +772,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
               type="submit"
               form="create-assignment-form"
               disabled={!selectedChannelId || eligibleChannels.length === 0}
-              className="bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:bg-zinc-300 disabled:cursor-not-allowed text-white px-5 py-2 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="bg-[#26394D] hover:bg-[#141E2B] disabled:bg-zinc-300 disabled:cursor-not-allowed text-white px-5 py-2 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <FileCheck className="w-4 h-4" />
               <span>{isScheduled ? 'Schedule Assignment' : 'Publish Assignment'}</span>

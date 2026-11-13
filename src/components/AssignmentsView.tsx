@@ -161,12 +161,12 @@ export const AssignmentsView: React.FC = () => {
       : filteredByDropdowns;
 
   return (
-    <div className="flex-1 bg-[#f5f5f5] p-3 sm:p-5 md:p-6 overflow-y-auto select-none">
+    <div className="flex-1 bg-[#E8E9E2] p-3 sm:p-5 md:p-6 overflow-y-auto select-none">
       <div className="max-w-4xl mx-auto space-y-4">
         {/* Header */}
-        <div className="bg-white rounded-lg border border-zinc-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-white rounded-lg border border-[#B2C1C5] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight">
+            <h1 className="text-base sm:text-lg font-bold text-[#141E2B] tracking-tight">
               Assignments
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
@@ -177,7 +177,7 @@ export const AssignmentsView: React.FC = () => {
           {isOwner && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-3.5 py-1.5 rounded text-xs font-medium shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white px-3.5 py-1.5 rounded text-xs font-medium shadow-xs transition-colors self-start sm:self-auto cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Create Assignment</span>
@@ -186,9 +186,9 @@ export const AssignmentsView: React.FC = () => {
         </div>
 
         {/* 2 Filter Dropdowns: Filter by Class & Filter by Subject */}
-        <div className="bg-white rounded-lg border border-zinc-200 p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-zinc-700 font-semibold shrink-0">
-            <Filter className="w-3.5 h-3.5 text-[#5b5fc7]" />
+        <div className="bg-white rounded-lg border border-[#B2C1C5] p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[#141E2B] font-semibold shrink-0">
+            <Filter className="w-3.5 h-3.5 text-[#26394D]" />
             <span>Filters:</span>
           </div>
 
@@ -202,7 +202,7 @@ export const AssignmentsView: React.FC = () => {
               <select
                 value={selectedCourseId}
                 onChange={e => handleCourseFilterChange(e.target.value)}
-                className="bg-zinc-50 hover:bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7] transition-colors"
+                className="bg-zinc-50 hover:bg-white border border-[#B2C1C5] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#141E2B] focus:ring-1 focus:ring-[#26394D] transition-colors"
               >
                 <option value="all">All My Classes ({userCourses.length})</option>
                 {userCourses.map(c => (
@@ -223,7 +223,7 @@ export const AssignmentsView: React.FC = () => {
                 value={selectedChannelId}
                 onChange={e => setSelectedChannelId(e.target.value)}
                 disabled={selectedCourseId === 'all'}
-                className="bg-zinc-50 hover:bg-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 focus:ring-1 focus:ring-[#5b5fc7] transition-colors"
+                className="bg-zinc-50 hover:bg-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed border border-[#B2C1C5] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#141E2B] focus:ring-1 focus:ring-[#26394D] transition-colors"
               >
                 <option value="all">
                   {selectedCourseId === 'all' ? 'All Subjects (Select class first)' : 'All Subjects in Class'}
@@ -243,7 +243,7 @@ export const AssignmentsView: React.FC = () => {
                   setSelectedCourseId('all');
                   setSelectedChannelId('all');
                 }}
-                className="text-[11px] text-[#5b5fc7] hover:underline font-semibold cursor-pointer ml-1"
+                className="text-[11px] text-[#26394D] hover:underline font-semibold cursor-pointer ml-1"
               >
                 Reset
               </button>
@@ -252,13 +252,13 @@ export const AssignmentsView: React.FC = () => {
         </div>
 
         {/* 4 Standard Status Navigation Tabs */}
-        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-zinc-200 pb-2 text-xs font-medium overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 sm:gap-2 border-b border-[#B2C1C5] pb-2 text-xs font-medium overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveFilter('pending')}
             className={`px-2.5 sm:px-3.5 py-1.5 rounded transition-colors shrink-0 whitespace-nowrap text-[11px] sm:text-xs cursor-pointer ${
               activeFilter === 'pending'
-                ? 'bg-[#5b5fc7] text-white font-semibold'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+                ? 'bg-[#26394D] text-[#E8E9E2] font-semibold'
+                : 'bg-white text-[#141E2B]/80 hover:text-[#141E2B] border border-[#B2C1C5]'
             }`}
           >
             Pending ({pendingAssignments.length})
@@ -268,8 +268,8 @@ export const AssignmentsView: React.FC = () => {
             onClick={() => setActiveFilter('completed')}
             className={`px-2.5 sm:px-3.5 py-1.5 rounded transition-colors shrink-0 whitespace-nowrap text-[11px] sm:text-xs cursor-pointer ${
               activeFilter === 'completed'
-                ? 'bg-[#5b5fc7] text-white font-semibold'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+                ? 'bg-[#26394D] text-[#E8E9E2] font-semibold'
+                : 'bg-white text-[#141E2B]/80 hover:text-[#141E2B] border border-[#B2C1C5]'
             }`}
           >
             Completed ({completedAssignments.length})
@@ -279,8 +279,8 @@ export const AssignmentsView: React.FC = () => {
             onClick={() => setActiveFilter('due-passed')}
             className={`px-2.5 sm:px-3.5 py-1.5 rounded transition-colors shrink-0 whitespace-nowrap text-[11px] sm:text-xs cursor-pointer ${
               activeFilter === 'due-passed'
-                ? 'bg-[#5b5fc7] text-white font-semibold'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+                ? 'bg-[#26394D] text-[#E8E9E2] font-semibold'
+                : 'bg-white text-[#141E2B]/80 hover:text-[#141E2B] border border-[#B2C1C5]'
             }`}
           >
             Due Date Passed ({duePassedAssignments.length})
@@ -290,8 +290,8 @@ export const AssignmentsView: React.FC = () => {
             onClick={() => setActiveFilter('all')}
             className={`px-2.5 sm:px-3.5 py-1.5 rounded transition-colors shrink-0 whitespace-nowrap text-[11px] sm:text-xs cursor-pointer ${
               activeFilter === 'all'
-                ? 'bg-[#5b5fc7] text-white font-semibold'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+                ? 'bg-[#26394D] text-[#E8E9E2] font-semibold'
+                : 'bg-white text-[#141E2B]/80 hover:text-[#141E2B] border border-[#B2C1C5]'
             }`}
           >
             All ({filteredByDropdowns.length})
@@ -334,11 +334,11 @@ export const AssignmentsView: React.FC = () => {
                   <div className="min-w-0 pr-4 space-y-1.5">
                     {/* Strict Class • Subject Badge */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-indigo-50/80 text-indigo-800 font-semibold text-[11px] border border-indigo-200">
-                        <BookOpen className="w-3 h-3 text-[#5b5fc7]" />
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#B2C1C5]/30 text-[#26394D] font-semibold text-[11px] border border-[#B2C1C5]">
+                        <BookOpen className="w-3 h-3 text-[#26394D]" />
                         <span>{displayCourseName}</span>
-                        <span className="text-indigo-400">•</span>
-                        <span className="font-bold text-indigo-900">{asgn.subjectName || 'Subject'}</span>
+                        <span className="text-[#26394D]/40">•</span>
+                        <span className="font-bold text-[#26394D]">{asgn.subjectName || 'Subject'}</span>
                       </span>
 
                       {asgn.scheduleDate && new Date(asgn.scheduleDate).getTime() > currentTime && (
@@ -349,7 +349,7 @@ export const AssignmentsView: React.FC = () => {
                     </div>
 
                     {/* Assignment Title */}
-                    <h3 className="font-bold text-xs sm:text-sm text-zinc-900 hover:text-[#5b5fc7] transition-colors truncate">
+                    <h3 className="font-bold text-xs sm:text-sm text-[#141E2B] hover:text-[#26394D] transition-colors truncate">
                       {asgn.title}
                     </h3>
 
@@ -415,7 +415,7 @@ export const AssignmentsView: React.FC = () => {
                           <p className="text-xs font-semibold text-zinc-700">
                             {asgn.submissions.length} turned in
                           </p>
-                          <p className="text-[10px] text-[#5b5fc7] hover:underline font-medium">SpeedGrader</p>
+                          <p className="text-[10px] text-[#26394D] hover:underline font-medium">SpeedGrader</p>
                         </div>
                       )
                     )}

@@ -85,10 +85,11 @@ async function testSuite() {
 
   // 4. Admin Login with Reset Credentials
   console.log('\n4️⃣ Testing Public English School Admin Login with Reset Credentials...');
+  const adminTargetEmail = resetData.adminEmail || 'gamerlush11@gmail.com';
   const adminLoginRes = await fetch(`${BASE}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'gamerlush11@gmail.com', password: adminTempPassword })
+    body: JSON.stringify({ email: adminTargetEmail, password: adminTempPassword })
   });
   const adminLoginData = await adminLoginRes.json();
   console.log('   Login status:', adminLoginRes.status);
@@ -102,7 +103,7 @@ async function testSuite() {
   // Fetch the fresh OTP code from Turso database (which was dispatched via email)
   const dbOtpRes = await client.execute({
     sql: 'SELECT otp_code FROM users WHERE LOWER(email) = LOWER(?);',
-    args: ['gamerlush11@gmail.com']
+    args: [adminTargetEmail]
   });
   const currentOtp = String(dbOtpRes.rows[0]?.otp_code || '');
   console.log('   Live Turso Dispatched 2FA OTP Code:', currentOtp);
@@ -116,7 +117,7 @@ async function testSuite() {
   const verifyRes = await fetch(`${BASE}/api/auth/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'gamerlush11@gmail.com', otp: currentOtp })
+    body: JSON.stringify({ email: adminTargetEmail, otp: currentOtp })
   });
   const verifyData = await verifyRes.json();
   console.log('   Verify status:', verifyRes.status);
@@ -137,7 +138,7 @@ async function testSuite() {
       'Authorization': `Bearer ${verifyData.token}`
     },
     body: JSON.stringify({
-      email: 'gamerlush11@gmail.com',
+      email: adminTargetEmail,
       newPassword: 'SchoolPermanentPass#2026'
     })
   });

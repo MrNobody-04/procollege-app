@@ -265,7 +265,7 @@ export const AdminRosterUpload: React.FC = () => {
           <select
             value={selectedFacultyId}
             onChange={(e) => setSelectedFacultyId(e.target.value)}
-            className="w-full text-xs font-medium text-zinc-800 bg-zinc-50 border border-zinc-300 rounded-lg p-2.5 focus:outline-none focus:border-[#5b5fc7]"
+            className="w-full text-xs font-medium text-zinc-800 bg-zinc-50 border border-zinc-300 rounded-lg p-2.5 focus:outline-none focus:border-[#26394D]"
           >
             {faculties.map(f => (
               <option key={f.id} value={f.id}>{f.name} ({f.code})</option>
@@ -278,7 +278,7 @@ export const AdminRosterUpload: React.FC = () => {
           <select
             value={selectedCourseId}
             onChange={(e) => setSelectedCourseId(e.target.value)}
-            className="w-full text-xs font-medium text-zinc-800 bg-zinc-50 border border-zinc-300 rounded-lg p-2.5 focus:outline-none focus:border-[#5b5fc7]"
+            className="w-full text-xs font-medium text-zinc-800 bg-zinc-50 border border-zinc-300 rounded-lg p-2.5 focus:outline-none focus:border-[#26394D]"
           >
             {courses.map(c => (
               <option key={c.id} value={c.id}>{c.code}: {c.name}</option>
@@ -309,7 +309,7 @@ export const AdminRosterUpload: React.FC = () => {
         />
 
         <div className="max-w-md mx-auto space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-[#5b5fc7] flex items-center justify-center mx-auto shadow-inner">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-[#26394D] flex items-center justify-center mx-auto shadow-inner">
             <Upload className="w-7 h-7" />
           </div>
 
@@ -358,7 +358,7 @@ export const AdminRosterUpload: React.FC = () => {
         <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-xs">
           <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#5b5fc7]" />
+              <Users className="w-4 h-4 text-[#26394D]" />
               <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">
                 Roster Preview ({parsedRows.length} students detected)
               </h3>

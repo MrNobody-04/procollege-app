@@ -71,7 +71,7 @@ export const ActivityView: React.FC = () => {
         {/* Header */}
         <div className="bg-white rounded-2xl border border-zinc-200 p-4 sm:p-6 shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#5b5fc7] flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#26394D] flex items-center justify-center font-bold">
               <Bell className="w-6 h-6" />
             </div>
             <div>
@@ -84,7 +84,7 @@ export const ActivityView: React.FC = () => {
 
           <button
             onClick={markNotificationsAsRead}
-            className="flex items-center gap-1.5 text-xs text-[#5b5fc7] hover:text-[#4f52b2] font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-[#26394D] hover:text-[#141E2B] font-semibold px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
           >
             <CheckCheck className="w-4 h-4" />
             Mark all read
@@ -133,7 +133,7 @@ export const ActivityView: React.FC = () => {
               </div>
 
               {!n.isRead && (
-                <div className="w-2 h-2 rounded-full bg-[#5b5fc7] shrink-0 mt-2" />
+                <div className="w-2 h-2 rounded-full bg-[#26394D] shrink-0 mt-2" />
               )}
             </div>
           ))

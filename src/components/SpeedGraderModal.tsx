@@ -102,9 +102,9 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex flex-col z-50 overflow-hidden text-zinc-900 select-none">
       {/* SpeedGrader Top Bar */}
-      <header className="h-14 bg-[#2b2b2b] text-white flex items-center justify-between px-6 border-b border-zinc-700 shrink-0">
+      <header className="h-14 bg-[#141E2B] text-white flex items-center justify-between px-6 border-b border-zinc-700 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#5b5fc7] flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-lg bg-[#26394D] flex items-center justify-center font-bold text-sm">
             <Award className="w-4 h-4 text-white" />
           </div>
           <div>
@@ -164,7 +164,7 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
                   onClick={() => setSelectedFileIndex(i)}
                   className={`px-2.5 py-1 rounded text-[11px] font-mono flex items-center gap-1 transition-colors ${
                     selectedFileIndex === i
-                      ? 'bg-[#5b5fc7] text-white font-semibold'
+                      ? 'bg-[#26394D] text-white font-semibold'
                       : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
                   }`}
                 >
@@ -310,7 +310,7 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
                               onClick={() => handleScoreChange(crit.id, pt)}
                               className={`flex-1 py-1 rounded text-[10px] font-bold border transition-colors ${
                                 currentScore === pt
-                                  ? 'bg-[#5b5fc7] text-white border-[#5b5fc7]'
+                                  ? 'bg-[#26394D] text-white border-[#26394D]'
                                   : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-100'
                               }`}
                             >
@@ -346,7 +346,7 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
                   rows={3}
                   value={feedback}
                   onChange={e => setFeedback(e.target.value)}
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg p-2.5 text-xs text-zinc-800 focus:outline-none focus:ring-1 focus:ring-[#5b5fc7] resize-none"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg p-2.5 text-xs text-zinc-800 focus:outline-none focus:ring-1 focus:ring-[#26394D] resize-none"
                   placeholder="Provide concrete academic feedback and suggestions..."
                 />
               </div>
@@ -357,7 +357,7 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
           <div className="pt-4 border-t border-zinc-200 space-y-2">
             <button
               onClick={handleReturn}
-              className="w-full bg-[#5b5fc7] hover:bg-[#4f52b2] text-white py-2.5 rounded-lg text-xs font-bold shadow flex items-center justify-center gap-1.5 transition-colors"
+              className="w-full bg-[#26394D] hover:bg-[#141E2B] text-white py-2.5 rounded-lg text-xs font-bold shadow flex items-center justify-center gap-1.5 transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Return (Publish Final Grade & Feedback)</span>

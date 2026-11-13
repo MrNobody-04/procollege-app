@@ -342,7 +342,7 @@ export const MeetingModal: React.FC = () => {
           <button
             onClick={() => setActiveSidePanel(activeSidePanel === 'chat' ? null : 'chat')}
             className={`p-2 rounded-full transition-colors cursor-pointer ${
-              activeSidePanel === 'chat' ? 'bg-[#5b5fc7] text-white' : 'hover:bg-zinc-700 text-zinc-200'
+              activeSidePanel === 'chat' ? 'bg-[#26394D] text-white' : 'hover:bg-zinc-700 text-zinc-200'
             }`}
             title="Meeting Chat"
           >
@@ -352,7 +352,7 @@ export const MeetingModal: React.FC = () => {
           <button
             onClick={() => setActiveSidePanel(activeSidePanel === 'participants' ? null : 'participants')}
             className={`p-2 rounded-full transition-colors cursor-pointer ${
-              activeSidePanel === 'participants' ? 'bg-[#5b5fc7] text-white' : 'hover:bg-zinc-700 text-zinc-200'
+              activeSidePanel === 'participants' ? 'bg-[#26394D] text-white' : 'hover:bg-zinc-700 text-zinc-200'
             }`}
             title="Participant Roster"
           >
@@ -509,7 +509,7 @@ export const MeetingModal: React.FC = () => {
                       <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-md">
                         <span className="truncate">{p.name} {isCurrent && '(You)'}</span>
                         {p.role === 'professor' && (
-                          <span className="text-[10px] bg-[#5b5fc7] text-white px-1.5 py-0.2 rounded font-normal">
+                          <span className="text-[10px] bg-[#26394D] text-white px-1.5 py-0.2 rounded font-normal">
                             Host
                           </span>
                         )}
@@ -589,12 +589,12 @@ export const MeetingModal: React.FC = () => {
                     value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     placeholder="Type a meeting message..."
-                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#5b5fc7]"
+                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#26394D]"
                   />
                   <button
                     type="submit"
                     disabled={!chatInput.trim()}
-                    className="p-2 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:opacity-40 text-white transition-colors cursor-pointer"
+                    className="p-2 rounded-lg bg-[#26394D] hover:bg-[#141E2B] disabled:opacity-40 text-white transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                   </button>

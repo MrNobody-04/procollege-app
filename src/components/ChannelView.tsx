@@ -201,7 +201,7 @@ export const ChannelView: React.FC = () => {
   );
 
   return (
-    <div className={`flex-1 flex flex-col h-full bg-[#f5f5f5] min-w-0 overflow-hidden select-none ${mobileSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
+    <div className={`flex-1 flex flex-col h-full bg-[#E8E9E2] min-w-0 overflow-hidden select-none ${mobileSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
       {/* Channel Header Bar - Clean and Natural (No Hashtag, No Pill Box) */}
       <header className="bg-white border-b border-zinc-200 px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -240,7 +240,7 @@ export const ChannelView: React.FC = () => {
           {canPublishInSubject && channelTab === 'assignments' && (
             <button
               onClick={() => setShowCreateAsgnModal(true)}
-              className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create</span>
@@ -272,7 +272,7 @@ export const ChannelView: React.FC = () => {
               onClick={() => setChannelTab(tab.id)}
               className={`flex items-center gap-1.5 py-2.5 border-b-2 transition-colors shrink-0 whitespace-nowrap ${
                 isActive
-                  ? 'border-[#5b5fc7] text-[#5b5fc7] font-semibold'
+                  ? 'border-[#26394D] text-[#26394D] font-semibold'
                   : 'border-transparent text-zinc-600 hover:text-zinc-900'
               }`}
             >
@@ -349,7 +349,7 @@ export const ChannelView: React.FC = () => {
                     value={postTitle}
                     onChange={e => setPostTitle(e.target.value)}
                     placeholder="Subject line..."
-                    className="w-full text-xs font-semibold text-zinc-900 border-b border-zinc-200 pb-1 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full text-xs font-semibold text-zinc-900 border-b border-zinc-200 pb-1 focus:outline-none focus:border-[#26394D]"
                   />
 
                   <textarea
@@ -398,7 +398,7 @@ export const ChannelView: React.FC = () => {
                       disabled={!postContent.trim()}
                       className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
                         postContent.trim()
-                          ? 'bg-[#5b5fc7] hover:bg-[#4f52b2] text-white'
+                          ? 'bg-[#26394D] hover:bg-[#141E2B] text-white'
                           : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
                       }`}
                     >
@@ -438,7 +438,7 @@ export const ChannelView: React.FC = () => {
 
                 <button
                   onClick={() => setShowUploadModal(true)}
-                  className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
+                  className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
                 >
                   <UploadCloud className="w-3.5 h-3.5" />
                   Upload
@@ -465,7 +465,7 @@ export const ChannelView: React.FC = () => {
                       <div className="min-w-0">
                         <p
                           onClick={() => showDialog(`Opening ${file.name}...`, { type: 'info', title: 'File Access' })}
-                          className="text-xs font-medium text-zinc-900 truncate hover:text-[#5b5fc7] cursor-pointer"
+                          className="text-xs font-medium text-zinc-900 truncate hover:text-[#26394D] cursor-pointer"
                         >
                           {file.name}
                         </p>
@@ -478,7 +478,7 @@ export const ChannelView: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => showDialog(`Downloading ${file.name}...`, { type: 'success', title: 'Download' })}
-                        className="text-xs font-medium text-[#5b5fc7] hover:underline cursor-pointer"
+                        className="text-xs font-medium text-[#26394D] hover:underline cursor-pointer"
                       >
                         Download
                       </button>
@@ -508,7 +508,7 @@ export const ChannelView: React.FC = () => {
           <div className="max-w-4xl mx-auto space-y-3">
             {isGeneralChannel ? (
               <div className="bg-white rounded-lg border border-zinc-200 p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#5b5fc7] flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#26394D] flex items-center justify-center mx-auto">
                   <FileCheck className="w-6 h-6" />
                 </div>
                 <div>
@@ -533,7 +533,7 @@ export const ChannelView: React.FC = () => {
                   {canPublishInSubject && (
                     <button
                       onClick={() => setShowCreateAsgnModal(true)}
-                      className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Create Assignment
@@ -552,7 +552,7 @@ export const ChannelView: React.FC = () => {
                     {canPublishInSubject && (
                       <button
                         onClick={() => setShowCreateAsgnModal(true)}
-                        className="mt-3 inline-flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        className="mt-3 inline-flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Publish First Assignment
@@ -580,7 +580,7 @@ export const ChannelView: React.FC = () => {
                           className="py-3.5 px-3 flex items-center justify-between hover:bg-zinc-50 cursor-pointer rounded transition-colors"
                         >
                           <div className="min-w-0 pr-4">
-                            <h3 className="font-semibold text-xs text-zinc-900 truncate hover:text-[#5b5fc7]">
+                            <h3 className="font-semibold text-xs text-zinc-900 truncate hover:text-[#26394D]">
                               {asgn.title}
                             </h3>
                             <div className="flex items-center gap-3 text-[11px] text-zinc-500 mt-1">
@@ -709,9 +709,9 @@ export const ChannelView: React.FC = () => {
 
               <div
                 onClick={() => modalFilePickerRef.current?.click()}
-                className="p-3 border-2 border-dashed border-zinc-300 hover:border-[#5b5fc7] rounded-lg text-center cursor-pointer transition-colors bg-zinc-50 hover:bg-zinc-100/60"
+                className="p-3 border-2 border-dashed border-zinc-300 hover:border-[#26394D] rounded-lg text-center cursor-pointer transition-colors bg-zinc-50 hover:bg-zinc-100/60"
               >
-                <UploadCloud className="w-6 h-6 text-[#5b5fc7] mx-auto mb-1" />
+                <UploadCloud className="w-6 h-6 text-[#26394D] mx-auto mb-1" />
                 <p className="font-semibold text-zinc-800 text-xs">Choose file from device</p>
                 <p className="text-[11px] text-zinc-500 mt-0.5">PDF, Word, Code, Slide deck, or ZIP</p>
               </div>
@@ -735,7 +735,7 @@ export const ChannelView: React.FC = () => {
                   value={newFileName}
                   onChange={e => setNewFileName(e.target.value)}
                   placeholder="Lecture_Notes_Week_4.pdf"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded p-1.5 text-xs focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded p-1.5 text-xs focus:outline-none focus:border-[#26394D]"
                   required
                 />
                 {newFileName && (
@@ -753,7 +753,7 @@ export const ChannelView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-3.5 py-1.5 rounded font-medium text-xs shadow-xs"
+                  className="bg-[#26394D] hover:bg-[#141E2B] text-white px-3.5 py-1.5 rounded font-medium text-xs shadow-xs"
                 >
                   Upload
                 </button>

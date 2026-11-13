@@ -199,7 +199,7 @@ export const CalendarView: React.FC = () => {
         {/* 1. Elevated Clean Header */}
         <div className="bg-white rounded-xl border border-zinc-200/90 p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-[#5b5fc7] flex items-center justify-center font-bold shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 text-[#26394D] flex items-center justify-center font-bold shadow-2xs">
               <CalendarIcon className="w-5 h-5" />
             </div>
             <div>
@@ -248,7 +248,7 @@ export const CalendarView: React.FC = () => {
 
             <button
               onClick={() => startMeeting('Ad-Hoc Academic Consultation', 'CS 301')}
-              className="flex items-center gap-1.5 bg-white hover:bg-zinc-50 text-[#5b5fc7] border border-indigo-200 text-xs font-semibold px-3 py-2 rounded-lg shadow-2xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 bg-white hover:bg-zinc-50 text-[#26394D] border border-indigo-200 text-xs font-semibold px-3 py-2 rounded-lg shadow-2xs transition-colors cursor-pointer"
               title="Start an instant ad-hoc study room"
             >
               <Video className="w-3.5 h-3.5" />
@@ -258,7 +258,7 @@ export const CalendarView: React.FC = () => {
             {(currentUser.role === 'professor' || currentUser.role === 'lecturer' || currentUser.role === 'admin') && (
               <button
                 onClick={() => setShowScheduleModal(true)}
-                className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Schedule Class</span>
@@ -300,7 +300,7 @@ export const CalendarView: React.FC = () => {
             {/* Clear, Minimal Legend */}
             <div className="hidden sm:flex items-center gap-3 text-xs font-medium ml-2">
               <span className="flex items-center gap-1.5 text-zinc-700">
-                <span className="w-2 h-2 rounded-full bg-[#5b5fc7]" />
+                <span className="w-2 h-2 rounded-full bg-[#26394D]" />
                 Lectures
               </span>
               <span className="flex items-center gap-1.5 text-zinc-700">
@@ -320,7 +320,7 @@ export const CalendarView: React.FC = () => {
             <select
               value={courseFilter}
               onChange={e => setCourseFilter(e.target.value)}
-              className="bg-zinc-50 hover:bg-white border border-zinc-300 rounded-lg px-2.5 py-1 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#5b5fc7] cursor-pointer"
+              className="bg-zinc-50 hover:bg-white border border-zinc-300 rounded-lg px-2.5 py-1 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D] cursor-pointer"
             >
               <option value="all">All Classes ({courses.length})</option>
               {courses.map(c => (
@@ -382,7 +382,7 @@ export const CalendarView: React.FC = () => {
                       onClick={() => setSelectedDay(dayNum)}
                       className={`min-h-[105px] p-2 transition-all cursor-pointer flex flex-col justify-between group ${
                         isSelected
-                          ? 'bg-indigo-50/40 ring-2 ring-inset ring-[#5b5fc7]'
+                          ? 'bg-indigo-50/40 ring-2 ring-inset ring-[#26394D]'
                           : isToday
                           ? 'bg-amber-50/30 hover:bg-zinc-50'
                           : isWeekend
@@ -395,9 +395,9 @@ export const CalendarView: React.FC = () => {
                         <span
                           className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                             isToday
-                              ? 'bg-[#5b5fc7] text-white shadow-xs'
+                              ? 'bg-[#26394D] text-white shadow-xs'
                               : isSelected
-                              ? 'bg-indigo-100 text-[#5b5fc7]'
+                              ? 'bg-indigo-100 text-[#26394D]'
                               : 'text-zinc-700 group-hover:text-zinc-900'
                           }`}
                         >
@@ -405,7 +405,7 @@ export const CalendarView: React.FC = () => {
                         </span>
 
                         {isToday && (
-                          <span className="text-[9px] font-bold text-[#5b5fc7] uppercase tracking-wider">
+                          <span className="text-[9px] font-bold text-[#26394D] uppercase tracking-wider">
                             Today
                           </span>
                         )}
@@ -428,7 +428,7 @@ export const CalendarView: React.FC = () => {
                         {events.slice(0, 2).map(evt => (
                           <div
                             key={evt.id}
-                            className="bg-indigo-50/90 border-l-2 border-[#5b5fc7] text-indigo-950 rounded-r px-1.5 py-0.5 text-[10px] font-semibold truncate flex items-center gap-1"
+                            className="bg-indigo-50/90 border-l-2 border-[#26394D] text-indigo-950 rounded-r px-1.5 py-0.5 text-[10px] font-semibold truncate flex items-center gap-1"
                             title={`${evt.startTime} • ${evt.courseCode}: ${evt.title}`}
                           >
                             <span className="truncate">{evt.courseCode}: {evt.title}</span>
@@ -509,7 +509,7 @@ export const CalendarView: React.FC = () => {
                           </span>
                           <button
                             onClick={() => setActiveTab('assignments')}
-                            className="text-xs font-bold text-[#5b5fc7] hover:underline flex items-center gap-0.5 cursor-pointer"
+                            className="text-xs font-bold text-[#26394D] hover:underline flex items-center gap-0.5 cursor-pointer"
                           >
                             <span>Submit Work</span>
                             <ArrowRight className="w-3 h-3" />
@@ -524,7 +524,7 @@ export const CalendarView: React.FC = () => {
               {/* 2. Lectures on this date */}
               <div className="space-y-2">
                 <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                  <BookOpen className="w-3.5 h-3.5 text-[#26394D]" />
                   Class Sessions ({selectedDayEvents.length})
                 </span>
 
@@ -567,7 +567,7 @@ export const CalendarView: React.FC = () => {
                         {evt.isVirtual && (
                           <button
                             onClick={() => startMeeting(evt.title, evt.courseCode)}
-                            className="w-full py-1.5 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                            className="w-full py-1.5 rounded-lg bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                           >
                             <Video className="w-3.5 h-3.5" />
                             <span>Join Virtual Classroom</span>
@@ -636,7 +636,7 @@ export const CalendarView: React.FC = () => {
                     onClick={() => setSelectedDay(col.dayNum)}
                     className={`rounded-xl border p-3 flex flex-col justify-between space-y-3 cursor-pointer transition-all ${
                       isSelected
-                        ? 'border-[#5b5fc7] bg-indigo-50/30 shadow-xs'
+                        ? 'border-[#26394D] bg-indigo-50/30 shadow-xs'
                         : 'border-zinc-200 hover:border-zinc-300 bg-white'
                     }`}
                   >
@@ -650,7 +650,7 @@ export const CalendarView: React.FC = () => {
                         </span>
                       </div>
                       {isToday && (
-                        <span className="text-[9px] font-bold text-white bg-[#5b5fc7] px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-bold text-white bg-[#26394D] px-1.5 py-0.5 rounded">
                           Today
                         </span>
                       )}
@@ -693,7 +693,7 @@ export const CalendarView: React.FC = () => {
                                   e.stopPropagation();
                                   startMeeting(evt.title, evt.courseCode);
                                 }}
-                                className="w-full mt-1 py-1 rounded bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                                className="w-full mt-1 py-1 rounded bg-[#26394D] hover:bg-[#141E2B] text-white text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                               >
                                 <Video className="w-3 h-3" />
                                 <span>Join Class</span>
@@ -731,7 +731,7 @@ export const CalendarView: React.FC = () => {
                   className="p-4 rounded-xl border border-zinc-200 hover:border-zinc-300 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all"
                 >
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-[#5b5fc7] flex items-center justify-center font-bold shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-[#26394D] flex items-center justify-center font-bold shrink-0">
                       <FileCheck className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
@@ -762,7 +762,7 @@ export const CalendarView: React.FC = () => {
 
                     <button
                       onClick={() => setActiveTab('assignments')}
-                      className="px-3.5 py-1.5 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-lg bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <span>View</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -800,7 +800,7 @@ export const CalendarView: React.FC = () => {
                   value={newEventTitle}
                   onChange={e => setNewEventTitle(e.target.value)}
                   placeholder="Lecture or Session Title (CS 301: Graph Connectivity)"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#5b5fc7] focus:bg-white"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D] focus:bg-white"
                 />
               </div>
 
@@ -811,7 +811,7 @@ export const CalendarView: React.FC = () => {
                 <select
                   value={newEventInstructor}
                   onChange={e => setNewEventInstructor(e.target.value)}
-                  className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                 >
                   {availableUsers
                     .filter(u => u.role === 'professor' || u.role === 'lecturer' || u.role === 'admin')
@@ -831,7 +831,7 @@ export const CalendarView: React.FC = () => {
                   <select
                     value={newEventCourseCode}
                     onChange={e => setNewEventCourseCode(e.target.value)}
-                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
                     {courses.map(c => (
                       <option key={c.id} value={c.code}>{c.code}</option>
@@ -846,7 +846,7 @@ export const CalendarView: React.FC = () => {
                   <select
                     value={newEventDayNum}
                     onChange={e => setNewEventDayNum(Number(e.target.value))}
-                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
                     {Array.from({ length: 30 }).map((_, i) => (
                       <option key={i + 1} value={i + 1}>
@@ -867,7 +867,7 @@ export const CalendarView: React.FC = () => {
                     value={newEventStartTime}
                     onChange={e => setNewEventStartTime(e.target.value)}
                     placeholder="10:00 AM"
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   />
                 </div>
                 <div>
@@ -879,7 +879,7 @@ export const CalendarView: React.FC = () => {
                     value={newEventEndTime}
                     onChange={e => setNewEventEndTime(e.target.value)}
                     placeholder="11:30 AM"
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   />
                 </div>
               </div>
@@ -893,7 +893,7 @@ export const CalendarView: React.FC = () => {
                   value={newEventLocation}
                   onChange={e => setNewEventLocation(e.target.value)}
                   placeholder="Turing Hall 101 / Microsoft Teams"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                 />
               </div>
 
@@ -903,7 +903,7 @@ export const CalendarView: React.FC = () => {
                   id="modalVirtual"
                   checked={newEventIsVirtual}
                   onChange={e => setNewEventIsVirtual(e.target.checked)}
-                  className="rounded text-[#5b5fc7]"
+                  className="rounded text-[#26394D]"
                 />
                 <label htmlFor="modalVirtual" className="text-xs text-zinc-700 font-medium">
                   Enable Microsoft Teams Virtual Classroom Meeting Room
@@ -920,7 +920,7 @@ export const CalendarView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold shadow-xs cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold shadow-xs cursor-pointer"
                 >
                   Save Session
                 </button>

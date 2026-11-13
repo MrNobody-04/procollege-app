@@ -205,14 +205,14 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
             value={replyText}
             onChange={e => setReplyText(e.target.value)}
             placeholder="Reply to conversation..."
-            className="flex-1 bg-zinc-50 hover:bg-zinc-100/70 focus:bg-white text-xs text-zinc-800 placeholder-zinc-400 rounded-lg px-3 py-1.5 border border-zinc-200 focus:outline-none focus:border-[#5b5fc7] transition-all"
+            className="flex-1 bg-zinc-50 hover:bg-zinc-100/70 focus:bg-white text-xs text-zinc-800 placeholder-zinc-400 rounded-lg px-3 py-1.5 border border-zinc-200 focus:outline-none focus:border-[#26394D] transition-all"
           />
           <button
             type="submit"
             disabled={!replyText.trim()}
             className={`p-1.5 rounded-md transition-colors ${
               replyText.trim()
-                ? 'bg-[#5b5fc7] text-white hover:bg-[#4f52b2]'
+                ? 'bg-[#26394D] text-white hover:bg-[#141E2B]'
                 : 'text-zinc-300 cursor-not-allowed'
             }`}
             title="Send reply"

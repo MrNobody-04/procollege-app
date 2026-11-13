@@ -74,11 +74,11 @@ export const TeamsSidebar: React.FC = () => {
   });
 
   return (
-    <aside className={`w-full md:w-68 bg-[#f5f5f5] border-r border-[#e0e0e0] flex flex-col h-full select-none shrink-0 ${
+    <aside className={`w-full md:w-68 bg-[#E8E9E2] border-r border-[#B2C1C5] flex flex-col h-full select-none shrink-0 ${
       mobileSidebarOpen ? 'flex' : 'hidden md:flex'
     }`}>
       {/* Sidebar Header */}
-      <div className="p-3 border-b border-[#e5e5e5] flex items-center justify-between">
+      <div className="p-3 border-b border-[#B2C1C5] flex items-center justify-between">
         <h2 className="font-bold text-xs text-zinc-900 tracking-tight uppercase">
           Your Classes
         </h2>
@@ -86,7 +86,7 @@ export const TeamsSidebar: React.FC = () => {
           {(currentUser.role === 'admin' || currentUser.role === 'developer') && (
             <button
               onClick={() => setActiveTab('admin')}
-              className="p-1 rounded hover:bg-zinc-200/80 text-[#5b5fc7] transition-colors cursor-pointer"
+              className="p-1 rounded hover:bg-zinc-200/80 text-[#26394D] transition-colors cursor-pointer"
               title="Add Class / Rollover Semester in Admin Center"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -104,13 +104,13 @@ export const TeamsSidebar: React.FC = () => {
 
       {/* Faculty Department Filter Selector for Classes */}
       {faculties.length > 0 && (
-        <div className="px-2.5 py-1.5 border-b border-[#e5e5e5] bg-zinc-50/70">
+        <div className="px-2.5 py-1.5 border-b border-[#B2C1C5] bg-zinc-50/70">
           <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
             <span>Filter Faculty:</span>
             {selectedFacultyFilter !== 'all' && (
               <button
                 onClick={() => setSelectedFacultyFilter('all')}
-                className="text-[#5b5fc7] hover:underline cursor-pointer lowercase font-medium"
+                className="text-[#26394D] hover:underline cursor-pointer lowercase font-medium"
               >
                 show all
               </button>
@@ -119,7 +119,7 @@ export const TeamsSidebar: React.FC = () => {
           <select
             value={selectedFacultyFilter}
             onChange={e => setSelectedFacultyFilter(e.target.value)}
-            className="w-full bg-white border border-zinc-200 rounded px-2 py-1 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-[#5b5fc7] cursor-pointer shadow-2xs"
+            className="w-full bg-white border border-zinc-200 rounded px-2 py-1 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-[#26394D] cursor-pointer shadow-2xs"
             title="Choose which faculty's classes to view"
           >
             <option value="all">All Faculties ({courses.length} classes)</option>
@@ -148,7 +148,7 @@ export const TeamsSidebar: React.FC = () => {
             value={filterText.trim()}
             onChange={e => setFilterText(e.target.value)}
             placeholder="Filter classes & channels..."
-            className="w-full bg-white border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+            className="w-full bg-white border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D]"
             autoFocus
           />
         </div>
@@ -167,7 +167,7 @@ export const TeamsSidebar: React.FC = () => {
             {selectedFacultyFilter !== 'all' && (
               <button
                 onClick={() => setSelectedFacultyFilter('all')}
-                className="text-xs text-[#5b5fc7] hover:underline font-semibold"
+                className="text-xs text-[#26394D] hover:underline font-semibold"
               >
                 View all faculties
               </button>
@@ -240,13 +240,13 @@ export const TeamsSidebar: React.FC = () => {
                         onClick={() => handleSelectChannel(course, announcementChannel)}
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs transition-colors ${
                           selectedCourse?.id === course.id && selectedChannel?.id === announcementChannel.id
-                            ? 'bg-white text-[#5b5fc7] font-bold shadow-xs border border-zinc-200/80'
+                            ? 'bg-white text-[#26394D] font-bold shadow-xs border border-zinc-200/80'
                             : 'text-zinc-800 hover:bg-zinc-200/60 font-semibold'
                         }`}
                         title="Class Announcements: Noticeboard where all lecturers broadcast notices and updates"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Megaphone className="w-3.5 h-3.5 shrink-0 text-[#5b5fc7]" />
+                          <Megaphone className="w-3.5 h-3.5 shrink-0 text-[#26394D]" />
                           <span className="truncate">{announcementChannel.name}</span>
                         </div>
 
@@ -277,7 +277,7 @@ export const TeamsSidebar: React.FC = () => {
                                 onClick={() => handleSelectChannel(course, channel)}
                                 className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs transition-colors ${
                                   isChannelActive
-                                    ? 'bg-white text-[#5b5fc7] font-bold shadow-xs border border-zinc-200/80'
+                                    ? 'bg-white text-[#26394D] font-bold shadow-xs border border-zinc-200/80'
                                     : 'text-zinc-700 hover:bg-zinc-200/60'
                                 }`}
                                 title={
@@ -312,10 +312,10 @@ export const TeamsSidebar: React.FC = () => {
 
       {/* Admin Quick Action Bar at bottom - Only visible to Admin / Developer */}
       {(currentUser.role === 'admin' || currentUser.role === 'developer') && (
-        <div className="p-2 border-t border-[#e0e0e0] bg-[#ebebeb]">
+        <div className="p-2 border-t border-[#B2C1C5] bg-[#E8E9E2]">
           <button
             onClick={() => setActiveTab('admin')}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white hover:bg-zinc-100 text-[#5b5fc7] border border-zinc-300 rounded text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 bg-white hover:bg-zinc-100 text-[#26394D] border border-zinc-300 rounded text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
             title="Open Admin Center: Add Classes, Assign Teachers to Subjects, or Rollover Semester"
           >
             <Plus className="w-3.5 h-3.5" />

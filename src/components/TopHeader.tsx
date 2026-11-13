@@ -109,15 +109,15 @@ export const TopHeader: React.FC = () => {
   };
 
   return (
-    <header className="h-12 bg-[#2b2b2b] text-white flex items-center justify-between px-3 sm:px-4 border-b border-zinc-800 z-50 shrink-0 select-none relative">
+    <header className="h-12 bg-[#141E2B] text-white flex items-center justify-between px-3 sm:px-4 border-b border-[#26394D] z-50 shrink-0 select-none relative">
       {/* Brand & 9-Dot App Launcher */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* ProCollege 9-Dot App Launcher */}
         <div className="relative">
           <button
             onClick={() => setShowWaffle(!showWaffle)}
-            className={`p-1.5 rounded-md hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors flex items-center justify-center ${
-              showWaffle ? 'bg-zinc-800 text-white' : ''
+            className={`p-1.5 rounded-md hover:bg-[#26394D] text-[#B2C1C5] hover:text-[#E8E9E2] transition-colors flex items-center justify-center ${
+              showWaffle ? 'bg-[#26394D] text-[#E8E9E2]' : ''
             }`}
             title="ProCollege Workspace Apps"
           >
@@ -146,7 +146,7 @@ export const TopHeader: React.FC = () => {
                   }}
                   className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left"
                 >
-                  <GraduationCap className="w-4 h-4 text-[#5b5fc7] shrink-0" />
+                  <GraduationCap className="w-4 h-4 text-[#26394D] shrink-0" />
                   <span className="font-semibold text-zinc-800">Class</span>
                 </button>
 
@@ -191,7 +191,7 @@ export const TopHeader: React.FC = () => {
                     }}
                     className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-100 transition-colors text-left col-span-2"
                   >
-                    <Shield className="w-4 h-4 text-[#5b5fc7] shrink-0" />
+                    <Shield className="w-4 h-4 text-[#26394D] shrink-0" />
                     <span className="font-semibold text-zinc-800">
                       {currentUser.role === 'developer' ? 'Developer Console' : 'Campus Administration Center'}
                     </span>
@@ -227,7 +227,7 @@ export const TopHeader: React.FC = () => {
         </div>
 
         {/* Institution Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[11px] font-medium border border-zinc-700">
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#26394D] text-[#E8E9E2] text-[11px] font-medium border border-[#B2C1C5]/30">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="truncate max-w-[130px]">{currentUser.institutionName || 'Padmashree College'}</span>
         </div>
@@ -235,7 +235,7 @@ export const TopHeader: React.FC = () => {
         {/* Website & About Link */}
         <button
           onClick={() => setViewMode('portal')}
-          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-700 rounded border border-zinc-700 transition-colors ml-1 cursor-pointer"
+          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:text-white bg-[#26394D]/60 hover:bg-[#26394D] text-[#B2C1C5] hover:text-[#E8E9E2] rounded border border-[#B2C1C5]/30 transition-colors ml-1 cursor-pointer"
           title="View ProCollege Website, About Us & Institutional Access"
         >
           <span>Website & About</span>
@@ -246,7 +246,7 @@ export const TopHeader: React.FC = () => {
         {currentUser.role === 'admin' && (
           <button
             onClick={() => setActiveTab('admin')}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-white bg-[#5b5fc7] hover:bg-[#4f52b2] rounded transition-colors ml-1 cursor-pointer shadow-2xs"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-white bg-[#26394D] hover:bg-[#141E2B] rounded transition-colors ml-1 cursor-pointer shadow-2xs"
             title="Open Campus Administration & Class Management"
           >
             <Shield className="w-3.5 h-3.5" />
@@ -264,7 +264,7 @@ export const TopHeader: React.FC = () => {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search across ${selectedCourse ? selectedCourse.code : 'courses'}, assignments, messages (Ctrl+E)`}
-            className="w-full bg-[#1e1e1e] hover:bg-[#181818] focus:bg-[#181818] text-xs text-zinc-200 placeholder-zinc-500 rounded-md pl-9 pr-8 py-1.5 border border-zinc-700/60 focus:border-[#5b5fc7] focus:outline-none transition-all"
+            className="w-full bg-[#1a2533] hover:bg-[#212f40] focus:bg-[#212f40] text-xs text-[#E8E9E2] placeholder-[#B2C1C5]/60 rounded-md pl-9 pr-8 py-1.5 border border-[#26394D] focus:border-[#B2C1C5] focus:outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -280,7 +280,7 @@ export const TopHeader: React.FC = () => {
       {/* Actions: Meet Now & Clean User Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Institutional Role Badge */}
-        <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700/70 shadow-xs">
+        <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#26394D] text-[#E8E9E2] border border-[#B2C1C5]/40 shadow-xs">
           <span>{currentBadge}</span>
         </div>
 
@@ -291,7 +291,7 @@ export const TopHeader: React.FC = () => {
               selectedCourse?.code
             )
           }
-          className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer"
           title="Start meeting"
         >
           <Video className="w-3.5 h-3.5" />
@@ -312,7 +312,7 @@ export const TopHeader: React.FC = () => {
             />
             {/* Status dot badge */}
             <span
-              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-[#2b2b2b] ${
+              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-[#141E2B] ${
                 statusConfig[currentUser.status]?.dotClass || 'bg-emerald-500'
               }`}
             />
@@ -368,7 +368,7 @@ export const TopHeader: React.FC = () => {
                     </span>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-[10px] text-[#5b5fc7] hover:underline"
+                      className="text-[10px] text-[#26394D] hover:underline"
                     >
                       Change photo
                     </button>
@@ -382,7 +382,7 @@ export const TopHeader: React.FC = () => {
                   <span className="font-medium text-zinc-500">Status</span>
                   <button
                     onClick={() => setShowStatusMenu(!showStatusMenu)}
-                    className="text-[#5b5fc7] hover:underline text-[11px] font-semibold"
+                    className="text-[#26394D] hover:underline text-[11px] font-semibold"
                   >
                     {showStatusMenu ? 'Close' : 'Change status'}
                   </button>
@@ -427,7 +427,7 @@ export const TopHeader: React.FC = () => {
                             <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotClass}`} />
                             <span>{cfg.label}</span>
                           </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-[#5b5fc7]" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[#26394D]" />}
                         </button>
                       );
                     })}
@@ -463,7 +463,7 @@ export const TopHeader: React.FC = () => {
                           }}
                           className={`w-full flex items-center justify-between p-2 rounded text-left transition-colors cursor-pointer ${
                             isCurrent
-                              ? 'bg-white border border-[#5b5fc7]/30 shadow-2xs'
+                              ? 'bg-white border border-[#26394D]/30 shadow-2xs'
                               : 'hover:bg-zinc-200/60'
                           }`}
                         >
@@ -482,7 +482,7 @@ export const TopHeader: React.FC = () => {
                               </p>
                             </div>
                           </div>
-                          {isCurrent && <Check className="w-3.5 h-3.5 text-[#5b5fc7] shrink-0" />}
+                          {isCurrent && <Check className="w-3.5 h-3.5 text-[#26394D] shrink-0" />}
                         </button>
                       );
                     })}

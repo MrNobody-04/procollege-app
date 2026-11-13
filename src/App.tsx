@@ -19,7 +19,7 @@ const MainWorkspace: React.FC = () => {
   const isPlatformDev = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#242424] text-zinc-900 select-none">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#141E2B] text-zinc-900 select-none">
       {/* Top Header with App Launcher and Persona Switcher */}
       <TopHeader />
 

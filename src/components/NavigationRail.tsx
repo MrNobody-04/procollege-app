@@ -53,14 +53,14 @@ export const NavigationRail: React.FC = () => {
   const navItems = isPlatformDev ? devNavItems : standardNavItems;
 
   return (
-    <aside className="w-14 sm:w-16 md:w-18 bg-[#201f1e] text-zinc-300 flex flex-col items-center py-2 sm:py-2.5 select-none z-20 shrink-0 border-r border-zinc-800">
+    <aside className="w-14 sm:w-16 md:w-18 bg-[#141E2B] text-[#B2C1C5] flex flex-col items-center py-2 sm:py-2.5 select-none z-20 shrink-0 border-r border-[#26394D]">
       {/* College Logo */}
       <div
         className="mb-2 sm:mb-3 flex flex-col items-center cursor-pointer group"
         onClick={() => setActiveTab(isPlatformDev ? 'dev-overview' : 'teams')}
         title="ProCollege"
       >
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-zinc-700/50 group-hover:ring-2 group-hover:ring-[#5b5fc7] transition-all">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-zinc-700/50 group-hover:ring-2 group-hover:ring-[#26394D] transition-all">
           <ProCollegeLogo size="sm" variant="mark-only" />
         </div>
       </div>
@@ -75,12 +75,12 @@ export const NavigationRail: React.FC = () => {
               onClick={() => setActiveTab(item.id)}
               className={`relative flex flex-col items-center justify-center py-1.5 sm:py-2 px-0.5 sm:px-1 rounded-lg w-full transition-colors ${
                 isActive
-                  ? 'bg-zinc-800 text-white font-medium'
-                  : 'hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[#26394D] text-[#E8E9E2] font-semibold shadow-xs'
+                  : 'hover:bg-[#26394D]/50 text-[#B2C1C5] hover:text-[#E8E9E2]'
               }`}
             >
               {isActive && (
-                <div className="absolute left-0 top-1.5 bottom-1.5 sm:top-2 sm:bottom-2 w-1 bg-[#5b5fc7] rounded-r" />
+                <div className="absolute left-0 top-1.5 bottom-1.5 sm:top-2 sm:bottom-2 w-1 bg-[#26394D] rounded-r" />
               )}
               <div className="relative [&_svg]:w-4.5 [&_svg]:h-4.5 sm:[&_svg]:w-5 sm:[&_svg]:h-5">
                 {item.icon}
@@ -99,7 +99,7 @@ export const NavigationRail: React.FC = () => {
       </nav>
 
       {/* User Avatar */}
-      <div className="pt-2 border-t border-zinc-800 w-full flex flex-col items-center">
+      <div className="pt-2 border-t border-[#26394D] w-full flex flex-col items-center">
         <img
           src={currentUser.avatar}
           alt={currentUser.name}

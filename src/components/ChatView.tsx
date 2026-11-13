@@ -88,7 +88,7 @@ export const ChatView: React.FC = () => {
   return (
     <div className="flex-1 flex h-full bg-white select-none overflow-hidden">
       {/* Chats List Sidebar */}
-      <aside className={`w-full md:w-72 bg-[#f5f5f5] border-r border-[#e0e0e0] flex flex-col shrink-0 ${
+      <aside className={`w-full md:w-72 bg-[#E8E9E2] border-r border-[#e0e0e0] flex flex-col shrink-0 ${
         mobileChatListOpen ? 'flex' : 'hidden md:flex'
       }`}>
         <div className="p-3 border-b border-[#e5e5e5]">
@@ -100,7 +100,7 @@ export const ChatView: React.FC = () => {
               value={filterQuery}
               onChange={e => setFilterQuery(e.target.value)}
               placeholder="Filter chats or search people..."
-              className="w-full bg-white border border-zinc-300 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+              className="w-full bg-white border border-zinc-300 rounded-md pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D]"
             />
           </div>
         </div>
@@ -192,14 +192,14 @@ export const ChatView: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => startMeeting(`Direct Call: ${otherUser.name}`, 'Chat')}
-              className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600 hover:text-[#5b5fc7] transition-colors"
+              className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600 hover:text-[#26394D] transition-colors"
               title="Start Video Call"
             >
               <Video className="w-4 h-4" />
             </button>
             <button
               onClick={() => startMeeting(`Voice Call: ${otherUser.name}`, 'Chat')}
-              className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600 hover:text-[#5b5fc7] transition-colors"
+              className="p-2 rounded-md hover:bg-zinc-100 text-zinc-600 hover:text-[#26394D] transition-colors"
               title="Start Audio Call"
             >
               <Phone className="w-4 h-4" />
@@ -229,7 +229,7 @@ export const ChatView: React.FC = () => {
                 <div
                   className={`max-w-md rounded-2xl px-4 py-2.5 text-xs shadow-xs ${
                     isMe
-                      ? 'bg-[#5b5fc7] text-white rounded-br-none'
+                      ? 'bg-[#26394D] text-white rounded-br-none'
                       : 'bg-white text-zinc-800 border border-zinc-200/80 rounded-bl-none'
                   }`}
                 >
@@ -263,14 +263,14 @@ export const ChatView: React.FC = () => {
             value={messageInput}
             onChange={e => setMessageInput(e.target.value)}
             placeholder={`Message ${otherUser.name}...`}
-            className="flex-1 bg-zinc-100 border border-zinc-200 rounded-full px-4 py-2 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7] focus:bg-white shadow-inner"
+            className="flex-1 bg-zinc-100 border border-zinc-200 rounded-full px-4 py-2 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D] focus:bg-white shadow-inner"
           />
           <button
             type="submit"
             disabled={!messageInput.trim()}
             className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
               messageInput.trim()
-                ? 'bg-[#5b5fc7] hover:bg-[#4f52b2] text-white shadow'
+                ? 'bg-[#26394D] hover:bg-[#141E2B] text-white shadow'
                 : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
             }`}
           >

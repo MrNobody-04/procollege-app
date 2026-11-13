@@ -1161,7 +1161,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   }, [organizations, searchOrgQuery]);
 
   return (
-    <div className="flex-1 bg-[#f4f5f8] p-4 sm:p-6 overflow-y-auto select-none">
+    <div className="flex-1 bg-[#E8E9E2] p-4 sm:p-6 overflow-y-auto select-none">
       <div className="max-w-6xl mx-auto space-y-5">
         {/* Admin Header with ProCollege Logo & Dynamic Role Badging */}
         <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1242,7 +1242,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
                 <button
                   onClick={() => setShowNewClassModal(true)}
-                  className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
                   title="Add a new class with subjects and dedicated teachers"
                 >
                   <Plus className="w-4 h-4" />
@@ -1366,7 +1366,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               onClick={() => setActiveAdminTab('classes')}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 activeAdminTab === 'classes'
-                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  ? 'bg-[#26394D] text-white shadow-xs'
                   : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
               }`}
             >
@@ -1377,7 +1377,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               onClick={() => setActiveAdminTab('faculties')}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 activeAdminTab === 'faculties'
-                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  ? 'bg-[#26394D] text-white shadow-xs'
                   : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
               }`}
             >
@@ -1388,7 +1388,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               onClick={() => setActiveAdminTab('users')}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 activeAdminTab === 'users'
-                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  ? 'bg-[#26394D] text-white shadow-xs'
                   : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
               }`}
             >
@@ -1426,7 +1426,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               onClick={() => setActiveAdminTab('roles')}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 activeAdminTab === 'roles'
-                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  ? 'bg-[#26394D] text-white shadow-xs'
                   : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
               }`}
             >
@@ -1442,7 +1442,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <button
               onClick={() => setActiveAdminTab('classes')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'classes' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+                activeAdminTab === 'classes' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -1451,7 +1451,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <button
               onClick={() => setActiveAdminTab('faculties')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'faculties' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+                activeAdminTab === 'faculties' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
               }`}
             >
               <FolderTree className="w-3.5 h-3.5" />
@@ -1460,7 +1460,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <button
               onClick={() => setActiveAdminTab('users')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'users' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+                activeAdminTab === 'users' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -1487,7 +1487,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <button
               onClick={() => setActiveAdminTab('roles')}
               className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'roles' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+                activeAdminTab === 'roles' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -2236,7 +2236,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     <button
                       type="submit"
                       disabled={isSendingTestEmail || !testEmailTarget.trim()}
-                      className="w-full py-2.5 px-4 rounded-lg bg-[#5b5fc7] hover:bg-[#4d51b8] disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-2.5 px-4 rounded-lg bg-[#26394D] hover:bg-[#141E2B] disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
                       {isSendingTestEmail ? (
                         <>
@@ -2567,7 +2567,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="bg-white rounded-xl border border-zinc-200 p-3 sm:p-4 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-zinc-100">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <FolderTree className="w-4 h-4 text-[#5b5fc7]" />
+                  <FolderTree className="w-4 h-4 text-[#26394D]" />
                   <span className="text-xs font-bold text-zinc-800">Faculty Filter:</span>
                   <select
                     value={selectedFacultyFilter}
@@ -2575,7 +2575,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       setSelectedFacultyFilter(e.target.value);
                       setClassesSubView('classes');
                     }}
-                    className="bg-zinc-50 border border-zinc-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-zinc-900 focus:outline-none focus:border-[#5b5fc7] cursor-pointer"
+                    className="bg-zinc-50 border border-zinc-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-zinc-900 focus:outline-none focus:border-[#26394D] cursor-pointer"
                   >
                     <option value="all">🌟 All Faculties ({courses.length} Classes)</option>
                     {faculties.map(fac => (
@@ -2594,7 +2594,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       onClick={() => setClassesSubView('classes')}
                       className={`px-3 py-1 rounded-md font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
                         classesSubView === 'classes'
-                          ? 'bg-white text-[#5b5fc7] shadow-2xs'
+                          ? 'bg-white text-[#26394D] shadow-2xs'
                           : 'text-zinc-600 hover:text-zinc-900'
                       }`}
                     >
@@ -2606,7 +2606,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       onClick={() => setClassesSubView('faculties')}
                       className={`px-3 py-1 rounded-md font-semibold transition-colors flex items-center gap-1.5 cursor-pointer ${
                         classesSubView === 'faculties'
-                          ? 'bg-white text-[#5b5fc7] shadow-2xs'
+                          ? 'bg-white text-[#26394D] shadow-2xs'
                           : 'text-zinc-600 hover:text-zinc-900'
                       }`}
                     >
@@ -2617,7 +2617,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
                   <button
                     onClick={() => setShowAddFacultyModal(true)}
-                    className="text-xs text-[#5b5fc7] bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-[#26394D] bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>New Faculty</span>
@@ -2628,7 +2628,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       if (selectedFacultyFilter !== 'all') setSelectedFacultyId(selectedFacultyFilter);
                       setShowNewClassModal(true);
                     }}
-                    className="text-xs text-white bg-[#5b5fc7] hover:bg-[#4f52b2] px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 cursor-pointer shadow-2xs"
+                    className="text-xs text-white bg-[#26394D] hover:bg-[#141E2B] px-3.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 cursor-pointer shadow-2xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>New Class</span>
@@ -2644,7 +2644,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer ${
                     selectedFacultyFilter === 'all'
-                      ? 'bg-[#5b5fc7] text-white shadow-xs'
+                      ? 'bg-[#26394D] text-white shadow-xs'
                       : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                   }`}
                 >
@@ -2668,7 +2668,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer ${
                         isSelected
-                          ? 'bg-[#5b5fc7] text-white shadow-xs'
+                          ? 'bg-[#26394D] text-white shadow-xs'
                           : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                       }`}
                     >
@@ -2703,12 +2703,12 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         value={searchFacultyQuery}
                         onChange={e => setSearchFacultyQuery(e.target.value)}
                         placeholder="Search faculties by name or code..."
-                        className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+                        className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D]"
                       />
                     </div>
                     <button
                       onClick={() => setShowAddFacultyModal(true)}
-                      className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                      className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Add Faculty</span>
@@ -2729,7 +2729,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     </div>
                     <button
                       onClick={() => setShowAddFacultyModal(true)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Add Faculty</span>
@@ -2749,7 +2749,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           <div className="space-y-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-[#5b5fc7] flex items-center justify-center font-bold text-sm shrink-0">
+                                <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-[#26394D] flex items-center justify-center font-bold text-sm shrink-0">
                                   {faculty.code.slice(0, 3)}
                                 </div>
                                 <div>
@@ -2787,7 +2787,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               </div>
                               <div className="flex items-center justify-between text-zinc-600">
                                 <span className="text-[11px] font-medium text-zinc-500">Active Classes:</span>
-                                <span className="font-bold text-[#5b5fc7]">{facCourses.length} {facCourses.length === 1 ? 'class' : 'classes'}</span>
+                                <span className="font-bold text-[#26394D]">{facCourses.length} {facCourses.length === 1 ? 'class' : 'classes'}</span>
                               </div>
                               <div className="flex items-center justify-between text-zinc-600">
                                 <span className="text-[11px] font-medium text-zinc-500">Faculty Members:</span>
@@ -2820,7 +2820,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 setSelectedFacultyFilter(faculty.id);
                                 setClassesSubView('classes');
                               }}
-                              className="w-full py-2 px-3 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                              className="w-full py-2 px-3 rounded-lg bg-[#26394D] hover:bg-[#141E2B] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                             >
                               <BookOpen className="w-3.5 h-3.5" />
                               <span>View Classes ({facCourses.length})</span>
@@ -2842,7 +2842,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 onClick={() => openFacultyMembersModal(faculty)}
                                 className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                               >
-                                <GraduationCap className="w-3 h-3 text-[#5b5fc7]" />
+                                <GraduationCap className="w-3 h-3 text-[#26394D]" />
                                 <span>Add Members</span>
                               </button>
                             </div>
@@ -2872,14 +2872,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           <div className="space-y-1">
                             <button
                               onClick={() => setSelectedFacultyFilter('all')}
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-[#5b5fc7] hover:underline cursor-pointer mb-1"
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-[#26394D] hover:underline cursor-pointer mb-1"
                             >
                               <ArrowLeft className="w-3.5 h-3.5" />
                               <span>Back to All Faculties</span>
                             </button>
                             <div className="flex items-center gap-2 flex-wrap">
                               <h2 className="text-base font-bold text-zinc-900">{currentFac.name}</h2>
-                              <span className="text-xs font-mono bg-white text-[#5b5fc7] px-2.5 py-0.5 rounded-full border border-indigo-200 font-bold">
+                              <span className="text-xs font-mono bg-white text-[#26394D] px-2.5 py-0.5 rounded-full border border-indigo-200 font-bold">
                                 {currentFac.code}
                               </span>
                             </div>
@@ -2898,7 +2898,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               onClick={() => openFacultyMembersModal(currentFac)}
                               className="px-3 py-2 bg-white hover:bg-zinc-50 text-zinc-800 text-xs font-semibold rounded-lg border border-zinc-200 shadow-2xs flex items-center gap-1.5 cursor-pointer"
                             >
-                              <GraduationCap className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                              <GraduationCap className="w-3.5 h-3.5 text-[#26394D]" />
                               <span>Add Faculty Members</span>
                             </button>
 
@@ -2907,7 +2907,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 setSelectedFacultyId(currentFac.id);
                                 setShowNewClassModal(true);
                               }}
-                              className="px-3.5 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
+                              className="px-3.5 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
                             >
                               <Plus className="w-3.5 h-3.5" />
                               <span>New Class</span>
@@ -2933,7 +2933,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="text-base font-bold text-zinc-900">All Academic Classes</h2>
-                        <span className="text-xs font-mono bg-white text-[#5b5fc7] px-2.5 py-0.5 rounded-full border border-indigo-200 font-bold">
+                        <span className="text-xs font-mono bg-white text-[#26394D] px-2.5 py-0.5 rounded-full border border-indigo-200 font-bold">
                           {filteredCourses.length} {filteredCourses.length === 1 ? 'Class' : 'Classes'}
                         </span>
                       </div>
@@ -2944,7 +2944,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
                     <button
                       onClick={() => setShowNewClassModal(true)}
-                      className="px-3.5 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+                      className="px-3.5 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>New Class</span>
@@ -2973,7 +2973,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         value={searchClassQuery}
                         onChange={e => setSearchClassQuery(e.target.value)}
                         placeholder="Search classes by name, code, or department..."
-                        className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+                        className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D]"
                       />
                     </div>
                   </div>
@@ -2998,7 +2998,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     if (selectedFacultyFilter !== 'all') setSelectedFacultyId(selectedFacultyFilter);
                     setShowNewClassModal(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Class</span>
@@ -3033,10 +3033,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                       setSelectedFacultyFilter(parentFac.id);
                                       setClassesSubView('classes');
                                     }}
-                                    className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-[#5b5fc7] border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors"
+                                    className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-[#26394D] border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors"
                                     title={`Filter to faculty: ${parentFac.name}`}
                                   >
-                                    <FolderTree className="w-3 h-3 text-[#5b5fc7]" />
+                                    <FolderTree className="w-3 h-3 text-[#26394D]" />
                                     <span>{parentFac.code}</span>
                                   </button>
                                 ) : (
@@ -3075,7 +3075,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-100 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                            <Users className="w-3.5 h-3.5 text-[#26394D]" />
                             Enrolled Students ({enrolled.length > 0 ? enrolled.length : course.memberCount})
                           </span>
                           <button
@@ -3083,7 +3083,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               setSelectedCourseForAction(course);
                               setShowManageStudentsModal(true);
                             }}
-                            className="text-xs text-[#5b5fc7] hover:underline font-semibold flex items-center gap-1"
+                            className="text-xs text-[#26394D] hover:underline font-semibold flex items-center gap-1"
                           >
                             <UserCheck className="w-3 h-3" />
                             Manage Students
@@ -3111,7 +3111,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                            <BookOpen className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                            <BookOpen className="w-3.5 h-3.5 text-[#26394D]" />
                             Subjects & Dedicated Teachers ({course.channels.length})
                           </span>
                           <button
@@ -3119,7 +3119,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               setSelectedCourseForAction(course);
                               setShowAddChannelModal(true);
                             }}
-                            className="text-xs text-[#5b5fc7] hover:underline font-semibold flex items-center gap-1"
+                            className="text-xs text-[#26394D] hover:underline font-semibold flex items-center gap-1"
                           >
                             <Plus className="w-3 h-3" />
                             Add Subject
@@ -3133,7 +3133,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 <div className="flex items-center gap-1.5">
                                   <p className="font-semibold text-zinc-900 truncate">{ch.name}</p>
                                   {ch.isGeneral && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-[#5b5fc7] border border-indigo-200">
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-[#26394D] border border-indigo-200">
                                       Noticeboard
                                     </span>
                                   )}
@@ -3142,7 +3142,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="text-[11px] bg-indigo-50 text-[#5b5fc7] border border-indigo-200 px-2 py-0.5 rounded font-medium flex items-center gap-1">
+                                <span className="text-[11px] bg-indigo-50 text-[#26394D] border border-indigo-200 px-2 py-0.5 rounded font-medium flex items-center gap-1">
                                   <GraduationCap className="w-3 h-3" />
                                   <span>{ch.subjectLecturerName || course.instructor.name}</span>
                                 </span>
@@ -3198,7 +3198,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             setSelectedChannel(course.channels[0]);
                             setActiveTab('teams');
                           }}
-                          className="text-xs text-zinc-600 hover:text-[#5b5fc7] font-medium flex items-center gap-1"
+                          className="text-xs text-zinc-600 hover:text-[#26394D] font-medium flex items-center gap-1"
                         >
                           <span>Open in Class</span>
                           <ExternalLink className="w-3 h-3" />
@@ -3238,7 +3238,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
               <button
                 onClick={() => setShowRegisterUserModal(true)}
-                className="flex items-center gap-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                className="flex items-center gap-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-bold px-4 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 Register New User
@@ -3299,7 +3299,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             <select
                               value={user.license}
                               onChange={e => updateUserLicense(user.id, e.target.value as LicenseSku)}
-                              className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 font-medium focus:ring-1 focus:ring-[#5b5fc7] focus:outline-none"
+                              className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 font-medium focus:ring-1 focus:ring-[#26394D] focus:outline-none"
                             >
                               {licenseOptions.map(lic => (
                                 <option key={lic} value={lic}>
@@ -3349,7 +3349,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                  <FolderTree className="w-4 h-4 text-[#5b5fc7]" />
+                  <FolderTree className="w-4 h-4 text-[#26394D]" />
                   <span>Academic Faculties & Departments</span>
                 </h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
@@ -3359,7 +3359,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
               <button
                 onClick={() => setShowAddFacultyModal(true)}
-                className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Faculty</span>
@@ -3379,7 +3379,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-[#5b5fc7] flex items-center justify-center font-bold text-sm shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-[#26394D] flex items-center justify-center font-bold text-sm shrink-0">
                             {faculty.code.slice(0, 3)}
                           </div>
                           <div>
@@ -3419,7 +3419,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         </div>
                         <div className="flex items-center justify-between text-zinc-600">
                           <span className="text-[11px] font-medium text-zinc-500">Active Classes:</span>
-                          <span className="font-bold text-[#5b5fc7]">{associatedClasses.length} {associatedClasses.length === 1 ? 'class' : 'classes'}</span>
+                          <span className="font-bold text-[#26394D]">{associatedClasses.length} {associatedClasses.length === 1 ? 'class' : 'classes'}</span>
                         </div>
                         <div className="flex items-center justify-between text-zinc-600">
                           <span className="text-[11px] font-medium text-zinc-500">Faculty Members:</span>
@@ -3452,7 +3452,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           setSelectedFacultyFilter(faculty.id);
                           setActiveAdminTab('classes');
                         }}
-                        className="w-full py-2 px-3 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        className="w-full py-2 px-3 rounded-lg bg-[#26394D] hover:bg-[#141E2B] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>View Classes ({associatedClasses.length})</span>
@@ -3474,7 +3474,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           onClick={() => openFacultyMembersModal(faculty)}
                           className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <GraduationCap className="w-3 h-3 text-[#5b5fc7]" />
+                          <GraduationCap className="w-3 h-3 text-[#26394D]" />
                           <span>Add Members</span>
                         </button>
                       </div>
@@ -3568,7 +3568,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs">
               <h2 className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-[#5b5fc7]" />
+                <Sliders className="w-4 h-4 text-[#26394D]" />
                 <span>Roles & Permissions</span>
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -3697,7 +3697,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             {/* Pinned Header */}
             <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#5b5fc7]">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#26394D]">
                   <School className="w-4 h-4" />
                 </div>
                 <div>
@@ -3724,7 +3724,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 <select
                   value={selectedFacultyId}
                   onChange={e => setSelectedFacultyId(e.target.value)}
-                  className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 font-semibold focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 font-semibold focus:outline-none focus:border-[#26394D]"
                   required
                 >
                   {faculties.map(fac => (
@@ -3748,7 +3748,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   value={courseName}
                   onChange={e => setCourseName(e.target.value)}
                   placeholder="e.g. B.Sc. Computer Science - Semester 4 (Section A)"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-[#5b5fc7] focus:bg-white"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D] focus:bg-white"
                   required
                 />
               </div>
@@ -3764,7 +3764,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     value={term}
                     onChange={e => setTerm(e.target.value)}
                     placeholder="Fall 2026"
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7] focus:bg-white"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
                     required
                   />
                 </div>
@@ -3780,7 +3780,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         onClick={() => setInstructorSelectionMode('select')}
                         className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
                           instructorSelectionMode === 'select'
-                            ? 'bg-[#5b5fc7] text-white shadow-2xs font-bold'
+                            ? 'bg-[#26394D] text-white shadow-2xs font-bold'
                             : 'text-zinc-600 hover:text-zinc-900'
                         }`}
                       >
@@ -3791,7 +3791,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         onClick={() => setInstructorSelectionMode('manual')}
                         className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
                           instructorSelectionMode === 'manual'
-                            ? 'bg-[#5b5fc7] text-white shadow-2xs font-bold'
+                            ? 'bg-[#26394D] text-white shadow-2xs font-bold'
                             : 'text-zinc-600 hover:text-zinc-900'
                         }`}
                       >
@@ -3804,7 +3804,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     <select
                       value={instructorId}
                       onChange={e => setInstructorId(e.target.value)}
-                      className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                     >
                       {facultyMembers.map(lecturer => (
                         <option key={lecturer.id} value={lecturer.id}>
@@ -3820,7 +3820,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         value={manualInstructorName}
                         onChange={e => setManualInstructorName(e.target.value)}
                         placeholder="e.g. Er. Ramesh Sharma or Prof. John Doe"
-                        className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                        className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                         required={instructorSelectionMode === 'manual'}
                       />
                       <datalist id="professors-list">
@@ -3838,11 +3838,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               {/* 1. Default Announcement Section (Not a Subject) */}
               <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-[#5b5fc7]" />
+                  <Megaphone className="w-4 h-4 text-[#26394D]" />
                   <span className="text-xs font-bold text-zinc-900">
                     Default Section: Announcements
                   </span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-100 text-[#5b5fc7] rounded">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-100 text-[#26394D] rounded">
                     Noticeboard
                   </span>
                 </div>
@@ -3856,7 +3856,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1 border-b border-zinc-200">
                   <div>
                     <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                      <BookOpen className="w-3.5 h-3.5 text-[#26394D]" />
                       Subjects & Dedicated Lecturers ({newClassSubjects.length})
                     </span>
                     <span className="text-[11px] text-zinc-500">
@@ -3871,7 +3871,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         { name: '', code: '', description: '', lecturerId: facultyMembers[0]?.id }
                       ]);
                     }}
-                    className="text-xs text-[#5b5fc7] font-semibold hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                    className="text-xs text-[#26394D] font-semibold hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Single Subject</span>
@@ -3885,7 +3885,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     <button
                       type="button"
                       onClick={() => setShowBatchPasteInput(!showBatchPasteInput)}
-                      className="text-[11px] text-[#5b5fc7] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                      className="text-[11px] text-[#26394D] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       <ClipboardList className="w-3 h-3" />
                       <span>{showBatchPasteInput ? '✕ Close Paste' : 'Batch Paste Subjects'}</span>
@@ -3897,7 +3897,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         key={block.name}
                         type="button"
                         onClick={() => handleApplyPresetBlock(pIdx, 'append')}
-                        className="px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-[#5b5fc7] border border-indigo-200 text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                        className="px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-[#26394D] border border-indigo-200 text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
                         title={`Append 4 subjects: ${block.subjects.map(s => s.name).join(', ')}`}
                       >
                         <Plus className="w-3 h-3" />
@@ -3921,7 +3921,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       value={batchPasteText}
                       onChange={e => setBatchPasteText(e.target.value)}
                       placeholder="Operating Systems, CS-302&#10;Computer Networks, CS-304&#10;Database Systems, CS-305"
-                      className="w-full bg-white border border-zinc-300 rounded p-2 text-xs font-mono text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                      className="w-full bg-white border border-zinc-300 rounded p-2 text-xs font-mono text-zinc-800 focus:outline-none focus:border-[#26394D]"
                     />
                     <div className="flex items-center justify-end gap-2">
                       <button
@@ -3937,7 +3937,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         type="button"
                         onClick={() => handleApplyBatchPaste('append')}
                         disabled={!batchPasteText.trim()}
-                        className="px-3 py-1 bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:opacity-50 text-white rounded text-xs font-semibold cursor-pointer shadow-xs"
+                        className="px-3 py-1 bg-[#26394D] hover:bg-[#141E2B] disabled:opacity-50 text-white rounded text-xs font-semibold cursor-pointer shadow-xs"
                       >
                         + Append to Subjects
                       </button>
@@ -3973,7 +3973,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           );
                         }}
                         placeholder={`Subject ${idx + 1} Name`}
-                        className="flex-1 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7] focus:bg-white"
+                        className="flex-1 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
                         required
                       />
 
@@ -3987,7 +3987,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           );
                         }}
                         placeholder="Code (CS-301)"
-                        className="w-full sm:w-28 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7] focus:bg-white"
+                        className="w-full sm:w-28 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
                       />
 
                       <select
@@ -4042,7 +4042,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           setSelectedStudentIdsToEnroll(allStudents.map(s => s.id));
                         }
                       }}
-                      className="text-xs text-[#5b5fc7] font-semibold hover:underline cursor-pointer"
+                      className="text-xs text-[#26394D] font-semibold hover:underline cursor-pointer"
                     >
                       {selectedStudentIdsToEnroll.length === allStudents.length ? 'Deselect All' : 'Select All Students'}
                     </button>
@@ -4062,7 +4062,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       }
                     }}
                     defaultValue=""
-                    className="flex-1 bg-zinc-50 border border-zinc-300 rounded px-2.5 py-1 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="flex-1 bg-zinc-50 border border-zinc-300 rounded px-2.5 py-1 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
                     <option value="">-- Choose previous class to populate students --</option>
                     {courses.map(c => (
@@ -4098,7 +4098,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 setSelectedStudentIdsToEnroll(prev => prev.filter(id => id !== student.id));
                               }
                             }}
-                            className="rounded text-[#5b5fc7]"
+                            className="rounded text-[#26394D]"
                           />
                           <span className="truncate">{student.name}</span>
                         </label>
@@ -4120,7 +4120,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-lg shadow-sm transition-colors cursor-pointer"
+                className="px-5 py-2 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg shadow-sm transition-colors cursor-pointer"
               >
                 Create Class
               </button>
@@ -4182,7 +4182,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       setRolloverLeadInstructorId(selected.instructor.id);
                     }
                   }}
-                  className="w-full bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D]"
                 >
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>
@@ -4216,7 +4216,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     type="text"
                     value={rolloverNewCode}
                     onChange={e => setRolloverNewCode(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D]"
                     required
                   />
                 </div>
@@ -4226,7 +4226,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     type="text"
                     value={rolloverNewTerm}
                     onChange={e => setRolloverNewTerm(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D]"
                     required
                   />
                 </div>
@@ -4238,7 +4238,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   type="text"
                   value={rolloverNewName}
                   onChange={e => setRolloverNewName(e.target.value)}
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D]"
                   required
                 />
               </div>
@@ -4262,7 +4262,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                    <BookOpen className="w-3.5 h-3.5 text-[#26394D]" />
                     New Semester Subjects & Dedicated Teachers ({rolloverSubjects.length})
                   </span>
                   <button
@@ -4273,7 +4273,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         { name: '', description: '', lecturerId: facultyMembers[0]?.id }
                       ]);
                     }}
-                    className="text-xs text-[#5b5fc7] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-[#26394D] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Subject</span>
@@ -4360,7 +4360,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           >
             <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#5b5fc7]" />
+                <BookOpen className="w-5 h-5 text-[#26394D]" />
                 <div>
                   <h3 className="font-bold text-sm text-zinc-900">Add Subject Channel</h3>
                   <p className="text-[11px] text-zinc-500">Adding to {selectedCourseForAction.name}</p>
@@ -4383,7 +4383,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value)}
                   placeholder="Distributed Systems & Cloud Labs"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
                 />
               </div>
@@ -4395,7 +4395,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   value={newChannelDesc}
                   onChange={e => setNewChannelDesc(e.target.value)}
                   placeholder="Microservices, consensus protocols, and containers"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                 />
               </div>
 
@@ -4428,7 +4428,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-lg cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer"
               >
                 Add Subject Channel
               </button>
@@ -4445,7 +4445,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[88vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#5b5fc7]" />
+                <Users className="w-5 h-5 text-[#26394D]" />
                 <div>
                   <h3 className="font-bold text-sm text-zinc-900">Manage Enrolled Students</h3>
                   <p className="text-[11px] text-zinc-500">{selectedCourseForAction.name}</p>
@@ -4500,7 +4500,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       const unenrolled = allStudents.filter(s => !currentIds.has(s.id)).map(s => s.id);
                       setStudentsToAddToClass(unenrolled);
                     }}
-                    className="text-xs text-[#5b5fc7] font-semibold hover:underline cursor-pointer"
+                    className="text-xs text-[#26394D] font-semibold hover:underline cursor-pointer"
                   >
                     Enroll All Available
                   </button>
@@ -4529,7 +4529,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                   setStudentsToAddToClass(prev => prev.filter(id => id !== student.id));
                                 }
                               }}
-                              className="rounded text-[#5b5fc7]"
+                              className="rounded text-[#26394D]"
                             />
                             <span className="font-medium text-zinc-800">{student.name}</span>
                           </div>
@@ -4553,7 +4553,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 type="button"
                 onClick={handleSaveEnrolledStudents}
                 disabled={studentsToAddToClass.length === 0}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] disabled:bg-zinc-300 text-white rounded-lg cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] disabled:bg-zinc-300 text-white rounded-lg cursor-pointer"
               >
                 Add {studentsToAddToClass.length} Selected Student(s)
               </button>
@@ -4570,7 +4570,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[88vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-[#5b5fc7]" />
+                <GraduationCap className="w-5 h-5 text-[#26394D]" />
                 <div>
                   <h3 className="font-bold text-sm text-zinc-900">Manage Faculty Members</h3>
                   <p className="text-[11px] text-zinc-500">
@@ -4606,7 +4606,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       onClick={() => {
                         setSelectedMemberIdsForFaculty(facultyMembers.map(m => m.id));
                       }}
-                      className="text-xs text-[#5b5fc7] font-semibold hover:underline cursor-pointer"
+                      className="text-xs text-[#26394D] font-semibold hover:underline cursor-pointer"
                     >
                       Select All
                     </button>
@@ -4646,7 +4646,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 setSelectedMemberIdsForFaculty(prev => prev.filter(id => id !== member.id));
                               }
                             }}
-                            className="rounded text-[#5b5fc7] cursor-pointer"
+                            className="rounded text-[#26394D] cursor-pointer"
                           />
                           <img
                             src={member.avatar}
@@ -4691,7 +4691,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 <button
                   type="button"
                   onClick={handleSaveFacultyMembers}
-                  className="px-4 py-1.5 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-lg cursor-pointer shadow-xs transition-colors"
+                  className="px-4 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer shadow-xs transition-colors"
                 >
                   Save Faculty Members
                 </button>
@@ -4720,7 +4720,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   value={newUserName}
                   onChange={e => setNewUserName(e.target.value)}
                   placeholder="Full Name (Student or Lecturer)"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
                 />
               </div>
@@ -4732,7 +4732,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   value={newUserEmail}
                   onChange={e => setNewUserEmail(e.target.value)}
                   placeholder="m.lin@student.procollege.edu"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
                 />
               </div>
@@ -4776,7 +4776,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded cursor-pointer"
                 >
                   Register User
                 </button>
@@ -4801,7 +4801,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </div>
             <button
               onClick={() => setCreatedCredentials(null)}
-              className="w-full bg-[#5b5fc7] text-white text-xs font-semibold py-2 rounded"
+              className="w-full bg-[#26394D] text-white text-xs font-semibold py-2 rounded"
             >
               Done
             </button>
@@ -4820,7 +4820,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           >
             <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
               <div className="flex items-center gap-2">
-                <FolderTree className="w-5 h-5 text-[#5b5fc7]" />
+                <FolderTree className="w-5 h-5 text-[#26394D]" />
                 <div>
                   <h3 className="font-bold text-sm text-zinc-900">Create Academic Faculty</h3>
                   <p className="text-[11px] text-zinc-500">Establish a university department</p>
@@ -4847,7 +4847,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     value={newFacultyName}
                     onChange={e => setNewFacultyName(e.target.value)}
                     placeholder="e.g. Faculty of Electrical & Aerospace Engineering"
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   />
                 </div>
 
@@ -4861,7 +4861,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     value={newFacultyCode}
                     onChange={e => setNewFacultyCode(e.target.value.toUpperCase())}
                     placeholder="FEAE"
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-mono uppercase focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-mono uppercase focus:outline-none focus:border-[#26394D]"
                   />
                 </div>
               </div>
@@ -4878,7 +4878,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       onClick={() => setDeanSelectionMode('select')}
                       className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
                         deanSelectionMode === 'select'
-                          ? 'bg-[#5b5fc7] text-white shadow-2xs font-bold'
+                          ? 'bg-[#26394D] text-white shadow-2xs font-bold'
                           : 'text-zinc-600 hover:text-zinc-900'
                       }`}
                     >
@@ -4889,7 +4889,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       onClick={() => setDeanSelectionMode('manual')}
                       className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
                         deanSelectionMode === 'manual'
-                          ? 'bg-[#5b5fc7] text-white shadow-2xs font-bold'
+                          ? 'bg-[#26394D] text-white shadow-2xs font-bold'
                           : 'text-zinc-600 hover:text-zinc-900'
                       }`}
                     >
@@ -4902,7 +4902,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <select
                     value={newFacultyDeanId}
                     onChange={e => setNewFacultyDeanId(e.target.value)}
-                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
                     {facultyMembers.map(m => (
                       <option key={m.id} value={m.id}>
@@ -4918,7 +4918,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       value={manualDeanName}
                       onChange={e => setManualDeanName(e.target.value)}
                       placeholder="e.g. Prof. Dr. Anand Sharma"
-                      className="w-full bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                      className="w-full bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                     />
                   </div>
                 )}
@@ -4938,7 +4938,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   value={newFacultyDesc}
                   onChange={e => setNewFacultyDesc(e.target.value)}
                   placeholder="Degree curricula, laboratory tracks, research focus..."
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                 />
               </div>
             </div>
@@ -4953,7 +4953,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-lg cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer"
               >
                 Create Faculty
               </button>

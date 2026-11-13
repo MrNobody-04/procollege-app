@@ -139,7 +139,7 @@ Size:         ${file.size}
   const isTeacherOrAdmin = currentUser.role === 'professor' || currentUser.role === 'lecturer' || currentUser.role === 'admin';
 
   return (
-    <div className="flex-1 bg-[#f5f5f5] flex flex-col h-full min-w-0 overflow-y-auto select-none">
+    <div className="flex-1 bg-[#E8E9E2] flex flex-col h-full min-w-0 overflow-y-auto select-none">
       {/* Hidden native device file picker */}
       <input
         type="file"
@@ -152,7 +152,7 @@ Size:         ${file.size}
         {/* Natural Header Bar */}
         <div className="bg-white border border-zinc-200 rounded-lg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-zinc-100 text-[#5b5fc7] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-zinc-100 text-[#26394D] flex items-center justify-center">
               <FolderOpen className="w-5 h-5" />
             </div>
             <div>
@@ -168,7 +168,7 @@ Size:         ${file.size}
             <select
               value={selectedCourseId}
               onChange={e => setSelectedCourseId(e.target.value)}
-              className="bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#5b5fc7]"
+              className="bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D]"
             >
               <option value="all">All Courses ({courses.length})</option>
               {courses.map(c => (
@@ -180,7 +180,7 @@ Size:         ${file.size}
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-3.5 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white px-3.5 py-1.5 rounded text-xs font-medium transition-colors cursor-pointer"
               title="Upload file from your computer"
             >
               <Upload className="w-3.5 h-3.5" />
@@ -252,7 +252,7 @@ Size:         ${file.size}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Filter by file name..."
-              className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+              className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D]"
             />
           </div>
         </div>
@@ -294,7 +294,7 @@ Size:         ${file.size}
                             {getFileIcon(file.name)}
                             <button
                               onClick={() => setPreviewFile(file)}
-                              className="font-medium text-zinc-900 hover:text-[#5b5fc7] hover:underline text-left truncate cursor-pointer"
+                              className="font-medium text-zinc-900 hover:text-[#26394D] hover:underline text-left truncate cursor-pointer"
                               title={`Preview ${file.name}`}
                             >
                               {file.name}
@@ -347,14 +347,14 @@ Size:         ${file.size}
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => setPreviewFile(file)}
-                              className="p-1 text-zinc-400 hover:text-[#5b5fc7] rounded hover:bg-zinc-100"
+                              className="p-1 text-zinc-400 hover:text-[#26394D] rounded hover:bg-zinc-100"
                               title="Preview"
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDownload(file)}
-                              className="p-1 text-zinc-400 hover:text-[#5b5fc7] rounded hover:bg-zinc-100"
+                              className="p-1 text-zinc-400 hover:text-[#26394D] rounded hover:bg-zinc-100"
                               title="Download to computer"
                             >
                               <Download className="w-3.5 h-3.5" />
@@ -444,7 +444,7 @@ Size:         ${file.size}
                   handleDownload(previewFile);
                   setPreviewFile(null);
                 }}
-                className="px-3.5 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-medium rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-medium rounded flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download</span>

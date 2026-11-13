@@ -63,7 +63,7 @@ export const GlobalDialogModal: React.FC = () => {
       case 'info':
       default:
         return (
-          <div className="w-11 h-11 rounded-full bg-indigo-50 border border-indigo-200 text-[#5b5fc7] flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="w-11 h-11 rounded-full bg-indigo-50 border border-indigo-200 text-[#26394D] flex items-center justify-center shrink-0 shadow-2xs">
             <Info className="w-6 h-6" />
           </div>
         );
@@ -119,7 +119,7 @@ export const GlobalDialogModal: React.FC = () => {
           <button
             onClick={handleConfirm}
             autoFocus
-            className="px-5 py-2 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-5 py-2 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <span>{dialog.confirmText || 'OK'}</span>
           </button>

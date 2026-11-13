@@ -216,11 +216,11 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
 
         {/* Action / Notification Banner */}
         {actionNotification && (
-          <div className="mt-3 p-2.5 bg-[#f0f1fc] text-[#5b5fc7] text-xs font-medium rounded border border-[#d6d8f5] flex items-center justify-between">
+          <div className="mt-3 p-2.5 bg-[#f0f1fc] text-[#26394D] text-xs font-medium rounded border border-[#d6d8f5] flex items-center justify-between">
             <span>{actionNotification}</span>
             <button
               onClick={() => setActionNotification(null)}
-              className="text-xs font-bold text-[#5b5fc7] hover:underline"
+              className="text-xs font-bold text-[#26394D] hover:underline"
             >
               Dismiss
             </button>
@@ -343,7 +343,7 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                     </div>
                     <button
                       onClick={() => showDialog(`Opening preview of ${rf.name}...`, { type: 'info', title: 'File Preview' })}
-                      className="text-[#5b5fc7] hover:underline font-medium text-xs flex items-center gap-1 shrink-0 ml-3 cursor-pointer"
+                      className="text-[#26394D] hover:underline font-medium text-xs flex items-center gap-1 shrink-0 ml-3 cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       View
@@ -436,7 +436,7 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-4 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    className="bg-[#26394D] hover:bg-[#141E2B] text-white px-4 py-2 rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                   >
                     <Upload className="w-4 h-4" />
                     <span>+ Attach File from Device</span>
@@ -448,7 +448,7 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                       value={newFileName}
                       onChange={e => setNewFileName(e.target.value)}
                       placeholder="Or enter filename manually..."
-                      className="flex-1 bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#5b5fc7]"
+                      className="flex-1 bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                     />
                     <button
                       type="button"
@@ -536,7 +536,7 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                 <button
                   type="button"
                   onClick={handleTurnIn}
-                  className="bg-[#5b5fc7] hover:bg-[#4f52b2] text-white px-5 py-2 rounded font-semibold text-xs transition-colors flex items-center gap-1.5"
+                  className="bg-[#26394D] hover:bg-[#141E2B] text-white px-5 py-2 rounded font-semibold text-xs transition-colors flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{isRevisionRequested ? 'Turn In Revised Work' : 'Turn In'}</span>
