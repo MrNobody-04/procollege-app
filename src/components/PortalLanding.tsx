@@ -127,27 +127,34 @@ export const PortalLanding: React.FC = () => {
 
   const [isSubmittingRequest, setIsSubmittingRequest] = useState<boolean>(false);
 
-  const launchDemoMode = async (userToSet?: typeof availableUsers[0]) => {
-    if (userToSet) {
-      setIsDemoMode(true);
-      setCurrentUser(userToSet);
-      setShowSignInModal(false);
-      setShowRequestModal(false);
-      setMobileMenuOpen(false);
-      setViewMode('app');
-      return;
+  const launchDemoMode = (userToSet?: typeof availableUsers[0]) => {
+    // 1. NEVER SAVE DEMO CREDENTIALS: Purge any stored tokens, credentials, or sessions
+    try {
+      localStorage.removeItem('procollege_token');
+      localStorage.removeItem('procollege_user');
+      localStorage.removeItem('procollege_college');
+      sessionStorage.clear();
+    } catch {
+      // ignore
     }
 
-    // Default "Explore the platform" -> Authenticate directly with live Turso student demo account
-    try {
-      await performLogin('sujan@padmashree.edu.np', 'password123');
-    } catch {
-      setIsDemoMode(true);
-      setShowSignInModal(false);
-      setShowRequestModal(false);
-      setMobileMenuOpen(false);
-      setViewMode('app');
-    }
+    // 2. Set demo mode to true (Strict Zero Database Writes Sandbox)
+    setIsDemoMode(true);
+
+    // 3. Set demo persona (Default to Student, never saving credentials)
+    const demoUser =
+      userToSet ||
+      availableUsers.find(u => u.role === 'student' && u.name.toLowerCase().includes('alex')) ||
+      availableUsers.find(u => u.role === 'student') ||
+      availableUsers[0];
+
+    setCurrentUser(demoUser);
+
+    // 4. Close any open dialogs and navigate to the application workspace
+    setShowSignInModal(false);
+    setShowRequestModal(false);
+    setMobileMenuOpen(false);
+    setViewMode('app');
   };
 
   const handleInstitutionalLogin = async (e: React.FormEvent) => {

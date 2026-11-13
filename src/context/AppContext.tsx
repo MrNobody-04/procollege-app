@@ -508,12 +508,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedChannel(courseWithInst.channels[0]);
     }
 
-    // Persist new class & channels to live Turso SQL database (R14)
-    fetch('/api/courses', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(courseWithInst),
-    }).catch(() => {});
+    // Persist new class & channels to live Turso SQL database (R14) - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(courseWithInst),
+      }).catch(() => {});
+    }
   };
 
   const deleteCourse = (courseId: string) => {
@@ -525,9 +527,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedChannel(remaining[0].channels[0]);
       }
     }
-    fetch(`/api/courses/${courseId}`, {
-      method: 'DELETE',
-    }).catch(() => {});
+    if (!isDemoMode) {
+      fetch(`/api/courses/${courseId}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+    }
   };
 
   const deleteChannel = (courseId: string, channelId: string) => {
@@ -559,15 +563,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // Enforce deletion in Turso with server protection (R20)
-    fetch(`/api/courses/${encodeURIComponent(courseId)}/subjects/${encodeURIComponent(channelId)}`, {
-      method: 'DELETE',
-    }).then(async res => {
-      if (!res.ok) {
-        const data = await res.json();
-        showDialog(data.error || 'Failed to delete channel from server', { type: 'warning' });
-      }
-    }).catch(() => {});
+    // Enforce deletion in Turso with server protection (R20) - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch(`/api/courses/${encodeURIComponent(courseId)}/subjects/${encodeURIComponent(channelId)}`, {
+        method: 'DELETE',
+      }).then(async res => {
+        if (!res.ok) {
+          const data = await res.json();
+          showDialog(data.error || 'Failed to delete channel from server', { type: 'warning' });
+        }
+      }).catch(() => {});
+    }
   };
 
   // Add a new channel/subject to a course with an assigned subject teacher
@@ -763,19 +769,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSelectedCourse(rolledCourse);
     setSelectedChannel(newChannels[0]);
 
-    // Persist automated Semester Rollover to live Turso SQL database (R23)
-    fetch('/api/courses/rollover', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sourceCourseId,
-        code: data.code,
-        name: data.name,
-        term: data.term,
-        instructorId: data.instructorId,
-        channels: data.channels,
-      }),
-    }).catch(() => {});
+    // Persist automated Semester Rollover to live Turso SQL database (R23) - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch('/api/courses/rollover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceCourseId,
+          code: data.code,
+          name: data.name,
+          term: data.term,
+          instructorId: data.instructorId,
+          channels: data.channels,
+        }),
+      }).catch(() => {});
+    }
 
     // Initialize posts for each new channel with a clean welcome announcement
     newChannels.forEach(ch => {
@@ -880,8 +888,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setNotifications(prev => [newNotif, ...prev]);
 
-      // Sync announcement to live Turso notices table & Ably broadcast
-      if (isAnnouncement || currentUser.role === 'admin' || currentUser.role === 'professor') {
+      // Sync announcement to live Turso notices table & Ably broadcast - Zero writes in demo mode
+      if (!isDemoMode && (isAnnouncement || currentUser.role === 'admin' || currentUser.role === 'professor')) {
         fetch('/api/notices', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1042,35 +1050,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAssignments(prev => [fullAssignment, ...prev]);
 
-    // Sync to live Turso assignments table with strict boundary data
-    fetch('/api/assignments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: asgnId,
-        institution_name: institutionName,
-        institutionName,
-        faculty_id: facultyId,
-        facultyId,
-        course_id: targetCourse.id,
-        courseId: targetCourse.id,
-        course_code: targetCourse.code,
-        courseCode: targetCourse.code,
-        channel_id: channelId,
-        channelId,
-        subject_name: subjectName,
-        subjectName,
-        created_by: currentUser.name,
-        created_by_email: createdByEmail,
-        createdByEmail,
-        title: newAsgn.title,
-        instructions: newAsgn.instructions,
-        due_at: newAsgn.dueAt,
-        dueTimestamp,
-        max_points: newAsgn.points,
-        rubric: newAsgn.rubric
-      }),
-    }).catch(() => {});
+    // Sync to live Turso assignments table with strict boundary data - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: asgnId,
+          institution_name: institutionName,
+          institutionName,
+          faculty_id: facultyId,
+          facultyId,
+          course_id: targetCourse.id,
+          courseId: targetCourse.id,
+          course_code: targetCourse.code,
+          courseCode: targetCourse.code,
+          channel_id: channelId,
+          channelId,
+          subject_name: subjectName,
+          subjectName,
+          created_by: currentUser.name,
+          created_by_email: createdByEmail,
+          createdByEmail,
+          title: newAsgn.title,
+          instructions: newAsgn.instructions,
+          due_at: newAsgn.dueAt,
+          dueTimestamp,
+          max_points: newAsgn.points,
+          rubric: newAsgn.rubric
+        }),
+      }).catch(() => {});
+    }
 
     // Channel Notification Routing: Post automated assignment card in target channel
     addPost(
@@ -1250,33 +1260,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    // Sync submission with live Turso database with server-side deadline lock (R3, R4)
-    fetch(`/api/assignments/${encodeURIComponent(asgnId)}/submit`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: studentId,
-        student_name: currentUser.name,
-        submission_text: `Turned in by ${currentUser.name}`,
-        file_name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
-        file_size: '1.8 MB',
-      }),
-    }).then(async res => {
-      if (res.status === 403) {
-        const data = await res.json();
-        showDialog(data.error || 'Submission Closed — Deadline Passed', { type: 'warning', title: 'Deadline Lock' });
-        // Revert submission status to not-turned-in
-        setAssignments(prev =>
-          prev.map(asgn => {
-            if (asgn.id !== asgnId) return asgn;
-            return {
-              ...asgn,
-              submissions: asgn.submissions.map(s => s.studentId === studentId ? { ...s, status: 'not-turned-in' } : s)
-            };
-          })
-        );
-      }
-    }).catch(() => {});
+    // Sync submission with live Turso database with server-side deadline lock (R3, R4) - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch(`/api/assignments/${encodeURIComponent(asgnId)}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+          student_name: currentUser.name,
+          submission_text: `Turned in by ${currentUser.name}`,
+          file_name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
+          file_size: '1.8 MB',
+        }),
+      }).then(async res => {
+        if (res.status === 403) {
+          const data = await res.json();
+          showDialog(data.error || 'Submission Closed — Deadline Passed', { type: 'warning', title: 'Deadline Lock' });
+          // Revert submission status to not-turned-in
+          setAssignments(prev =>
+            prev.map(asgn => {
+              if (asgn.id !== asgnId) return asgn;
+              return {
+                ...asgn,
+                submissions: asgn.submissions.map(s => s.studentId === studentId ? { ...s, status: 'not-turned-in' } : s)
+              };
+            })
+          );
+        }
+      }).catch(() => {});
+    }
 
     return { success: true, message: `Submission recorded: ${serverTimestamp}` };
   };
@@ -1312,19 +1324,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    // Sync undo with live Turso database with server-side deadline check (R3, R4)
-    fetch(`/api/assignments/${encodeURIComponent(asgnId)}/undo`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        student_id: studentId,
-      }),
-    }).then(async res => {
-      if (res.status === 403) {
-        const data = await res.json();
-        showDialog(data.error || 'Cannot undo submission — Deadline Passed', { type: 'warning', title: 'Deadline Lock' });
-      }
-    }).catch(() => {});
+    // Sync undo with live Turso database with server-side deadline check (R3, R4) - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch(`/api/assignments/${encodeURIComponent(asgnId)}/undo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+        }),
+      }).then(async res => {
+        if (res.status === 403) {
+          const data = await res.json();
+          showDialog(data.error || 'Cannot undo submission — Deadline Passed', { type: 'warning', title: 'Deadline Lock' });
+        }
+      }).catch(() => {});
+    }
 
     return { success: true, message: 'Turn In undone. Draft unlocked for editing.' };
   };
@@ -1433,27 +1447,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCourseFiles(prev => [newFile, ...prev]);
 
-    // Persist to Turso
-    fetch(`/api/courses/${file.courseId}/files`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-role': currentUser.role,
-        'x-institution-name': currentUser.institutionName || 'Padmashree College',
-      },
-      body: JSON.stringify({
-        id: newFile.id,
-        courseId: file.courseId,
-        channelId: file.channelId,
-        name: file.name,
-        category: file.category,
-        size: file.size,
-        type: 'pdf',
-        uploadedBy: file.uploadedBy,
-        isClassMaterials: file.isClassMaterials,
-        permission: file.permission,
-      }),
-    }).catch(err => console.warn('Turso file upload sync failed:', err));
+    // Persist to Turso - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch(`/api/courses/${file.courseId}/files`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': currentUser.role,
+          'x-institution-name': currentUser.institutionName || 'Padmashree College',
+        },
+        body: JSON.stringify({
+          id: newFile.id,
+          courseId: file.courseId,
+          channelId: file.channelId,
+          name: file.name,
+          category: file.category,
+          size: file.size,
+          type: 'pdf',
+          uploadedBy: file.uploadedBy,
+          isClassMaterials: file.isClassMaterials,
+          permission: file.permission,
+        }),
+      }).catch(err => console.warn('Turso file upload sync failed:', err));
+    }
 
     // Broadcast automated notification to students when administrator/lecturer uploads materials
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer' || currentUser.role === 'admin') {
@@ -1487,14 +1503,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCourseFiles(prev => prev.filter(f => f.id !== fileId));
 
-    // Persist delete to Turso
-    fetch(`/api/courses/${target.courseId}/files/${fileId}`, {
-      method: 'DELETE',
-      headers: {
-        'x-user-role': currentUser.role,
-        'x-institution-name': currentUser.institutionName || 'Padmashree College',
-      },
-    }).catch(err => console.warn('Turso file deletion sync failed:', err));
+    // Persist delete to Turso - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch(`/api/courses/${target.courseId}/files/${fileId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': currentUser.role,
+          'x-institution-name': currentUser.institutionName || 'Padmashree College',
+        },
+      }).catch(err => console.warn('Turso file deletion sync failed:', err));
+    }
 
     return { success: true, message: `Deleted ${target.name}` };
   };
@@ -1679,21 +1697,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setFaculties(prev => [...prev, newFac]);
 
-    // Persist new faculty/department to live Turso SQL database (R13, R22)
-    fetch('/api/faculties', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newFac),
-    }).catch(() => {});
+    // Persist new faculty/department to live Turso SQL database (R13, R22) - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch('/api/faculties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newFac),
+      }).catch(() => {});
+    }
   };
 
   const deleteFaculty = (facultyId: string) => {
     setFaculties(prev => prev.filter(f => f.id !== facultyId));
 
-    // Persist deletion to live Turso SQL database
-    fetch(`/api/faculties/${facultyId}`, {
-      method: 'DELETE',
-    }).catch(() => {});
+    // Persist deletion to live Turso SQL database - Zero writes in demo mode
+    if (!isDemoMode) {
+      fetch(`/api/faculties/${facultyId}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+    }
   };
 
   const addMembersToFaculty = (facultyId: string, memberIds: string[]) => {
