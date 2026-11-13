@@ -909,14 +909,14 @@ app.get('/api/workspace/bootstrap', async (c) => {
     let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes, filesRes;
 
     if (isDeveloper && institutionParam === 'all') {
-      facultiesRes = await db.execute('SELECT * FROM faculties ORDER BY name ASC;');
-      coursesRes = await db.execute('SELECT * FROM courses ORDER BY code ASC;');
-      channelsRes = await db.execute('SELECT * FROM channels ORDER BY name ASC;');
-      assignmentsRes = await db.execute('SELECT * FROM assignments ORDER BY created_at DESC;');
+      facultiesRes = await db.execute("SELECT * FROM faculties WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY name ASC;");
+      coursesRes = await db.execute("SELECT * FROM courses WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY code ASC;");
+      channelsRes = await db.execute("SELECT * FROM channels WHERE college_id != 'padmashree-demo' ORDER BY name ASC;");
+      assignmentsRes = await db.execute("SELECT * FROM assignments WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY created_at DESC;");
       submissionsRes = await db.execute('SELECT * FROM assignment_submissions;');
-      noticesRes = await db.execute('SELECT * FROM notices ORDER BY created_at DESC;');
-      usersRes = await db.execute('SELECT * FROM users ORDER BY name ASC;');
-      filesRes = await db.execute('SELECT * FROM course_files ORDER BY uploaded_at DESC;');
+      noticesRes = await db.execute("SELECT * FROM notices WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY created_at DESC;");
+      usersRes = await db.execute("SELECT * FROM users WHERE role != 'developer' AND college_id != 'padmashree-demo' ORDER BY name ASC;");
+      filesRes = await db.execute("SELECT * FROM course_files WHERE college_id != 'padmashree-demo' ORDER BY uploaded_at DESC;");
     } else {
       facultiesRes = await db.execute({
         sql: 'SELECT * FROM faculties WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
@@ -969,7 +969,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         role: 'professor',
         email: 'teacher@padmashree.edu.np',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
-        license: 'Microsoft 365 A5 for Faculty',
+        license: 'ProCollege Verified for Faculty',
         department: String(cRow.department || 'Department of BIT'),
         institutionName: String(cRow.institution_name || institutionParam),
         status: 'available' as const,
@@ -1109,7 +1109,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       name: String(u.name),
       email: String(u.email),
       role: (u.role === 'teacher' ? 'professor' : u.role) as any,
-      license: u.role === 'student' ? 'Microsoft 365 A3 for Students' : 'Microsoft 365 A5 for Faculty',
+      license: u.role === 'student' ? 'ProCollege Verified for Students' : 'ProCollege Verified for Faculty',
       department: String(u.department || 'Department of BIT'),
       institutionName: String(u.institution_name || institutionParam),
       avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),

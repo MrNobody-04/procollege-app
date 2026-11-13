@@ -219,6 +219,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     isActivated: true,
     model: 'model-a',
     template: 'Class',
+    isDemo: true,
     enrolledStudents: [
       INITIAL_USERS[2], // Alex Johnson
       INITIAL_USERS[5], // Sophia Chen
@@ -270,6 +271,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     isActivated: true,
     model: 'model-b',
     template: 'Class',
+    isDemo: true,
     enrolledStudents: [
       INITIAL_USERS[2], // Alex Johnson
       INITIAL_USERS[5], // Sophia Chen
@@ -279,7 +281,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
         name: 'Marcus Aurelius',
         email: 'marcus.a@student.procollege.edu',
         role: 'student',
-        license: 'Microsoft 365 A3 for Students',
+        license: 'ProCollege Verified for Students',
         department: 'Computer Science',
         institutionName: 'ProCollege University Network',
         avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
@@ -291,7 +293,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
         name: 'Devon Vance',
         email: 'devon.v@student.procollege.edu',
         role: 'student',
-        license: 'Microsoft 365 A3 for Students',
+        license: 'ProCollege Verified for Students',
         department: 'Computer Science',
         institutionName: 'ProCollege University Network',
         avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=256&q=80',
@@ -303,7 +305,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
         name: 'Priya Patel',
         email: 'priya.p@student.procollege.edu',
         role: 'student',
-        license: 'Microsoft 365 A3 for Students',
+        license: 'ProCollege Verified for Students',
         department: 'Computer Science',
         institutionName: 'ProCollege University Network',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
@@ -332,6 +334,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     isActivated: true,
     model: 'model-a',
     template: 'Class',
+    isDemo: true,
     channels: [
       { id: 'ch_ds204_gen', courseId: 'course_ds204', name: 'Announcements', description: 'Class notices, foundation updates, and lab schedules from all lecturers', isGeneral: true, unreadCount: 0, studentFilePermission: 'read-only' },
       { id: 'ch_ds204_labs', courseId: 'course_ds204', name: 'GPU Cluster Labs', description: 'Slurm and PyTorch multi-node training scripts', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit', subjectLecturerName: 'Dr. Fei-Fei Li', subjectLecturerId: 'user_feifei' }
@@ -352,6 +355,7 @@ export const INITIAL_COURSES: CourseTeam[] = [
     isActivated: true,
     model: 'model-a',
     template: 'Class',
+    isDemo: true,
     channels: [
       { id: 'ch_phys210_gen', courseId: 'course_phys210', name: 'Announcements', description: 'Class notices, syllabus updates, and lab schedules from all lecturers', isGeneral: true, unreadCount: 0, studentFilePermission: 'read-only' },
       { id: 'ch_phys210_lab', courseId: 'course_phys210', name: 'Experimental Lab', description: 'Apparatus calibration and lab reports', isGeneral: false, unreadCount: 0, studentFilePermission: 'can-edit', subjectLecturerName: 'Dr. Richard Feynman', subjectLecturerId: 'user_feynman' }
@@ -955,97 +959,122 @@ export const INITIAL_FILES: CourseFile[] = [
     id: 'file_cm_1',
     courseId: 'course_cs301',
     channelId: 'ch_cs301_gen',
+    institutionName: 'ProCollege University Network',
     name: 'CS301_Complete_Syllabus_2026.pdf',
     category: 'Class Materials',
     size: '1.4 MB',
     uploadedAt: 'Sep 2, 2026',
     uploadedBy: 'Prof. Alan Turing',
+    uploadedByRole: 'professor',
     isClassMaterials: true,
-    permission: 'read-only'
+    permission: 'read-only',
+    isDemo: true
   },
   {
     id: 'file_cm_2',
     courseId: 'course_cs301',
     channelId: 'ch_cs301_gen',
+    institutionName: 'ProCollege University Network',
     name: 'Lecture01_Amortized_Analysis.pdf',
     category: 'Class Materials',
     size: '4.8 MB',
     uploadedAt: 'Sep 5, 2026',
     uploadedBy: 'Prof. Alan Turing',
+    uploadedByRole: 'professor',
     isClassMaterials: true,
-    permission: 'read-only'
+    permission: 'read-only',
+    isDemo: true
   },
   {
     id: 'file_cm_3',
     courseId: 'course_cs301',
     channelId: 'ch_cs301_gen',
+    institutionName: 'ProCollege University Network',
     name: 'Lecture02_Fibonacci_Heaps.pdf',
     category: 'Class Materials',
     size: '3.9 MB',
     uploadedAt: 'Sep 12, 2026',
     uploadedBy: 'Prof. Alan Turing',
+    uploadedByRole: 'professor',
     isClassMaterials: true,
-    permission: 'read-only'
+    permission: 'read-only',
+    isDemo: true
   },
   {
     id: 'file_collab_1',
     courseId: 'course_cs301',
     channelId: 'ch_cs301_proj',
+    institutionName: 'ProCollege University Network',
     name: 'Group_Project_Collaboration_Notes.docx',
     category: 'Subject Files',
     size: '320 KB',
     uploadedAt: 'Oct 14, 2026',
     uploadedBy: 'Alex Johnson',
+    uploadedByRole: 'student',
     isClassMaterials: false,
-    permission: 'can-edit'
+    permission: 'can-edit',
+    isPrivate: true, // Private student file - hidden from global public repository
+    isDemo: true
   },
   {
     id: 'file_os_1',
     courseId: 'course_cohort_cs',
     channelId: 'ch_cohort_os',
+    institutionName: 'ProCollege University Network',
     name: 'OS_Kernel_Architecture_Guide.pdf',
     category: 'Class Materials',
     size: '2.7 MB',
     uploadedAt: 'Sep 15, 2026',
     uploadedBy: 'Dr. Fei-Fei Li',
+    uploadedByRole: 'professor',
     isClassMaterials: true,
-    permission: 'read-only'
+    permission: 'read-only',
+    isDemo: true
   },
   {
     id: 'file_net_1',
     courseId: 'course_cohort_cs',
     channelId: 'ch_cohort_net',
+    institutionName: 'ProCollege University Network',
     name: 'Socket_Programming_Lab_Manual.pdf',
     category: 'Class Materials',
     size: '1.9 MB',
     uploadedAt: 'Sep 20, 2026',
     uploadedBy: 'Prof. Alan Turing',
+    uploadedByRole: 'professor',
     isClassMaterials: true,
-    permission: 'read-only'
+    permission: 'read-only',
+    isDemo: true
   },
   {
     id: 'file_db_1',
     courseId: 'course_cohort_cs',
     channelId: 'ch_cohort_db',
+    institutionName: 'ProCollege University Network',
     name: 'Relational_Algebra_Cheatsheet.pdf',
     category: 'Class Materials',
     size: '890 KB',
     uploadedAt: 'Sep 25, 2026',
     uploadedBy: 'Dr. Richard Feynman',
+    uploadedByRole: 'professor',
     isClassMaterials: true,
-    permission: 'read-only'
+    permission: 'read-only',
+    isDemo: true
   },
   {
     id: 'file_ds_1',
     courseId: 'course_ds204',
     channelId: 'ch_ds204_gen',
+    institutionName: 'ProCollege University Network',
     name: 'Deep_Learning_PyTorch_Setup.docx',
     category: 'Subject Files',
     size: '450 KB',
     uploadedAt: 'Oct 02, 2026',
     uploadedBy: 'Dr. Margaret Hamilton',
+    uploadedByRole: 'admin',
     isClassMaterials: false,
-    permission: 'can-edit'
+    permission: 'can-edit',
+    isDemo: true
   }
 ];
 

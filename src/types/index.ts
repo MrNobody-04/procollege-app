@@ -232,7 +232,7 @@ export interface CourseFile {
   channelId?: string;
   institutionName?: string;
   name: string;
-  category: 'Class Materials' | 'Syllabus' | 'Lecture Slides' | 'Lab Manuals' | 'Readings' | 'Subject Files';
+  category: 'Class Materials' | 'Syllabus' | 'Lecture Slides' | 'Lab Manuals' | 'Readings' | 'Subject Files' | 'Private Submissions';
   size: string;
   uploadedAt: string;
   uploadedBy: string;

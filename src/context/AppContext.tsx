@@ -257,9 +257,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           email: u.email,
           role: mappedRole,
           license:
-            mappedRole === 'developer' || mappedRole === 'admin' || mappedRole === 'professor'
-              ? 'Microsoft 365 A5 for Faculty'
-              : 'Microsoft 365 A5 for Students',
+            mappedRole === 'developer'
+              ? 'ProCollege Enterprise Platform License'
+              : mappedRole === 'admin' || mappedRole === 'professor'
+              ? 'ProCollege Verified for Faculty'
+              : 'ProCollege Verified for Students',
           department:
             mappedRole === 'developer'
               ? 'Platform Architecture & Operations'
@@ -1761,7 +1763,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: data.name,
       email: data.email,
       role: 'admin',
-      license: 'Microsoft 365 A5 for Faculty',
+      license: 'ProCollege Verified for Faculty',
       department: data.department || 'Chief Academic Operations',
       institutionName: data.institutionName,
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80',
@@ -1794,13 +1796,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Multi-Tenant Isolation Derivations
   const allInstitutions = useMemo(() => {
     const set = new Set<string>();
+    if (currentUser.role === 'developer') {
+      // In Developer mode: Only show verified real institutions (NO demo sandboxes)
+      institutionalRequests.forEach(r => {
+        if (r.institutionName && r.institutionName !== 'ProCollege University Network') {
+          set.add(r.institutionName);
+        }
+      });
+      courses.forEach(c => {
+        if (c.institutionName && c.institutionName !== 'ProCollege University Network' && !c.isDemo) {
+          set.add(c.institutionName);
+        }
+      });
+      faculties.forEach(f => {
+        if (f.institutionName && f.institutionName !== 'ProCollege University Network' && !f.isDemo) {
+          set.add(f.institutionName);
+        }
+      });
+      availableUsers.forEach(u => {
+        if (
+          u.institutionName &&
+          u.institutionName !== 'ProCollege University Network' &&
+          u.institutionName !== 'ProCollege Platform Operations' &&
+          !u.isDemo
+        ) {
+          set.add(u.institutionName);
+        }
+      });
+      // Provisioned university baselines
+      set.add('Stanford Engineering Institute');
+      set.add('Cambridge University Faculty of Mathematics');
+      return Array.from(set);
+    }
+
     courses.forEach(c => { if (c.institutionName) set.add(c.institutionName); });
     faculties.forEach(f => { if (f.institutionName) set.add(f.institutionName); });
     availableUsers.forEach(u => { if (u.institutionName) set.add(u.institutionName); });
     institutionalRequests.forEach(r => { if (r.institutionName) set.add(r.institutionName); });
     set.add('ProCollege University Network');
     return Array.from(set);
-  }, [courses, faculties, availableUsers, institutionalRequests]);
+  }, [currentUser.role, courses, faculties, availableUsers, institutionalRequests]);
 
   const activeInstitution = useMemo(() => {
     if (currentUser.role === 'developer') {
@@ -1810,25 +1845,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser.role, currentUser.institutionName, selectedInstitution]);
 
   const tenantCourses = useMemo(() => {
-    if (currentUser.role === 'developer' && selectedInstitution === 'all') {
-      return courses;
+    if (currentUser.role === 'developer') {
+      // Never show demo courses in Developer Console! Real workplace only.
+      const realCourses = courses.filter(c => !c.isDemo && c.institutionName !== 'ProCollege University Network');
+      if (selectedInstitution === 'all') {
+        return realCourses;
+      }
+      return realCourses.filter(c => c.institutionName === activeInstitution);
     }
     return courses.filter(c => (c.institutionName || 'ProCollege University Network') === activeInstitution);
   }, [courses, currentUser.role, selectedInstitution, activeInstitution]);
 
   const tenantFaculties = useMemo(() => {
-    if (currentUser.role === 'developer' && selectedInstitution === 'all') {
-      return faculties;
+    if (currentUser.role === 'developer') {
+      // Never show demo faculties in Developer Console
+      const realFaculties = faculties.filter(f => !f.isDemo && f.institutionName !== 'ProCollege University Network');
+      if (selectedInstitution === 'all') {
+        return realFaculties;
+      }
+      return realFaculties.filter(f => f.institutionName === activeInstitution);
     }
     return faculties.filter(f => (f.institutionName || 'ProCollege University Network') === activeInstitution);
   }, [faculties, currentUser.role, selectedInstitution, activeInstitution]);
 
   const tenantUsers = useMemo(() => {
-    if (currentUser.role === 'developer' && selectedInstitution === 'all') {
-      return availableUsers;
+    if (currentUser.role === 'developer') {
+      // Real users only (no demo students/professors)
+      const realUsers = availableUsers.filter(u => !u.isDemo && u.institutionName !== 'ProCollege University Network');
+      if (selectedInstitution === 'all') {
+        return realUsers;
+      }
+      return realUsers.filter(u => u.institutionName === activeInstitution || u.role === 'developer');
     }
-    return availableUsers.filter(u => u.role === 'developer' || (u.institutionName || 'ProCollege University Network') === activeInstitution);
+    return availableUsers.filter(u => (u.institutionName || 'ProCollege University Network') === activeInstitution);
   }, [availableUsers, currentUser.role, selectedInstitution, activeInstitution]);
+
+  const tenantFiles = useMemo(() => {
+    return courseFiles.filter(f => {
+      // 1. Strict Privacy: Never expose private student files or homework submissions in general repository
+      if (f.isPrivate || f.uploadedByRole === 'student' || f.category === 'Private Submissions') {
+        if (currentUser.role === 'student' && f.uploadedBy !== currentUser.name) {
+          return false;
+        }
+        if (f.isPrivate) return false;
+      }
+
+      // 2. Developer Mode: Exclude demo files
+      if (currentUser.role === 'developer') {
+        if (f.isDemo || f.institutionName === 'ProCollege University Network') {
+          return false;
+        }
+        if (selectedInstitution === 'all') return true;
+        return f.institutionName === activeInstitution;
+      }
+
+      // 3. Multi-Tenant College Isolation
+      const fileInst = f.institutionName || courses.find(c => c.id === f.courseId)?.institutionName || 'ProCollege University Network';
+      if (fileInst !== activeInstitution) {
+        return false;
+      }
+
+      // 4. Role-based course scoping for students
+      if (currentUser.role === 'student') {
+        const studentEnrolledCourses = courses.filter(c =>
+          c.enrolledStudents?.some(s => s.id === currentUser.id || s.email === currentUser.email)
+        ).map(c => c.id);
+        if (studentEnrolledCourses.length > 0 && !studentEnrolledCourses.includes(f.courseId)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [courseFiles, courses, currentUser, activeInstitution, selectedInstitution]);
 
   // Keep selectedCourse in sync when switching institution or tenant
   useEffect(() => {
@@ -1903,7 +1992,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         calendarEvents,
         addCalendarEvent,
-        courseFiles,
+        courseFiles: tenantFiles,
         uploadCourseFile,
         deleteCourseFile,
 

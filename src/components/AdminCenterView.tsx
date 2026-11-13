@@ -135,7 +135,7 @@ export const AdminCenterView: React.FC = () => {
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState<'student' | 'lecturer' | 'professor'>('student');
-  const [newUserLicense, setNewUserLicense] = useState<LicenseSku>('Microsoft 365 A3 for Students');
+  const [newUserLicense, setNewUserLicense] = useState<LicenseSku>('ProCollege Verified for Students');
   const [createdCredentials, setCreatedCredentials] = useState<{ user: User; password?: string } | null>(null);
 
   // New Class Form State (with Faculty Selector)
@@ -647,16 +647,18 @@ export const AdminCenterView: React.FC = () => {
     return c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.term.toLowerCase().includes(q);
   });
 
-  const allStudents = availableUsers.filter(u => u.role === 'student');
-  const facultyMembers = availableUsers.filter(u => u.role === 'professor' || u.role === 'lecturer' || u.role === 'ta');
+  // Academic campus users only (Students, Lecturers, Deans, Campus Admins) - NEVER developer!
+  const academicUsers = useMemo(() => {
+    return availableUsers.filter(u => u.role !== 'developer');
+  }, [availableUsers]);
+
+  const allStudents = academicUsers.filter(u => u.role === 'student');
+  const facultyMembers = academicUsers.filter(u => u.role === 'professor' || u.role === 'lecturer' || u.role === 'ta');
 
   const licenseOptions: LicenseSku[] = [
-    'Microsoft 365 A5 for Faculty',
-    'Microsoft 365 A3 for Faculty',
-    'Microsoft 365 A1 for Faculty',
-    'Microsoft 365 A5 for Students',
-    'Microsoft 365 A3 for Students',
-    'Microsoft 365 A1 for Students'
+    'ProCollege Verified for Faculty',
+    'ProCollege Verified for Students',
+    'ProCollege Enterprise Platform License'
   ];
 
   return (
@@ -782,7 +784,7 @@ export const AdminCenterView: React.FC = () => {
                   onChange={e => setSelectedInstitution(e.target.value)}
                   className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
                 >
-                  <option value="all" className="bg-zinc-900 text-white">All Organizations (Master Overview)</option>
+                  <option value="all" className="bg-zinc-900 text-white">All Real Institutions (Master Overview)</option>
                   {allInstitutions.map(inst => (
                     <option key={inst} value={inst} className="bg-zinc-900 text-white">
                       {inst}
@@ -842,7 +844,7 @@ export const AdminCenterView: React.FC = () => {
             }`}
           >
             <Users className="w-4 h-4" />
-            Students & Lecturers ({availableUsers.length})
+            Students & Lecturers ({academicUsers.length})
           </button>
           <button
             onClick={() => setActiveAdminTab('roster')}
@@ -1464,69 +1466,81 @@ export const AdminCenterView: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {availableUsers.map(user => (
-                      <tr key={user.id} className="hover:bg-zinc-50/80 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
-                            <div>
-                              <p className="font-bold text-zinc-900">{user.name}</p>
-                              <p className="text-zinc-500 text-[11px]">{user.email}</p>
-                            </div>
+                    {academicUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-zinc-500">
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <Users className="w-8 h-8 text-zinc-300" />
+                            <p className="font-semibold text-zinc-700">No campus students or lecturers registered in this institution yet.</p>
+                            <p className="text-zinc-400 text-xs max-w-sm">Use <strong>+ Register ID</strong> or <strong>Import Roster</strong> above to provision verified student and lecturer accounts.</p>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                              user.role === 'admin'
-                                ? 'bg-purple-100 text-purple-800'
-                                : user.role === 'professor' || user.role === 'lecturer'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-medium text-zinc-700">{user.loginId || 'N/A'}</td>
-                        <td className="py-3 px-4">
-                          <select
-                            value={user.license}
-                            onChange={e => updateUserLicense(user.id, e.target.value as LicenseSku)}
-                            className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 font-medium focus:ring-1 focus:ring-[#5b5fc7] focus:outline-none"
-                          >
-                            {licenseOptions.map(lic => (
-                              <option key={lic} value={lic}>
-                                {lic}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-3 px-4">
-                          {user.isMuted ? (
-                            <span className="inline-flex items-center gap-1 text-rose-600 font-semibold text-[11px]">
-                              <VolumeX className="w-3.5 h-3.5" /> Muted
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-[11px]">
-                              <Volume2 className="w-3.5 h-3.5" /> Active
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => toggleUserMute(user.id)}
-                            className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${
-                              user.isMuted
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                            }`}
-                          >
-                            {user.isMuted ? 'Unmute' : 'Mute'}
-                          </button>
-                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      academicUsers.map(user => (
+                        <tr key={user.id} className="hover:bg-zinc-50/80 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                              <div>
+                                <p className="font-bold text-zinc-900">{user.name}</p>
+                                <p className="text-zinc-500 text-[11px]">{user.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
+                                user.role === 'admin'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : user.role === 'professor' || user.role === 'lecturer'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-medium text-zinc-700">{user.loginId || 'N/A'}</td>
+                          <td className="py-3 px-4">
+                            <select
+                              value={user.license}
+                              onChange={e => updateUserLicense(user.id, e.target.value as LicenseSku)}
+                              className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 font-medium focus:ring-1 focus:ring-[#5b5fc7] focus:outline-none"
+                            >
+                              {licenseOptions.map(lic => (
+                                <option key={lic} value={lic}>
+                                  {lic}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-3 px-4">
+                            {user.isMuted ? (
+                              <span className="inline-flex items-center gap-1 text-rose-600 font-semibold text-[11px]">
+                                <VolumeX className="w-3.5 h-3.5" /> Muted
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-emerald-600 font-medium text-[11px]">
+                                <Volume2 className="w-3.5 h-3.5" /> Active
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => toggleUserMute(user.id)}
+                              className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${
+                                user.isMuted
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                              }`}
+                            >
+                              {user.isMuted ? 'Unmute' : 'Mute'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

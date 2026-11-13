@@ -105,9 +105,11 @@ export const PortalLanding: React.FC = () => {
       email: data.user.email,
       role: mappedRole,
       license:
-        mappedRole === 'developer' || mappedRole === 'admin' || mappedRole === 'professor'
-          ? 'Microsoft 365 A5 for Faculty'
-          : 'Microsoft 365 A5 for Students',
+        mappedRole === 'developer'
+          ? 'ProCollege Enterprise Platform License'
+          : mappedRole === 'admin' || mappedRole === 'professor'
+          ? 'ProCollege Verified for Faculty'
+          : 'ProCollege Verified for Students',
       department:
         mappedRole === 'developer'
           ? 'Platform Architecture & Operations'

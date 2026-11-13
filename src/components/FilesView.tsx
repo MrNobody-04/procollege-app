@@ -29,8 +29,14 @@ export const FilesView: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter files
+  // Filter files with strict privacy:
+  // - Never show private student work, submissions, or non-course private files in public explorer
+  // - Enforce campus boundaries and course enrollment
   const filteredFiles = courseFiles.filter(file => {
+    // 1. Privacy filter: strictly exclude private student submissions & personal drafts
+    if (file.isPrivate || file.uploadedByRole === 'student' || file.category === 'Private Submissions') {
+      return false;
+    }
     // Course filter
     if (selectedCourseId !== 'all' && file.courseId !== selectedCourseId) {
       return false;
@@ -56,7 +62,7 @@ export const FilesView: React.FC = () => {
   // Native real file download
   const handleDownload = (file: CourseFile) => {
     const content = `========================================================
-ProSchool - Course Document
+ProCollege - Course Document
 ========================================================
 File Name:    ${file.name}
 Course:       ${courses.find(c => c.id === file.courseId)?.name || file.courseId}
@@ -381,7 +387,10 @@ Size:         ${file.size}
             <span>
               {filteredFiles.length} file{filteredFiles.length === 1 ? '' : 's'} listed
             </span>
-            <span>Microsoft 365 Document Library</span>
+            <span className="flex items-center gap-1.5 font-medium text-zinc-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              ProCollege Document Library
+            </span>
           </div>
         </div>
       </div>
