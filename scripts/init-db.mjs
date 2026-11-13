@@ -303,7 +303,9 @@ async function init() {
         id TEXT PRIMARY KEY,
         course_id TEXT NOT NULL,
         college_id TEXT,
+        channel_id TEXT,
         name TEXT NOT NULL,
+        category TEXT DEFAULT 'Class Materials',
         size TEXT,
         type TEXT,
         uploaded_by TEXT,
@@ -312,6 +314,9 @@ async function init() {
         uploaded_at TEXT DEFAULT (datetime('now'))
       );
     `);
+    await ensureColumn('course_files', 'channel_id', 'TEXT');
+    await ensureColumn('course_files', 'category', 'TEXT');
+    await ensureColumn('course_files', 'college_id', 'TEXT');
     console.log('   ✔ Table `course_files` created / verified');
 
     // 13. college_requests
@@ -712,6 +717,21 @@ async function init() {
     });
     console.log('   ✔ Seeded Notices for Padmashree College');
 
+    // Seed Course Files for Padmashree
+    const seedFilesPadma = [
+      { id: 'file_padma_01', courseId: course1Id, channelId: 'ch_padma_announcements', name: 'BIT501_Cloudflare_Turso_Syllabus.pdf', category: 'Class Materials', size: '1.2 MB', uploadedBy: 'Er. Ramesh Sharma', isClassMaterial: 1, permission: 'read-only' },
+      { id: 'file_padma_02', courseId: course1Id, channelId: 'ch_padma_distributed_db', name: 'LibSQL_Turso_Architecture_Guide.pdf', category: 'Lecture Slides', size: '3.4 MB', uploadedBy: 'Er. Ramesh Sharma', isClassMaterial: 1, permission: 'read-only' },
+      { id: 'file_padma_03', courseId: course1Id, channelId: 'ch_padma_edge_computing', name: 'Cloudflare_Workers_Runtime_Notes.pdf', category: 'Lab Manuals', size: '2.1 MB', uploadedBy: 'Er. Ramesh Sharma', isClassMaterial: 1, permission: 'read-only' },
+    ];
+    for (const f of seedFilesPadma) {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO course_files (id, course_id, college_id, channel_id, name, category, size, type, uploaded_by, is_class_material, permission)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 'pdf', ?, ?, ?);`,
+        args: [f.id, f.courseId, collegeId, f.channelId, f.name, f.category, f.size, f.uploadedBy, f.isClassMaterial, f.permission],
+      });
+    }
+    console.log('   ✔ Seeded Course Files for Padmashree College');
+
     // --- TENANT 2: ProCollege University Network fixtures ---
     const instPro = 'ProCollege University Network';
     const colProId = 'col_procollege_network';
@@ -744,6 +764,18 @@ async function init() {
       sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
       args: ['ch_cs301_lec', colProId, 'course_cs301', 'Weekly Lectures', 'Slide decks, lecture recordings, and Q&A', 0, 'general', 'read-only'],
     });
+    const seedFilesPro = [
+      { id: 'file_cm_1', courseId: 'course_cs301', channelId: 'ch_cs301_gen', name: 'CS301_Complete_Syllabus_2026.pdf', category: 'Class Materials', size: '1.4 MB', uploadedBy: 'Prof. Alan Turing', isClassMaterial: 1, permission: 'read-only' },
+      { id: 'file_cm_2', courseId: 'course_cs301', channelId: 'ch_cs301_gen', name: 'Lecture01_Amortized_Analysis.pdf', category: 'Class Materials', size: '4.8 MB', uploadedBy: 'Prof. Alan Turing', isClassMaterial: 1, permission: 'read-only' },
+      { id: 'file_cm_3', courseId: 'course_cs301', channelId: 'ch_cs301_lec', name: 'LabManual_Graph_Algorithms.pdf', category: 'Lab Manuals', size: '2.3 MB', uploadedBy: 'Prof. Alan Turing', isClassMaterial: 1, permission: 'read-only' },
+    ];
+    for (const f of seedFilesPro) {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO course_files (id, course_id, college_id, channel_id, name, category, size, type, uploaded_by, is_class_material, permission)
+              VALUES (?, ?, ?, ?, ?, ?, ?, 'pdf', ?, ?, ?);`,
+        args: [f.id, f.courseId, colProId, f.channelId, f.name, f.category, f.size, f.uploadedBy, f.isClassMaterial, f.permission],
+      });
+    }
     console.log('   ✔ Seeded ProCollege University Network fixtures');
 
     console.log('\n📊 4. Verifying Live Database Content on Turso...');
@@ -759,6 +791,7 @@ async function init() {
     const channelsCount = await db.execute('SELECT count(*) as c FROM channels;');
     const assignmentsCount = await db.execute('SELECT count(*) as c FROM assignments;');
     const submissionsCount = await db.execute('SELECT count(*) as c FROM assignment_submissions;');
+    const filesCount = await db.execute('SELECT count(*) as c FROM course_files;');
     const usersCount = await db.execute('SELECT count(*) as c FROM users;');
 
     console.log('\n📈 Row Counts:');
@@ -768,6 +801,7 @@ async function init() {
     console.log(`   - channels:               ${channelsCount.rows[0].c}`);
     console.log(`   - assignments:            ${assignmentsCount.rows[0].c}`);
     console.log(`   - assignment_submissions: ${submissionsCount.rows[0].c}`);
+    console.log(`   - course_files:           ${filesCount.rows[0].c}`);
     console.log(`   - users:                  ${usersCount.rows[0].c}`);
 
     console.log('\n🎉 Turso database successfully initialized, multi-tenant tables isolated, and live data seeded!');

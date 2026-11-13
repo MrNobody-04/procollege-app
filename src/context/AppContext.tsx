@@ -300,6 +300,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (data.assignments && data.assignments.length > 0) {
           setAssignments(data.assignments);
         }
+        if (data.files && data.files.length > 0) {
+          setCourseFiles(data.files);
+        }
         if (data.users && data.users.length > 0) {
           setAvailableUsers(data.users);
         }
@@ -1425,6 +1428,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCourseFiles(prev => [newFile, ...prev]);
 
+    // Persist to Turso
+    fetch(`/api/courses/${file.courseId}/files`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-role': currentUser.role,
+        'x-institution-name': currentUser.institutionName || 'Padmashree College',
+      },
+      body: JSON.stringify({
+        id: newFile.id,
+        courseId: file.courseId,
+        channelId: file.channelId,
+        name: file.name,
+        category: file.category,
+        size: file.size,
+        type: 'pdf',
+        uploadedBy: file.uploadedBy,
+        isClassMaterials: file.isClassMaterials,
+        permission: file.permission,
+      }),
+    }).catch(err => console.warn('Turso file upload sync failed:', err));
+
     // Broadcast automated notification to students when administrator/lecturer uploads materials
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer' || currentUser.role === 'admin') {
       const targetCourse = courses.find(c => c.id === file.courseId);
@@ -1456,6 +1481,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     setCourseFiles(prev => prev.filter(f => f.id !== fileId));
+
+    // Persist delete to Turso
+    fetch(`/api/courses/${target.courseId}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: {
+        'x-user-role': currentUser.role,
+        'x-institution-name': currentUser.institutionName || 'Padmashree College',
+      },
+    }).catch(err => console.warn('Turso file deletion sync failed:', err));
+
     return { success: true, message: `Deleted ${target.name}` };
   };
 

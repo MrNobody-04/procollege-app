@@ -12,3 +12,17 @@ binding = "ASSETS"
 [vars]
 TURSO_DB_URL = "libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io"
 VITE_ABLY_SUBSCRIBE_KEY = "wbIoLQ.X8L0qQ:LYTf7p-Isq-UIhJoZ-xv9-JqwkwmQd5v6Awwb8GC-jw"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true

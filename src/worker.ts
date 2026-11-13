@@ -473,7 +473,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
     const db = getDb(c);
     const collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
 
-    let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes;
+    let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes, filesRes;
 
     if (isDeveloper && institutionParam === 'all') {
       facultiesRes = await db.execute('SELECT * FROM faculties ORDER BY name ASC;');
@@ -483,6 +483,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       submissionsRes = await db.execute('SELECT * FROM assignment_submissions;');
       noticesRes = await db.execute('SELECT * FROM notices ORDER BY created_at DESC;');
       usersRes = await db.execute('SELECT * FROM users ORDER BY name ASC;');
+      filesRes = await db.execute('SELECT * FROM course_files ORDER BY uploaded_at DESC;');
     } else {
       facultiesRes = await db.execute({
         sql: 'SELECT * FROM faculties WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
@@ -508,6 +509,10 @@ app.get('/api/workspace/bootstrap', async (c) => {
       usersRes = await db.execute({
         sql: 'SELECT * FROM users WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
         args: [institutionParam, collegeId],
+      });
+      filesRes = await db.execute({
+        sql: 'SELECT * FROM course_files WHERE college_id = ? OR course_id IN (SELECT id FROM courses WHERE institution_name = ? OR college_id = ?) ORDER BY uploaded_at DESC;',
+        args: [collegeId, institutionParam, collegeId],
       });
     }
 
@@ -678,12 +683,26 @@ app.get('/api/workspace/bootstrap', async (c) => {
       status: 'available' as const,
     }));
 
+    const allFiles = filesRes.rows.map(f => ({
+      id: String(f.id),
+      courseId: String(f.course_id),
+      channelId: f.channel_id ? String(f.channel_id) : undefined,
+      name: String(f.name),
+      category: (f.category || 'Class Materials') as any,
+      size: String(f.size || '1.0 MB'),
+      uploadedAt: String(f.uploaded_at || 'Recently'),
+      uploadedBy: String(f.uploaded_by || 'Instructor'),
+      isClassMaterials: Boolean(f.is_class_material ?? 1),
+      permission: (f.permission || 'read-only') as 'read-only' | 'can-edit',
+    }));
+
     return c.json({
       success: true,
       institution: institutionParam,
       faculties: allFaculties,
       courses: allCourses,
       assignments: allAssignments,
+      files: allFiles,
       notices: noticesRes.rows,
       users: allUsers,
     });
@@ -1069,6 +1088,70 @@ app.get('/api/colleges/users/:collegeId', async (c) => {
       args: [collegeId],
     });
     return c.json({ users: result.rows });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 15. Create / Upload Course File in Turso
+app.post('/api/courses/:courseId/files', async (c) => {
+  const courseId = c.req.param('courseId');
+  try {
+    const body = await c.req.json();
+    const id = body.id || `file_${Date.now()}`;
+    const collegeId = body.collegeId || body.college_id || 'padmashree-demo';
+    const channelId = body.channelId || body.channel_id || null;
+    const name = (body.name || 'document.pdf').trim();
+    const category = body.category || 'Class Materials';
+    const size = body.size || '1.2 MB';
+    const type = body.type || 'pdf';
+    const uploadedBy = body.uploadedBy || body.uploaded_by || 'Instructor';
+    const isClassMaterial = body.isClassMaterials ? 1 : 0;
+    const permission = body.permission || 'read-only';
+    const uploadedAt = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    const db = getDb(c);
+    await db.execute({
+      sql: `INSERT INTO course_files (id, course_id, college_id, channel_id, name, category, size, type, uploaded_by, is_class_material, permission, uploaded_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, courseId, collegeId, channelId, name, category, size, type, uploadedBy, isClassMaterial, permission, uploadedAt],
+    });
+
+    return c.json({
+      success: true,
+      file: { id, courseId, channelId, name, category, size, uploadedBy, isClassMaterials: Boolean(isClassMaterial), permission, uploadedAt }
+    }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 16. Delete Course File from Turso with permission check
+app.delete('/api/courses/:courseId/files/:fileId', async (c) => {
+  const fileId = c.req.param('fileId');
+  const role = c.req.header('x-user-role') || '';
+  try {
+    const db = getDb(c);
+    const existing = await db.execute({
+      sql: 'SELECT * FROM course_files WHERE id = ?;',
+      args: [fileId],
+    });
+    if (existing.rows.length === 0) {
+      return c.json({ error: 'File not found' }, 404);
+    }
+    const file = existing.rows[0];
+    if (file.is_class_material && role === 'student') {
+      return c.json({ error: 'Class Materials are protected and read-only for students' }, 403);
+    }
+
+    await db.execute({
+      sql: 'DELETE FROM course_files WHERE id = ?;',
+      args: [fileId],
+    });
+
+    return c.json({ success: true, message: `Deleted ${file.name}` });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
