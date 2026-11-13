@@ -58,3 +58,4 @@ for (const { key, val } of secrets) {
     console.error(`❌ Failed setting ${key}:`, result.stderr || result.stdout);
   }
 }
+

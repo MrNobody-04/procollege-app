@@ -33,8 +33,7 @@ export const AssignmentsView: React.FC = () => {
     currentUser.role === 'professor' ||
     currentUser.role === 'lecturer' ||
     currentUser.role === 'admin' ||
-    currentUser.role === 'developer' ||
-    (currentUser as unknown as { role: string }).role === 'teacher';
+    currentUser.role === 'developer';
 
   const [currentTime] = useState(() => Date.now());
 
@@ -47,16 +46,9 @@ export const AssignmentsView: React.FC = () => {
       if (c.institutionName && userInstitution && c.institutionName !== userInstitution) return false;
     }
     if (isStudent) {
-      return (
-        c.enrolledStudents?.some(s => s.id === currentUser.id) ||
-        (currentUser.enrolledCourses && currentUser.enrolledCourses.includes(c.code))
-      );
+      return Boolean(c.enrolledStudents?.some(s => s.id === currentUser.id));
     }
-    if (
-      currentUser.role === 'teacher' ||
-      currentUser.role === 'professor' ||
-      currentUser.role === 'lecturer'
-    ) {
+    if (currentUser.role === 'professor' || currentUser.role === 'lecturer') {
       return (
         c.instructor.id === currentUser.id ||
         c.coOwners?.some(co => co.id === currentUser.id) ||
@@ -83,11 +75,7 @@ export const AssignmentsView: React.FC = () => {
     if (!userCourseIds.has(a.courseId)) return false;
 
     // Lecturer boundary: only subjects they teach or course lead
-    if (
-      currentUser.role === 'teacher' ||
-      currentUser.role === 'professor' ||
-      currentUser.role === 'lecturer'
-    ) {
+    if (currentUser.role === 'professor' || currentUser.role === 'lecturer') {
       const course = courses.find(c => c.id === a.courseId);
       if (!course) return false;
       const isCourseLead =
