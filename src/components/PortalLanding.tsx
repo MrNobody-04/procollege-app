@@ -752,58 +752,61 @@ export const PortalLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. One Seamless Workflow Banner (workflow-panel: #101b46) */}
-      <section className="bg-[#101b46] text-white py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4">
-          {/* Kicker (workflow-kicker) */}
-          <div className="text-[#18d6ff] font-black text-[10px] sm:text-[11px] tracking-[0.16em] uppercase">
-            ONE SEAMLESS WORKFLOW
+      {/* 4. One Seamless Workflow Banner (workflow-panel: obsidian #0b0b0d with laser crimson accent) */}
+      <section className="bg-gradient-to-b from-[#0d0d0f] via-[#09090a] to-[#0d0d0f] text-white py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 xl:px-12 border-y border-[#CDCBCA]/15 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'radial-gradient(circle at 50% 50%, rgba(212, 21, 20, 0.08), transparent 70%)'
+        }} />
+        <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 relative z-10">
+          {/* Kicker */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase shadow-[0_0_12px_rgba(212,21,20,0.2)]">
+            <span>ONE SEAMLESS WORKFLOW</span>
           </div>
 
-          {/* Title (workflow-title) */}
+          {/* Title */}
           <h2 className="font-fraunces font-bold text-white text-xl sm:text-2xl md:text-3xl lg:text-[34px] leading-snug">
             The whole campus, in conversation.
           </h2>
 
-          {/* Description (workflow-description) */}
-          <p className="text-[#c2d1f4] text-xs sm:text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
+          {/* Description */}
+          <p className="text-[#CDCBCA] text-xs sm:text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
             A discussion becomes a class. A class becomes an assignment. Great work stays easy to find.
           </p>
 
           <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto">
             <button
               onClick={() => launchDemoMode()}
-              className="btn-hive-cyan bg-gradient-to-r from-[#18d6ff] via-[#48e4ff] to-[#00c5ee] text-[#091538] font-black text-sm sm:text-[15px] px-7 sm:px-8 py-3.5 rounded-full border border-cyan-200/90 shadow-[0_6px_24px_rgba(24,214,255,0.45)] cursor-pointer flex items-center justify-center gap-2 group"
+              className="btn-hive-crimson bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white font-black text-sm sm:text-[15px] px-7 sm:px-8 py-3.5 rounded-full border border-[#D41514]/50 shadow-[0_0_25px_rgba(212,21,20,0.5)] cursor-pointer flex items-center justify-center gap-2 group"
             >
               <span>Experience the workflow</span>
               <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
             </button>
             <button
               onClick={() => setShowRequestModal(true)}
-              className="bg-white/10 hover:bg-white/20 border-2 border-white/40 hover:border-white text-white font-black text-sm sm:text-[15px] px-6 sm:px-7 py-3.5 rounded-full hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 group"
+              className="bg-[#121214] hover:bg-[#1a1a1d] border-2 border-[#CDCBCA]/30 hover:border-[#CDCBCA]/80 text-[#CDCBCA] hover:text-white font-black text-sm sm:text-[15px] px-6 sm:px-7 py-3.5 rounded-full hover:shadow-[0_0_20px_rgba(205,203,202,0.15)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 group"
             >
-              <Building2 className="w-4 h-4 text-[#18d6ff] group-hover:scale-110 transition-transform duration-300" />
+              <Building2 className="w-4 h-4 text-[#D41514] group-hover:scale-110 transition-transform duration-300" />
               <span>Contact for Campus Onboarding</span>
             </button>
           </div>
         </div>
       </section>
 
-      {/* 5. Perspectives Section (perspectives-surface: #ffffff) */}
-      <section id="perspectives" className="py-12 sm:py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 bg-white">
+      {/* 5. Perspectives Section (perspectives-surface: obsidian #080808) */}
+      <section id="perspectives" className="py-12 sm:py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 bg-[#080808]">
         <div className="max-w-3xl mb-8 sm:mb-12 lg:mb-14 text-left">
-          {/* Kicker (perspectives-kicker) */}
-          <div className="text-[#173bff] font-black text-[10px] sm:text-[11px] tracking-[0.16em] uppercase mb-2 sm:mb-3">
-            MADE FOR CAMPUS LIFE
+          {/* Kicker */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase mb-2 sm:mb-3 shadow-[0_0_12px_rgba(212,21,20,0.2)]">
+            <span>MADE FOR CAMPUS LIFE</span>
           </div>
 
-          {/* Title (perspectives-title) */}
-          <h2 className="font-fraunces font-bold text-[#101b46] text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
+          {/* Title */}
+          <h2 className="font-fraunces font-bold text-white text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
             One experience. Many ways to thrive.
           </h2>
 
-          {/* Description (perspectives-description) */}
-          <p className="mt-2.5 sm:mt-4 text-[#586680] text-sm sm:text-base lg:text-[17px] leading-relaxed">
+          {/* Description */}
+          <p className="mt-2.5 sm:mt-4 text-[#CDCBCA] text-sm sm:text-base lg:text-[17px] leading-relaxed">
             Imagine a simpler day for everyone who makes a campus work.
           </p>
         </div>
@@ -811,109 +814,108 @@ export const PortalLanding: React.FC = () => {
         {/* 3 Perspective Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {/* Card 1: Student perspective */}
-          <div className="bg-white border-2 border-zinc-200/90 hover:border-[#173bff]/50 rounded-2xl p-5 sm:p-7 shadow-xs hover:shadow-lg hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
-            <p className="text-[#273550] text-sm sm:text-[15px] leading-relaxed italic group-hover:text-[#101b46] transition-colors">
+          <div className="bg-[#0f0f11] border-2 border-[#CDCBCA]/20 hover:border-[#D41514]/70 rounded-2xl p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
+            <p className="text-[#CDCBCA] group-hover:text-white text-sm sm:text-[15px] leading-relaxed italic transition-colors">
               &quot;Lectures, team chats, feedback, and files—without the search across five different tools.&quot;
             </p>
-            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center justify-between">
-              <div className="text-[#101b46] group-hover:text-[#173bff] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
+            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center justify-between">
+              <div className="text-white group-hover:text-[#D41514] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
                 Student perspective
               </div>
-              <span className="w-2 h-2 rounded-full bg-[#173bff] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="w-2 h-2 rounded-full bg-[#D41514] opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_#D41514]" />
             </div>
           </div>
 
           {/* Card 2: Faculty perspective */}
-          <div className="bg-white border-2 border-zinc-200/90 hover:border-[#173bff]/50 rounded-2xl p-5 sm:p-7 shadow-xs hover:shadow-lg hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
-            <p className="text-[#273550] text-sm sm:text-[15px] leading-relaxed italic group-hover:text-[#101b46] transition-colors">
+          <div className="bg-[#0f0f11] border-2 border-[#CDCBCA]/20 hover:border-[#D41514]/70 rounded-2xl p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
+            <p className="text-[#CDCBCA] group-hover:text-white text-sm sm:text-[15px] leading-relaxed italic transition-colors">
               &quot;One calm place to plan a class, support students, and stay connected to colleagues.&quot;
             </p>
-            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center justify-between">
-              <div className="text-[#101b46] group-hover:text-[#173bff] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
+            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center justify-between">
+              <div className="text-white group-hover:text-[#D41514] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
                 Faculty perspective
               </div>
-              <span className="w-2 h-2 rounded-full bg-[#173bff] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="w-2 h-2 rounded-full bg-[#D41514] opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_#D41514]" />
             </div>
           </div>
 
           {/* Card 3: IT perspective */}
-          <div className="bg-white border-2 border-zinc-200/90 hover:border-[#173bff]/50 rounded-2xl p-5 sm:p-7 shadow-xs hover:shadow-lg hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
-            <p className="text-[#273550] text-sm sm:text-[15px] leading-relaxed italic group-hover:text-[#101b46] transition-colors">
+          <div className="bg-[#0f0f11] border-2 border-[#CDCBCA]/20 hover:border-[#D41514]/70 rounded-2xl p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
+            <p className="text-[#CDCBCA] group-hover:text-white text-sm sm:text-[15px] leading-relaxed italic transition-colors">
               &quot;A clearer starting point for bringing people and campus workflows together.&quot;
             </p>
-            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center justify-between">
-              <div className="text-[#101b46] group-hover:text-[#173bff] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
+            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center justify-between">
+              <div className="text-white group-hover:text-[#D41514] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
                 IT perspective
               </div>
-              <span className="w-2 h-2 rounded-full bg-[#173bff] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="w-2 h-2 rounded-full bg-[#D41514] opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_#D41514]" />
             </div>
           </div>
         </div>
 
         {/* sample-note */}
-        <p className="text-center text-[#71809a] text-[11px] sm:text-[12px] mt-6 sm:mt-8">
+        <p className="text-center text-[#8E8C8B] text-[11px] sm:text-[12px] mt-6 sm:mt-8">
           Illustrative perspectives only; these are not customer endorsements.
         </p>
       </section>
 
-      {/* 6. Pricing Section (pricing-surface: #f5f8ff) */}
+      {/* 6. Pricing Section (pricing-surface: obsidian #0a0a0c) */}
       <section
         id="pricing"
-        className="py-12 sm:py-16 lg:py-24 border-t border-blue-50 px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12"
-        style={{ backgroundColor: '#f5f8ff' }}
+        className="py-12 sm:py-16 lg:py-24 border-t border-[#CDCBCA]/15 px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 bg-[#0a0a0c]"
       >
         <div className="max-w-7xl mx-auto">
           <div className="max-w-3xl mb-8 sm:mb-12 lg:mb-14 text-left">
-            {/* Kicker (pricing-kicker) */}
-            <div className="text-[#173bff] font-black text-[10px] sm:text-[11px] tracking-[0.16em] uppercase mb-2 sm:mb-3">
-              CAMPUS PLANS
+            {/* Kicker */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase mb-2 sm:mb-3 shadow-[0_0_12px_rgba(212,21,20,0.2)]">
+              <span>CAMPUS PLANS</span>
             </div>
 
-            {/* Title (pricing-title) */}
-            <h2 className="font-fraunces font-bold text-[#101b46] text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
+            {/* Title */}
+            <h2 className="font-fraunces font-bold text-white text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
               Room to grow, at every scale.
             </h2>
 
-            {/* Description (pricing-description) */}
-            <p className="mt-2.5 sm:mt-4 text-[#586680] text-sm sm:text-base lg:text-[17px] leading-relaxed">
+            {/* Description */}
+            <p className="mt-2.5 sm:mt-4 text-[#CDCBCA] text-sm sm:text-base lg:text-[17px] leading-relaxed">
               Explore example plans for a small team, a connected campus, or an entire institution.
             </p>
           </div>
 
-          {/* 3 Pricing Cards Grid with Interactive Hover Elevations */}
+          {/* 3 Pricing Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
             {/* Tier 1: Starter */}
             <div
               onClick={() => setShowRequestModal(true)}
-              className="plan-card bg-white border-2 border-zinc-200/90 hover:border-[#173bff] rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-[0_20px_45px_-12px_rgba(23,59,255,0.22)] flex flex-col justify-between transition-all duration-300 ease-out group relative overflow-hidden cursor-pointer"
+              className="plan-card bg-[#0f0f12] border-2 border-[#CDCBCA]/25 hover:border-[#CDCBCA]/70 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.6)] hover:shadow-[0_0_35px_rgba(205,203,202,0.15)] flex flex-col justify-between transition-all duration-300 ease-out group relative overflow-hidden cursor-pointer"
             >
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-zinc-200 group-hover:bg-[#173bff] transition-colors duration-300" />
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#CDCBCA]/30 group-hover:bg-[#CDCBCA] transition-colors duration-300" />
               <div>
-                <h3 className="font-black text-lg sm:text-[20px] text-[#101b46] group-hover:text-[#173bff] transition-colors">
+                <h3 className="font-black text-lg sm:text-[20px] text-white group-hover:text-[#CDCBCA] transition-colors">
                   Starter
                 </h3>
-                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-[#101b46] leading-none">
+                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-white leading-none">
                   Free
                 </div>
-                <div className="text-xs sm:text-[13px] text-[#586680] mt-1 sm:mt-1.5">
+                <div className="text-xs sm:text-[13px] text-[#8E8C8B] mt-1 sm:mt-1.5">
                   For clubs and small departments
                 </div>
 
-                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-zinc-100 space-y-3 sm:space-y-3.5">
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15 space-y-3 sm:space-y-3.5">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#CDCBCA] text-[#CDCBCA] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Up to 100 users</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#CDCBCA] text-[#CDCBCA] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Core collaboration tools</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#CDCBCA] text-[#CDCBCA] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Shared workspace</span>
@@ -921,14 +923,14 @@ export const PortalLanding: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-zinc-100">
+              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowRequestModal(true);
                   }}
-                  className="btn-hive w-full py-3.5 px-6 rounded-full bg-zinc-900 group-hover:bg-[#173bff] text-white text-sm sm:text-[15px] font-black shadow-sm group-hover:shadow-[0_8px_20px_rgba(23,59,255,0.4)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="btn-hive-silver w-full py-3.5 px-6 rounded-full bg-[#161619] hover:bg-[#202024] text-[#CDCBCA] hover:text-white border border-[#CDCBCA]/30 hover:border-[#CDCBCA]/70 text-sm sm:text-[15px] font-black shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Request Starter Access</span>
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
@@ -939,47 +941,47 @@ export const PortalLanding: React.FC = () => {
             {/* Tier 2: Campus Pro (Featured Plan) */}
             <div
               onClick={() => setShowRequestModal(true)}
-              className="plan-card plan-card-featured bg-gradient-to-b from-white via-white to-blue-50/50 border-2 border-[#173bff] hover:border-[#0026e6] ring-4 ring-[#173bff]/15 hover:ring-[#173bff]/30 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xl hover:shadow-[0_28px_60px_-10px_rgba(23,59,255,0.38)] flex flex-col justify-between relative transform lg:-translate-y-2 lg:hover:-translate-y-4 transition-all duration-300 ease-out group overflow-hidden cursor-pointer"
+              className="plan-card plan-card-featured bg-gradient-to-b from-[#141418] via-[#0f0f13] to-[#0a0a0d] border-2 border-[#D41514] hover:border-[#ea201f] ring-4 ring-[#D41514]/25 hover:ring-[#D41514]/40 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(212,21,20,0.3)] hover:shadow-[0_0_70px_rgba(212,21,20,0.45)] flex flex-col justify-between relative transform lg:-translate-y-2 lg:hover:-translate-y-4 transition-all duration-300 ease-out group overflow-hidden cursor-pointer"
             >
-              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#173bff] via-[#18d6ff] to-[#173bff]" />
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#CDCBCA]" />
 
               {/* pro-badge */}
-              <div className="absolute -top-3.5 left-6 sm:left-8 bg-gradient-to-r from-[#173bff] to-[#0026e6] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-4 py-1 rounded-full shadow-md group-hover:shadow-lg transition-all">
+              <div className="absolute -top-3.5 left-6 sm:left-8 bg-gradient-to-r from-[#D41514] to-[#a30b0a] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-4 py-1 rounded-full shadow-[0_0_15px_rgba(212,21,20,0.6)] group-hover:shadow-[0_0_20px_rgba(212,21,20,0.8)] transition-all">
                 Featured plan
               </div>
 
               <div>
-                <h3 className="font-black text-lg sm:text-[20px] text-[#101b46] group-hover:text-[#173bff] transition-colors">
+                <h3 className="font-black text-lg sm:text-[20px] text-white group-hover:text-[#CDCBCA] transition-colors">
                   Campus Pro
                 </h3>
-                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-[#101b46] group-hover:text-[#173bff] leading-none transition-colors">
+                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-white group-hover:text-[#D41514] leading-none transition-colors">
                   $6 / student / mo
                 </div>
-                <div className="text-xs sm:text-[13px] text-[#586680] mt-1 sm:mt-1.5">
+                <div className="text-xs sm:text-[13px] text-[#8E8C8B] mt-1 sm:mt-1.5">
                   Illustrative annual pricing
                 </div>
 
-                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-blue-100 space-y-3 sm:space-y-3.5">
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c] font-medium">
-                    <div className="w-5 h-5 rounded-full bg-blue-100 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-[#D41514]/30 space-y-3 sm:space-y-3.5">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
+                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Full Teams experience</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c] font-medium">
-                    <div className="w-5 h-5 rounded-full bg-blue-100 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
+                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Virtual lectures</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c] font-medium">
-                    <div className="w-5 h-5 rounded-full bg-blue-100 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
+                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Learning workflows</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c] font-medium">
-                    <div className="w-5 h-5 rounded-full bg-blue-100 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
+                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Study assistance</span>
@@ -987,14 +989,14 @@ export const PortalLanding: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-blue-100">
+              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#D41514]/30">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowRequestModal(true);
                   }}
-                  className="btn-hive w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0c2de6] hover:from-[#1236ea] hover:to-[#0822b8] text-white text-sm sm:text-[15px] font-black shadow-[0_8px_24px_rgba(23,59,255,0.45)] hover:shadow-[0_12px_32px_rgba(23,59,255,0.65)] border border-blue-300/40 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="btn-hive-crimson w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] hover:from-[#ea201f] hover:to-[#9f0a09] text-white text-sm sm:text-[15px] font-black shadow-[0_0_30px_rgba(212,21,20,0.55)] hover:shadow-[0_0_45px_rgba(212,21,20,0.75)] border border-[#D41514]/60 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Request Campus Access</span>
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
@@ -1005,41 +1007,41 @@ export const PortalLanding: React.FC = () => {
             {/* Tier 3: Enterprise University */}
             <div
               onClick={() => setShowRequestModal(true)}
-              className="plan-card bg-white border-2 border-zinc-200/90 hover:border-[#101b46] rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-[0_20px_45px_-12px_rgba(16,27,70,0.22)] flex flex-col justify-between transition-all duration-300 ease-out group relative overflow-hidden cursor-pointer"
+              className="plan-card bg-[#0f0f12] border-2 border-[#CDCBCA]/25 hover:border-[#D41514]/60 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.6)] hover:shadow-[0_0_35px_rgba(212,21,20,0.2)] flex flex-col justify-between transition-all duration-300 ease-out group relative overflow-hidden cursor-pointer"
             >
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-zinc-200 group-hover:bg-[#101b46] transition-colors duration-300" />
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#CDCBCA]/30 group-hover:bg-[#D41514] transition-colors duration-300" />
               <div>
-                <h3 className="font-black text-lg sm:text-[20px] text-[#101b46] group-hover:text-[#173bff] transition-colors">
+                <h3 className="font-black text-lg sm:text-[20px] text-white group-hover:text-[#CDCBCA] transition-colors">
                   Enterprise University
                 </h3>
-                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-[#101b46] leading-none">
+                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-white leading-none">
                   Custom
                 </div>
-                <div className="text-xs sm:text-[13px] text-[#586680] mt-1 sm:mt-1.5">
+                <div className="text-xs sm:text-[13px] text-[#8E8C8B] mt-1 sm:mt-1.5">
                   For larger institutions
                 </div>
 
-                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-zinc-100 space-y-3 sm:space-y-3.5">
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#101b46] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15 space-y-3 sm:space-y-3.5">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Multi-campus planning</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#101b46] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Institutional integrations</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#101b46] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Governance considerations</span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#44536c]">
-                    <div className="w-5 h-5 rounded-full bg-blue-50 group-hover:bg-[#101b46] text-[#173bff] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
+                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
                       <Check className="w-3.5 h-3.5" />
                     </div>
                     <span>Dedicated support options</span>
@@ -1047,14 +1049,14 @@ export const PortalLanding: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-zinc-100">
+              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowRequestModal(true);
                   }}
-                  className="btn-hive w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#101b46] via-[#1c2e72] to-[#101b46] group-hover:from-[#173bff] group-hover:to-[#0026e6] text-white text-sm sm:text-[15px] font-black shadow-sm group-hover:shadow-[0_8px_24px_rgba(23,59,255,0.4)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="btn-hive w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#141417] via-[#1a1a1f] to-[#141417] hover:from-[#D41514] hover:to-[#b80f0e] text-[#CDCBCA] hover:text-white text-sm sm:text-[15px] font-black border border-[#CDCBCA]/30 hover:border-[#D41514] shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>Inquire for Institution</span>
                   <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
@@ -1064,22 +1066,22 @@ export const PortalLanding: React.FC = () => {
           </div>
 
           {/* pricing-note */}
-          <p className="text-center text-[#71809a] text-[11px] sm:text-[12px] mt-6 sm:mt-8">
+          <p className="text-center text-[#8E8C8B] text-[11px] sm:text-[12px] mt-6 sm:mt-8">
             Plans and prices shown are illustrative, not a live offer.
           </p>
         </div>
       </section>
 
-      {/* 7. Footer (footer-surface: #101b46) */}
-      <footer className="bg-[#101b46] text-[#b9c8e7] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 xl:px-12 border-t border-zinc-800">
+      {/* 7. Footer (footer-surface: obsidian #050505) */}
+      <footer className="bg-[#050505] text-[#CDCBCA] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 xl:px-12 border-t border-[#CDCBCA]/15">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 md:gap-10">
             {/* Brand & Slogan */}
             <div className="space-y-1.5 sm:space-y-2">
               <div className="flex items-center gap-2.5">
-                <ProCollegeLogo size="md" variant="light-text" />
+                <ProCollegeLogo size="md" variant="crimson-text" />
               </div>
-              <div className="text-xs sm:text-[13px] text-[#aab9dc] font-normal pt-1">
+              <div className="text-xs sm:text-[13px] text-[#8E8C8B] font-normal pt-1">
                 Your College, Smarter.
               </div>
             </div>
@@ -1112,13 +1114,13 @@ export const PortalLanding: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowRequestModal(true)}
-                className="text-left px-3 py-1 rounded-full bg-white/10 hover:bg-[#18d6ff] text-[#18d6ff] hover:text-[#101b46] font-bold text-xs transition-all cursor-pointer shadow-xs self-start"
+                className="text-left px-3.5 py-1.5 rounded-full bg-[#D41514]/15 hover:bg-[#D41514] text-[#D41514] hover:text-white border border-[#D41514]/40 font-bold text-xs transition-all cursor-pointer shadow-[0_0_12px_rgba(212,21,20,0.25)] self-start"
               >
                 Request Access ↗
               </button>
               <button
                 onClick={() => launchDemoMode()}
-                className="text-left px-3 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-white font-bold text-xs transition-all cursor-pointer shadow-xs self-start"
+                className="text-left px-3.5 py-1.5 rounded-full bg-[#CDCBCA]/12 hover:bg-[#CDCBCA] text-[#CDCBCA] hover:text-[#080808] border border-[#CDCBCA]/30 font-bold text-xs transition-all cursor-pointer shadow-xs self-start"
               >
                 Access Workspace Portal →
               </button>
@@ -1126,11 +1128,11 @@ export const PortalLanding: React.FC = () => {
           </div>
 
           {/* Concept Note & Copyright */}
-          <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-blue-900/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-[12px] text-[#aab9dc]">
+          <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-[#CDCBCA]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-[12px] text-[#8E8C8B]">
             <p className="leading-relaxed">
               Website concept: platform access, purchases, trials, and sales requests are managed via institutional onboarding agreements.
             </p>
-            <p className="shrink-0 font-medium">
+            <p className="shrink-0 font-medium text-[#CDCBCA]">
               © 2026 ProCollege. Your College, Smarter.
             </p>
           </div>

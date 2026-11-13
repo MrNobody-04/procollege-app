@@ -629,7 +629,9 @@ app.post('/api/auth/login', async (c) => {
                    c.name as college_name, c.code as college_code, c.status as college_status
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
-            WHERE LOWER(u.email) = LOWER(?);`,
+            WHERE LOWER(u.email) = LOWER(?)
+            ORDER BY u.created_at DESC
+            LIMIT 1;`,
       args: [email],
     });
 
@@ -1546,7 +1548,14 @@ app.post('/api/admin/import-roster', async (c) => {
 
       if (!name || !email) continue;
 
-      const studentId = `usr_std_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      // Check if user with this email already exists to prevent duplicate rows
+      const existingUser = await db.execute({
+        sql: 'SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1;',
+        args: [email],
+      });
+      const studentId = existingUser.rows.length > 0
+        ? String(existingUser.rows[0].id)
+        : `usr_std_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const tempPass = generateTemporaryPassword();
       const passHash = await hashPassword(tempPass);
 
