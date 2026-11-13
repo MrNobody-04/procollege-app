@@ -671,6 +671,13 @@ app.get('/api/platform/institutions', async (c) => {
     const organizations = instRes.rows.map(row => {
       const id = String(row.id);
       const adm = adminMap.get(id);
+      const created = String(row.created_at || '2026-09-01');
+      const startDate = created.split('T')[0] || '2026-09-01';
+      const startObj = new Date(startDate);
+      const expObj = new Date(startObj);
+      expObj.setFullYear(expObj.getFullYear() + 1);
+      const expiryDate = expObj.toISOString().split('T')[0];
+
       return {
         id,
         name: String(row.name),
@@ -681,7 +688,9 @@ app.get('/api/platform/institutions', async (c) => {
         facultyCount: facultyCountMap.get(id) || 0,
         contactEmail: adm?.email || String(row.contact_email || ''),
         adminName: adm?.name || 'Academic Administrator',
-        createdAt: String(row.created_at || ''),
+        createdAt: created,
+        startDate,
+        expiryDate
       };
     });
 
@@ -1338,6 +1347,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         code: String(cRow.code),
         name: String(cRow.name),
         department: String(cRow.department || 'Department of BIT'),
+        facultyId: cRow.faculty_id ? String(cRow.faculty_id) : undefined,
         institutionName: String(cRow.institution_name || institutionParam),
         term: String(cRow.term || 'Fall 2026'),
         color: String(cRow.color || '#4f46e5'),
@@ -1555,6 +1565,7 @@ app.post('/api/courses', async (c) => {
     const code = (body.code || '').trim().toUpperCase();
     const name = (body.name || '').trim();
     const department = (body.department || 'Department of BIT').trim();
+    const facultyId = body.facultyId || body.faculty_id || null;
     const term = (body.term || 'Fall 2026').trim();
     const color = body.color || '#4f46e5';
     const icon = body.icon || '⚡';
@@ -1572,9 +1583,9 @@ app.post('/api/courses', async (c) => {
 
     const db = getDb(c);
     await db.execute({
-      sql: `INSERT INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [id, collegeId, institutionName, code, name, department, term, color, icon, instructorId, instructorName, JSON.stringify(instructor), memberCount, 1, model, template, enrolledStudents],
+      sql: `INSERT INTO courses (id, college_id, institution_name, code, name, department, faculty_id, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, institutionName, code, name, department, facultyId, term, color, icon, instructorId, instructorName, JSON.stringify(instructor), memberCount, 1, model, template, enrolledStudents],
     });
 
     // Default protected Announcements channel

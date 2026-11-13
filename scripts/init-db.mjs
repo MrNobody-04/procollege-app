@@ -167,6 +167,7 @@ async function init() {
     await ensureColumn('courses', 'institution_name', 'TEXT');
     await ensureColumn('courses', 'instructor_data', 'TEXT');
     await ensureColumn('courses', 'enrolled_students', 'TEXT');
+    await ensureColumn('courses', 'faculty_id', 'TEXT');
     console.log('   ✔ Table `courses` created / verified');
 
     // 6. users
