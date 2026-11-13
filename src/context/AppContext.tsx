@@ -183,6 +183,8 @@ interface AppContextType {
 
   faculties: FacultyDepartment[];
   createFaculty: (faculty: Omit<FacultyDepartment, 'id'>) => void;
+  deleteFaculty: (facultyId: string) => void;
+  addMembersToFaculty: (facultyId: string, memberIds: string[]) => void;
   createInstitutionalAdmin: (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => User;
 
   deleteChannel: (courseId: string, channelId: string) => void;
@@ -523,6 +525,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedChannel(remaining[0].channels[0]);
       }
     }
+    fetch(`/api/courses/${courseId}`, {
+      method: 'DELETE',
+    }).catch(() => {});
   };
 
   const deleteChannel = (courseId: string, channelId: string) => {
@@ -1682,6 +1687,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch(() => {});
   };
 
+  const deleteFaculty = (facultyId: string) => {
+    setFaculties(prev => prev.filter(f => f.id !== facultyId));
+
+    // Persist deletion to live Turso SQL database
+    fetch(`/api/faculties/${facultyId}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+  };
+
+  const addMembersToFaculty = (facultyId: string, memberIds: string[]) => {
+    setFaculties(prev =>
+      prev.map(f => {
+        if (f.id === facultyId) {
+          const existing = f.memberIds || [];
+          const updated = Array.from(new Set([...existing, ...memberIds]));
+          return { ...f, memberIds: updated };
+        }
+        return f;
+      })
+    );
+
+    const targetFac = faculties.find(f => f.id === facultyId);
+    if (targetFac) {
+      setAvailableUsers(prev =>
+        prev.map(u => {
+          if (memberIds.includes(u.id)) {
+            return { ...u, department: targetFac.name };
+          }
+          return u;
+        })
+      );
+    }
+  };
+
   const createInstitutionalAdmin = (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => {
     const newAdmin: User = {
       id: `user_admin_${Date.now()}`,
@@ -1864,6 +1903,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         faculties: tenantFaculties,
         createFaculty,
+        deleteFaculty,
+        addMembersToFaculty,
         createInstitutionalAdmin,
 
         selectedInstitution,

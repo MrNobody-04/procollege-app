@@ -744,6 +744,22 @@ app.post('/api/faculties', async (c) => {
   }
 });
 
+// Delete Faculty
+app.delete('/api/faculties/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const db = getDb(c);
+    await db.execute({
+      sql: 'DELETE FROM faculties WHERE id = ?;',
+      args: [id],
+    });
+    return c.json({ success: true, deletedId: id });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
 // 8. Persist newly created Course & Channels (R14, R20)
 app.post('/api/courses', async (c) => {
   try {
@@ -799,6 +815,26 @@ app.post('/api/courses', async (c) => {
     }
 
     return c.json({ success: true, courseId: id }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Delete Course & Channels
+app.delete('/api/courses/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const db = getDb(c);
+    await db.execute({
+      sql: 'DELETE FROM courses WHERE id = ?;',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM channels WHERE course_id = ?;',
+      args: [id],
+    });
+    return c.json({ success: true, deletedCourseId: id });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);

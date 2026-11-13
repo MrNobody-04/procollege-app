@@ -33,6 +33,7 @@ export interface FacultyDepartment {
   deanName?: string;
   description: string;
   institutionName?: string;
+  memberIds?: string[];
 }
 
 export interface InstitutionalRequest {
