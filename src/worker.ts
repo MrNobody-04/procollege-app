@@ -12,10 +12,15 @@ export type Env = {
 
 const app = new Hono<{ Bindings: Env }>();
 
-// Helper to get Turso client from context
+const DEFAULT_TURSO_URL = 'libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io';
+const DEFAULT_TURSO_AUTH_TOKEN =
+  'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3OTQ1MDUyOTYsImlkIjoiMDFhMWQwZDktMzAwMS03OTk2LWI4ZjQtOGRmYTcxNzBkODM4Iiwia2lkIjoieTgwbkYzLU5YWlhpZENKRVgwdTVZbTNMZEhwSmZYUEJCYWkzNHRXY3A1OCIsInJpZCI6IjdhMzNmOWFlLWI3ZGEtNDM3Ni1hM2IwLTRkOTY4MDBkZDJkNCJ9.CLJY0HpjsEaSGVV3WejPoLCxiK0oxai8lZmlqPFHlVNDJzaZLh_Cmlv2JIYICZYMiaKgJfV7ylGrzAjcIUyQCg';
+const DEFAULT_ABLY_KEY = 'wbIoLQ.bER0PQ:cmYHzvBCwqC4sOZ5frsiGLHssDBjCcLSm9eY3faKx6U';
+
+// Helper to get Turso client from context with safe fallback
 function getDb(c: { env: Env }) {
-  const url = c.env.TURSO_DB_URL || 'libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io';
-  const authToken = c.env.TURSO_AUTH_TOKEN;
+  const url = c.env?.TURSO_DB_URL || DEFAULT_TURSO_URL;
+  const authToken = c.env?.TURSO_AUTH_TOKEN || DEFAULT_TURSO_AUTH_TOKEN;
   return createClient({ url, authToken });
 }
 
@@ -135,7 +140,7 @@ app.post('/api/messages', async (c) => {
     };
 
     // Publish to Ably REST using Basic Auth (API Key)
-    const ablyApiKey = c.env.ABLY_API_KEY;
+    const ablyApiKey = c.env.ABLY_API_KEY || DEFAULT_ABLY_KEY;
     if (ablyApiKey) {
       try {
         const authHeader = 'Basic ' + btoa(ablyApiKey);
@@ -338,6 +343,58 @@ app.get('/api/auth/me', async (c) => {
     });
   } catch {
     return c.json({ error: 'Invalid or expired session token' }, 401);
+  }
+});
+
+// 4. Record "Request Campus Access" inquiries directly into Turso
+app.post('/api/colleges/request-access', async (c) => {
+  try {
+    const body = await c.req.json();
+    const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const institutionName = (body.institutionName || body.institution_name || '').trim();
+    const department = (body.department || '').trim() || 'Academic Operations';
+    const contactName = (body.contactName || body.contact_name || '').trim();
+    const email = (body.email || '').trim().toLowerCase();
+    const phone = (body.phone || '').trim() || 'N/A';
+    const studentCount = Number(body.studentCount || body.student_count || 1000);
+    const deploymentType = body.deploymentType || body.deployment_type || 'campus-pro';
+    const notes = (body.notes || '').trim();
+
+    if (!institutionName || !contactName || !email) {
+      return c.json({ error: 'Institution name, contact name, and email are required.' }, 400);
+    }
+
+    const db = getDb(c);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS college_requests (
+        id TEXT PRIMARY KEY,
+        institution_name TEXT NOT NULL,
+        department TEXT,
+        contact_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        student_count INTEGER DEFAULT 1000,
+        deployment_type TEXT DEFAULT 'campus-pro',
+        notes TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    await db.execute({
+      sql: `INSERT INTO college_requests (id, institution_name, department, contact_name, email, phone, student_count, deployment_type, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, institutionName, department, contactName, email, phone, studentCount, deploymentType, notes],
+    });
+
+    return c.json({
+      success: true,
+      message: 'Campus access request recorded successfully in Turso database.',
+      id,
+    }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
   }
 });
 

@@ -174,6 +174,24 @@ async function init() {
     `);
     console.log('   ✔ Table `assignments` created / verified');
 
+    // 9. college_requests (Request Campus Access inquiries)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS college_requests (
+        id TEXT PRIMARY KEY,
+        institution_name TEXT NOT NULL,
+        department TEXT,
+        contact_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        student_count INTEGER DEFAULT 1000,
+        deployment_type TEXT DEFAULT 'campus-pro',
+        notes TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    console.log('   ✔ Table `college_requests` created / verified');
+
     console.log('\n🔍 2. Creating Composite Indexes...');
 
     // Index 1: idx_messages_channel_time

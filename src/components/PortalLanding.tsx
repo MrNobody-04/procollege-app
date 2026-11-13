@@ -114,15 +114,29 @@ export const PortalLanding: React.FC = () => {
     }
   };
 
-  const launchDemoMode = (userToSet?: typeof availableUsers[0]) => {
-    setIsDemoMode(true);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState<boolean>(false);
+
+  const launchDemoMode = async (userToSet?: typeof availableUsers[0]) => {
     if (userToSet) {
+      setIsDemoMode(true);
       setCurrentUser(userToSet);
+      setShowSignInModal(false);
+      setShowRequestModal(false);
+      setMobileMenuOpen(false);
+      setViewMode('app');
+      return;
     }
-    setShowSignInModal(false);
-    setShowRequestModal(false);
-    setMobileMenuOpen(false);
-    setViewMode('app');
+
+    // Default "Explore the platform" -> Authenticate directly with live Turso student demo account
+    try {
+      await performLogin('sujan@padmashree.edu.np', 'password123');
+    } catch {
+      setIsDemoMode(true);
+      setShowSignInModal(false);
+      setShowRequestModal(false);
+      setMobileMenuOpen(false);
+      setViewMode('app');
+    }
   };
 
   const handleInstitutionalLogin = async (e: React.FormEvent) => {
@@ -140,13 +154,14 @@ export const PortalLanding: React.FC = () => {
     await performLogin(email, loginPassword || 'password123');
   };
 
-  const handleOrgRequestSubmit = (e: React.FormEvent) => {
+  const handleOrgRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgForm.institutionName || !orgForm.contactName || !orgForm.email) return;
 
+    setIsSubmittingRequest(true);
     const fullPhone = orgForm.phone.trim() ? `${phoneCountryCode} ${orgForm.phone.trim()}` : '';
 
-    submitInstitutionalRequest({
+    const payload = {
       institutionName: orgForm.institutionName.trim(),
       department: orgForm.department.trim() || 'Academic Operations',
       contactName: orgForm.contactName.trim(),
@@ -155,8 +170,21 @@ export const PortalLanding: React.FC = () => {
       studentCount: Number(orgForm.studentCount) || 1000,
       deploymentType: orgForm.deploymentType,
       notes: orgForm.notes.trim()
-    });
+    };
 
+    try {
+      await fetch('/api/colleges/request-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.warn('Could not post inquiry to live Turso backend:', err);
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+
+    submitInstitutionalRequest(payload);
     setRequestSubmitted(true);
   };
 
@@ -1088,10 +1116,20 @@ export const PortalLanding: React.FC = () => {
                       <div className="pt-2">
                         <button
                           type="submit"
-                          className="btn-hive w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#173bff] to-[#0c2de6] text-white text-xs sm:text-sm font-black shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 group"
+                          disabled={isSubmittingRequest}
+                          className="btn-hive w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#173bff] to-[#0c2de6] text-white text-xs sm:text-sm font-black shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50"
                         >
-                          <span>Submit Deployment Request</span>
-                          <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                          {isSubmittingRequest ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Saving Request to Turso DB...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Submit Deployment Request</span>
+                              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                            </>
+                          )}
                         </button>
                       </div>
                     </form>
