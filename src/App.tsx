@@ -31,7 +31,7 @@ const MainWorkspace: React.FC = () => {
         {/* Dynamic Center Work Area */}
         <main className="flex-1 flex overflow-hidden">
           {isPlatformDev ? (
-            <AdminCenterView />
+            <AdminCenterView activeDevTab={activeTab} />
           ) : (
             <>
               {activeTab === 'teams' && (

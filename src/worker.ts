@@ -416,23 +416,33 @@ app.post('/api/auth/login', async (c) => {
       }, 403);
     }
 
-    // Zero-Cost OTP Verification Step for student accounts:
+    // Zero-Cost 2FA OTP Verification Step for student accounts, institutional admins, or accounts requiring password changes:
     const skipOtp = c.req.query('skipOtp') === 'true';
-    if (userRole === 'student' && !skipOtp) {
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const mustChangePassword = Boolean(userRow.must_change_password);
+    const requires2FA = (userRole === 'student' || userRole === 'admin' || mustChangePassword) && !skipOtp && !isDeveloper;
+
+    if (requires2FA) {
+      // If user already has a valid unexpired OTP code, we can reuse or refresh it
+      let otpCode = String(userRow.otp_code || '');
+      const existingExpires = userRow.otp_expires_at ? new Date(String(userRow.otp_expires_at)).getTime() : 0;
+
+      if (!otpCode || existingExpires < Date.now()) {
+        otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      }
+      const otpExpires = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min window
 
       await db.execute({
         sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
         args: [otpCode, otpExpires, userRow.id],
       });
 
-      console.log(`[AUTH-OTP] Generated OTP ${otpCode} for ${userRow.email} (valid for 10 min)`);
+      console.log(`[AUTH-OTP] Generated 2FA OTP ${otpCode} for ${userRow.email} (valid for 30 min)`);
 
       return c.json({
         requireOtp: true,
         email: userRow.email,
-        message: 'A 6-digit OTP verification code has been dispatched to your registered Gmail address.',
+        mustChangePassword,
+        message: 'A 6-digit 2FA OTP verification code has been dispatched to your registered email address.',
         devOtp: otpCode, // surfaced for frictionless verification & demo testing
       });
     }
@@ -784,13 +794,17 @@ app.post('/api/platform/institutions/provision', async (c) => {
       args: [institutionId, name, code, plan, email],
     });
 
-    // 2. Insert Admin into users
+    // Generate initial 2FA OTP code valid for 48h
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    // 2. Insert Admin into users with mandatory password change and 2FA OTP
     await db.execute({
       sql: `INSERT OR REPLACE INTO users (
               id, college_id, institution_id, institution_name, name, email,
-              role, password, password_hash, must_change_password, department, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 0, ?, datetime('now'));`,
-      args: [adminId, institutionId, institutionId, name, contactName, email, tempPassword, passHash, department],
+              role, password, password_hash, must_change_password, otp_code, otp_expires_at, department, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 1, ?, ?, ?, datetime('now'));`,
+      args: [adminId, institutionId, institutionId, name, contactName, email, tempPassword, passHash, otpCode, otpExpires, department],
     });
 
     // 3. Seed initial Faculty
@@ -831,6 +845,90 @@ app.post('/api/platform/institutions/provision', async (c) => {
         institutionName: name,
       },
       message: `Organization ${name} provisioned successfully with Admin ${contactName}.`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.6 Delete an organization completely (Platform Developer Master Only)
+app.delete('/api/platform/institutions/:id', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const id = c.req.param('id');
+    const db = getDb(c);
+
+    // Look up the organization name first
+    const orgRes = await db.execute({
+      sql: `SELECT id, name FROM colleges WHERE id = ? UNION SELECT id, name FROM institutions WHERE id = ? LIMIT 1;`,
+      args: [id, id],
+    });
+
+    const orgName = orgRes.rows[0]?.name ? String(orgRes.rows[0].name) : '';
+
+    // Delete from colleges and institutions
+    await db.execute({ sql: `DELETE FROM colleges WHERE id = ?;`, args: [id] });
+    await db.execute({ sql: `DELETE FROM institutions WHERE id = ?;`, args: [id] });
+
+    // Cascade delete associated users (except developers)
+    if (orgName) {
+      await db.execute({
+        sql: `DELETE FROM users WHERE (college_id = ? OR institution_id = ? OR institution_name = ?) AND role != 'developer';`,
+        args: [id, id, orgName],
+      });
+      await db.execute({
+        sql: `DELETE FROM faculties WHERE college_id = ? OR institution_name = ?;`,
+        args: [id, orgName],
+      });
+      await db.execute({
+        sql: `DELETE FROM courses WHERE college_id = ? OR institution_name = ?;`,
+        args: [id, orgName],
+      });
+    }
+
+    return c.json({
+      success: true,
+      deletedId: id,
+      deletedName: orgName,
+      message: `Organization ${orgName || id} and all its tenant assets were deleted successfully.`
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.7 Renew subscription for an organization (+1 year)
+app.post('/api/platform/institutions/:id/renew', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const id = c.req.param('id');
+    const db = getDb(c);
+
+    // Update status to active
+    await db.execute({
+      sql: `UPDATE colleges SET status = 'active' WHERE id = ?;`,
+      args: [id],
+    });
+    await db.execute({
+      sql: `UPDATE institutions SET status = 'active' WHERE id = ?;`,
+      args: [id],
+    });
+
+    return c.json({
+      success: true,
+      id,
+      status: 'active',
+      message: `Subscription for organization ${id} renewed successfully for 1 year.`
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

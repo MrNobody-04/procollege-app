@@ -198,6 +198,7 @@ interface AppContextType {
   deleteFaculty: (facultyId: string) => void;
   addMembersToFaculty: (facultyId: string, memberIds: string[]) => void;
   createInstitutionalAdmin: (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => User;
+  deleteOrganization: (orgName: string) => void;
 
   deleteChannel: (courseId: string, channelId: string) => void;
   selectedInstitution: string;
@@ -1659,6 +1660,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { adminId, tempPass };
   };
 
+  const deleteOrganization = (orgName: string) => {
+    if (!orgName) return;
+    const lower = orgName.toLowerCase().trim();
+    setCourses(prev => prev.filter(c => (c.institutionName || '').toLowerCase().trim() !== lower));
+    setFaculties(prev => prev.filter(f => (f.institutionName || '').toLowerCase().trim() !== lower));
+    setAvailableUsers(prev => prev.filter(u => u.role === 'developer' || (u.institutionName || '').toLowerCase().trim() !== lower));
+    setInstitutionalRequests(prev => prev.filter(r => (r.institutionName || '').toLowerCase().trim() !== lower));
+    if (selectedInstitution.toLowerCase().trim() === lower) {
+      setSelectedInstitution('all');
+    }
+  };
+
   const registerUserByAdmin = (userData: {
     name: string;
     email: string;
@@ -2040,6 +2053,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteFaculty,
         addMembersToFaculty,
         createInstitutionalAdmin,
+        deleteOrganization,
 
         selectedInstitution,
         setSelectedInstitution,

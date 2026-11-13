@@ -32,10 +32,8 @@ import {
   PlayCircle,
   ShieldCheck,
   Activity,
-  AlertTriangle,
   RefreshCw,
-  Server,
-  Lock as LockIcon
+  Server
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
@@ -53,6 +51,8 @@ export interface PlatformOrg {
   contactEmail: string;
   adminName: string;
   createdAt: string;
+  startDate?: string;
+  expiryDate?: string;
 }
 
 export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ activeDevTab = 'dev-overview' }) => {
@@ -84,22 +84,31 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     createInstitutionalAdmin,
     selectedInstitution,
     setSelectedInstitution,
-    allInstitutions
+    allInstitutions,
+    activeTab,
+    deleteOrganization
   } = useApp();
 
   const isDeveloper = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
   const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin';
 
-  // Dedicated Developer Navigation Section
+  // Dedicated Developer Navigation Section - seamlessly kept in sync with activeTab
   const [currentDevSection, setCurrentDevSection] = useState<ActiveTab | 'campus-ops'>(
-    activeDevTab?.startsWith('dev-') ? activeDevTab : 'dev-overview'
+    activeTab?.startsWith('dev-') ? activeTab : (activeDevTab?.startsWith('dev-') ? activeDevTab : 'dev-overview')
   );
 
   useEffect(() => {
-    if (activeDevTab?.startsWith('dev-')) {
-      setCurrentDevSection(activeDevTab);
+    if (activeTab?.startsWith('dev-')) {
+      setCurrentDevSection(activeTab);
     }
-  }, [activeDevTab]);
+  }, [activeTab]);
+
+  const switchDevSection = (section: ActiveTab | 'campus-ops') => {
+    setCurrentDevSection(section);
+    if (section !== 'campus-ops') {
+      setActiveTab(section);
+    }
+  };
 
   // Developer Platform Organizations State
   const [organizations, setOrganizations] = useState<PlatformOrg[]>([]);
@@ -215,6 +224,77 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       showDialog(`Status Toggle Failed: ${msg}`, { type: 'error' });
+    }
+  };
+
+  const handleDeleteOrg = async (org: PlatformOrg) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to permanently delete "${org.name}"?\n\nThis will remove all associated faculties, classes, students, and campus data. This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem('procollege_token') || '';
+      const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete organization');
+      }
+
+      setOrganizations(prev => prev.filter(o => o.id !== org.id));
+      deleteOrganization(org.name);
+
+      showDialog(`Organization "${org.name}" has been permanently deleted.`, {
+        type: 'success',
+        title: 'Organization Deleted'
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showDialog(`Delete failed: ${msg}`, { type: 'error' });
+    }
+  };
+
+  const handleRenewOrg = async (org: PlatformOrg) => {
+    try {
+      const token = localStorage.getItem('procollege_token') || '';
+      const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}/renew`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to renew subscription');
+      }
+
+      setOrganizations(prev =>
+        prev.map(o => {
+          if (o.id === org.id) {
+            const currentExp = o.expiryDate ? new Date(o.expiryDate) : new Date();
+            currentExp.setFullYear(currentExp.getFullYear() + 1);
+            return {
+              ...o,
+              status: 'active',
+              expiryDate: currentExp.toISOString().split('T')[0]
+            };
+          }
+          return o;
+        })
+      );
+
+      showDialog(`Subscription for "${org.name}" has been renewed for 1 year!\n\nStatus is set to Active.`, {
+        type: 'success',
+        title: 'Subscription Renewed'
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showDialog(`Renew failed: ${msg}`, { type: 'error' });
     }
   };
 
@@ -964,10 +1044,27 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   {isDeveloper ? 'Platform Creator & Developer Console' : 'Campus Administration Center'}
                 </h1>
                 {isDeveloper ? (
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 shadow-2xs">
-                    <Sparkles className="w-3 h-3 text-purple-600" />
-                    Developer Master (Root Access)
-                  </span>
+                  <>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                      <Sparkles className="w-3 h-3 text-purple-600" />
+                      Developer Master (Root Access)
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-zinc-100 border border-zinc-200 rounded-lg px-2.5 py-1 text-xs">
+                      <span className="text-[11px] text-zinc-500 font-semibold">Scope:</span>
+                      <select
+                        value={selectedInstitution}
+                        onChange={e => setSelectedInstitution(e.target.value)}
+                        className="bg-transparent text-zinc-800 text-xs font-semibold focus:outline-none cursor-pointer"
+                      >
+                        <option value="all">All Real Institutions (Master Overview)</option>
+                        {allInstitutions.map(inst => (
+                          <option key={inst} value={inst}>
+                            {inst}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
                 ) : (
                   <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1 shadow-2xs">
                     <Building className="w-3 h-3 text-indigo-600" />
@@ -986,14 +1083,27 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           {/* Prominent Admin Quick Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap shrink-0">
             {isDeveloper && (
-              <button
-                onClick={() => setShowCreateAdminModal(true)}
-                className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
-                title="Directly create and provision an Institutional Admin for any university"
-              >
-                <Key className="w-3.5 h-3.5" />
-                <span>Create Org Admin</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setShowCreateAdminModal(true)}
+                  className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  title="Directly create and provision an Institutional Admin for any university"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>Create Org Admin</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    switchDevSection('campus-ops');
+                    setActiveAdminTab('requests');
+                  }}
+                  className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors cursor-pointer"
+                  title="Review university inquiries and onboarding requests"
+                >
+                  <span>Requests ({institutionalRequests.filter(r => r.status === 'pending').length} Pending)</span>
+                </button>
+              </>
             )}
 
             <button
@@ -1047,64 +1157,12 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           </div>
         </div>
 
-        {/* Developer Mode Master Banner (Shown only to Developer Admin) */}
-        {isDeveloper && (
-          <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white p-4 rounded-xl shadow-md border border-purple-800/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-500/20 border border-purple-400/30 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-purple-300" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-purple-200 uppercase tracking-wider">
-                  Platform Creator & Root Governance
-                </p>
-                <p className="text-xs text-white font-medium">
-                  You are logged in as Platform Developer (Creator). You possess superior multi-campus authority, can provision institutional admins, review incoming university requests, and control all tenant domains.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              {/* Organization Scope Dropdown */}
-              <div className="flex items-center gap-1.5 bg-purple-950/80 border border-purple-500/40 rounded-lg px-2.5 py-1.5 shadow-2xs">
-                <span className="text-[11px] text-purple-200 font-semibold">Scope:</span>
-                <select
-                  value={selectedInstitution}
-                  onChange={e => setSelectedInstitution(e.target.value)}
-                  className="bg-transparent text-white text-xs font-semibold focus:outline-none cursor-pointer"
-                >
-                  <option value="all" className="bg-zinc-900 text-white">All Real Institutions (Master Overview)</option>
-                  {allInstitutions.map(inst => (
-                    <option key={inst} value={inst} className="bg-zinc-900 text-white">
-                      {inst}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                onClick={() => {
-                  setActiveAdminTab('requests');
-                }}
-                className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors cursor-pointer"
-              >
-                Review Requests ({institutionalRequests.filter(r => r.status === 'pending').length} Pending)
-              </button>
-              <button
-                onClick={() => setShowCreateAdminModal(true)}
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer border border-white/20"
-              >
-                + Issue Org Admin Login
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Master Navigation Tabs */}
         {isDeveloper ? (
           /* Developer Master Navigation Toolbar */
           <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
             <button
-              onClick={() => setCurrentDevSection('dev-overview')}
+              onClick={() => switchDevSection('dev-overview')}
               className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 currentDevSection === 'dev-overview'
                   ? 'bg-purple-700 text-white shadow-xs'
@@ -1116,7 +1174,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </button>
 
             <button
-              onClick={() => setCurrentDevSection('dev-organizations')}
+              onClick={() => switchDevSection('dev-organizations')}
               className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 currentDevSection === 'dev-organizations'
                   ? 'bg-purple-700 text-white shadow-xs'
@@ -1128,7 +1186,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </button>
 
             <button
-              onClick={() => setCurrentDevSection('dev-billing')}
+              onClick={() => switchDevSection('dev-billing')}
               className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 currentDevSection === 'dev-billing'
                   ? 'bg-purple-700 text-white shadow-xs'
@@ -1136,11 +1194,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <CreditCard className="w-4 h-4" />
-              <span>Billing & Workflow Suspension</span>
+              <span>Billing & Flow</span>
             </button>
 
             <button
-              onClick={() => setCurrentDevSection('dev-system')}
+              onClick={() => switchDevSection('dev-system')}
               className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 currentDevSection === 'dev-system'
                   ? 'bg-purple-700 text-white shadow-xs'
@@ -1152,7 +1210,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </button>
 
             <button
-              onClick={() => setCurrentDevSection('campus-ops')}
+              onClick={() => switchDevSection('campus-ops')}
               className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
                 currentDevSection === 'campus-ops'
                   ? 'bg-slate-800 text-white shadow-xs'
@@ -1417,7 +1475,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             {/* Quick Navigation Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div
-                onClick={() => setCurrentDevSection('dev-organizations')}
+                onClick={() => switchDevSection('dev-organizations')}
                 className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
               >
                 <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
@@ -1434,15 +1492,15 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
 
               <div
-                onClick={() => setCurrentDevSection('dev-billing')}
+                onClick={() => switchDevSection('dev-billing')}
                 className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
               >
                 <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
                   <CreditCard className="w-4 h-4" />
-                  <span>Billing & Workflow Suspension</span>
+                  <span>Campus Subscriptions & Billing</span>
                 </div>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Control institutional access, toggle organization workflow pausing (enforcing HTTP 403 Forbidden on delinquent accounts), and manage tiers.
+                  Manage annual subscriptions, start/expiry dates, 1-year renewal cycles, and active/paused workflow state.
                 </p>
                 <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
                   <span>Go to Billing & Flow</span>
@@ -1451,7 +1509,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
 
               <div
-                onClick={() => setCurrentDevSection('dev-system')}
+                onClick={() => switchDevSection('dev-system')}
                 className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
               >
                 <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
@@ -1597,12 +1655,19 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               <button
                                 onClick={() => {
                                   setSelectedInstitution(org.name);
-                                  setCurrentDevSection('campus-ops');
+                                  switchDevSection('campus-ops');
                                 }}
                                 className="px-2.5 py-1 rounded text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
                                 title="Inspect academic classes and faculties for this campus"
                               >
                                 Inspect
+                              </button>
+                              <button
+                                onClick={() => handleDeleteOrg(org)}
+                                className="p-1 rounded text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                                title={`Permanently delete ${org.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -1617,151 +1682,138 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         )}
 
         {/* ========================================================= */}
-        {/* DEVELOPER SECTION 3: BILLING & WORKFLOW SUSPENSION        */}
+        {/* DEVELOPER SECTION 3: BILLING & FLOW                       */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-billing' && (
-          <div className="space-y-5">
-            {/* Explanatory Callout Banner */}
-            <div className="bg-gradient-to-r from-amber-900/90 via-slate-900 to-zinc-900 text-white p-4 sm:p-5 rounded-xl border border-amber-700/50 shadow-md space-y-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <h2 className="text-sm font-bold text-white">Payment Governance & Workflow Suspension Engine</h2>
+          <div className="space-y-4">
+            {/* Header & Overview */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-zinc-900">Campus Subscriptions & Billing Status</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Manage institutional subscription plans, start/expiry dates, renewal cycles, and workflow status.
+                </p>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed">
-                ProCollege features automated workflow control at the Cloudflare Worker edge. When an institution’s subscription or contract is flagged as delinquent, the platform administrator can suspend that tenant’s workflow with a single click.
-              </p>
-              <div className="bg-black/40 rounded-lg p-3 text-[11px] text-amber-200 font-mono border border-amber-500/20 flex items-center gap-2">
-                <LockIcon className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Status: Paused ➜ Global API middleware automatically intercepts student & teacher sessions with HTTP 403 Forbidden.</span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-zinc-600 bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">
+                  {organizations.filter(o => o.status !== 'paused').length} of {organizations.length} Campuses Active
+                </span>
               </div>
             </div>
 
-            {/* Organization Workflow Suspension Control Table */}
+            {/* Subscriptions Table */}
             <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                  Tenant Subscription & Workflow Enforcement Table
-                </h3>
-                <span className="text-[11px] text-zinc-500">Live Turso DB & Hono Middleware Synchronization</span>
-              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead>
-                    <tr className="bg-zinc-50/60 border-b border-zinc-200 font-semibold text-zinc-700">
-                      <th className="py-2.5 px-4">Campus / Organization</th>
-                      <th className="py-2.5 px-4">Billing Plan</th>
-                      <th className="py-2.5 px-4">Workflow State</th>
-                      <th className="py-2.5 px-4">Enforcement Rule</th>
-                      <th className="py-2.5 px-4 text-right">Workflow Toggle</th>
+                    <tr className="bg-zinc-50 border-b border-zinc-200 font-semibold text-zinc-700">
+                      <th className="py-3 px-4">Organization Name</th>
+                      <th className="py-3 px-4">Plan</th>
+                      <th className="py-3 px-4">Start Date</th>
+                      <th className="py-3 px-4">Expiry Date</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
                     {organizations.map((org: PlatformOrg) => {
                       const isPaused = org.status === 'paused';
+                      const startDate = org.startDate || org.createdAt?.split('T')[0] || '2026-09-01';
+                      const expiryDate = org.expiryDate || '2027-09-01';
+
                       return (
-                        <tr key={org.id} className="hover:bg-zinc-50/70 transition-colors">
+                        <tr key={org.id} className="hover:bg-zinc-50/80 transition-colors">
                           <td className="py-3 px-4">
-                            <div className="font-bold text-zinc-900">{org.name}</div>
-                            <div className="text-[10px] text-zinc-400 font-mono">Org ID: {org.id}</div>
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-purple-700 text-xs shrink-0">
+                                {org.code ? org.code.slice(0, 3) : org.name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-bold text-zinc-900">{org.name}</div>
+                                <div className="text-[11px] text-zinc-500">{org.contactEmail || org.adminName}</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 uppercase">
-                              {org.billingPlan || 'campus-pro'}
+                            <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wide">
+                              {org.billingPlan === 'enterprise' ? 'Enterprise' : 'Campus Pro'}
                             </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-zinc-700">
+                            {startDate}
+                          </td>
+                          <td className="py-3 px-4 font-mono text-zinc-700">
+                            <div className="flex items-center gap-1.5">
+                              <span>{expiryDate}</span>
+                              <span className="text-[10px] font-sans font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                Valid
+                              </span>
+                            </div>
                           </td>
                           <td className="py-3 px-4">
                             {isPaused ? (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 w-fit">
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 w-fit">
                                 <PauseCircle className="w-3 h-3 text-rose-600" />
-                                Workflows Paused
+                                Paused
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-fit">
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-fit">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                Active (Live)
+                                Active
                               </span>
                             )}
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-zinc-600 text-[11px]">
-                              {isPaused
-                                ? 'Non-platform API requests return HTTP 403 Forbidden'
-                                : 'Full operational access granted'}
-                            </span>
-                          </td>
                           <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => handleToggleOrgStatus(org.id, org.status)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
-                                isPaused
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                                  : 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
-                              }`}
-                            >
-                              {isPaused ? (
-                                <>
-                                  <PlayCircle className="w-3.5 h-3.5" />
-                                  <span>Activate Workflow</span>
-                                </>
-                              ) : (
-                                <>
-                                  <PauseCircle className="w-3.5 h-3.5" />
-                                  <span>Pause Workflow</span>
-                                </>
-                              )}
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Pause / Activate Button */}
+                              <button
+                                onClick={() => handleToggleOrgStatus(org.id, org.status)}
+                                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                                  isPaused
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300'
+                                }`}
+                                title={isPaused ? 'Activate organization workflow' : 'Pause organization workflow'}
+                              >
+                                {isPaused ? (
+                                  <>
+                                    <PlayCircle className="w-3.5 h-3.5" />
+                                    <span>Activate</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <PauseCircle className="w-3.5 h-3.5" />
+                                    <span>Pause</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Renew (+1 Year) Button */}
+                              <button
+                                onClick={() => handleRenewOrg(org)}
+                                className="px-2.5 py-1 rounded text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-colors cursor-pointer flex items-center gap-1"
+                                title="Extend subscription contract by 1 year and ensure active status"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-purple-600" />
+                                <span>Renew</span>
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteOrg(org)}
+                                className="p-1 rounded text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                                title={`Permanently delete ${org.name}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-              </div>
-            </div>
-
-            {/* 403 Forbidden Live Simulator Preview */}
-            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-rose-600" />
-                  <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
-                    End-User Interceptor Simulator (HTTP 403 Preview)
-                  </h3>
-                </div>
-                <span className="text-[11px] text-zinc-500">Live preview of what blocked campus users experience</span>
-              </div>
-
-              <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-4 sm:p-5 flex flex-col md:flex-row items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-600 shrink-0">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <div className="flex-1 space-y-1 text-center md:text-left">
-                  <div className="flex items-center gap-2 justify-center md:justify-start">
-                    <span className="text-xs font-bold text-rose-900">HTTP 403 Forbidden</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-200 text-rose-900 font-bold">
-                      WORKFLOW_PAUSED
-                    </span>
-                  </div>
-                  <p className="text-xs text-rose-800 leading-relaxed">
-                    "Organization workflow paused due to pending billing / payment. Please contact platform support."
-                  </p>
-                  <p className="text-[11px] text-zinc-500">
-                    This message is strictly returned from Cloudflare edge middleware for any non-developer user when their campus is paused.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    showDialog(
-                      "HTTP 403 Forbidden: Organization workflow paused due to pending billing / payment. Please contact platform support.\n\n(Simulated response from Hono edge middleware)",
-                      { type: 'error', title: 'Workflow Paused (403)' }
-                    );
-                  }}
-                  className="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
-                >
-                  Trigger Simulated Alert
-                </button>
               </div>
             </div>
           </div>

@@ -18,11 +18,7 @@ import {
   Loader2,
   ShieldCheck,
   Lock,
-  ArrowLeft,
-  GraduationCap,
-  BookOpen,
-  Shield,
-  Sparkles
+  ArrowLeft
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -43,7 +39,6 @@ export const PortalLanding: React.FC = () => {
   } = useApp();
 
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
-  const [signInTab, setSignInTab] = useState<'demo' | 'institutional'>('demo');
   const [showRequestModal, setShowRequestModal] = useState<boolean>(false);
   const [requestSubmitted, setRequestSubmitted] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -431,7 +426,6 @@ export const PortalLanding: React.FC = () => {
           <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 shrink-0">
             <button
               onClick={() => {
-                setSignInTab('demo');
                 setShowSignInModal(true);
               }}
               className="text-xs sm:text-sm md:text-[15px] font-bold text-[#101b46] hover:text-[#173bff] px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-transparent hover:border-zinc-200 hover:bg-zinc-100/70 active:scale-95 transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0"
@@ -513,36 +507,6 @@ export const PortalLanding: React.FC = () => {
                 <span>Request Campus Access</span>
               </button>
             </div>
-
-            <div className="pt-2 border-t border-zinc-100">
-              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Instant Live Demo:</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  onClick={() => launchDemoMode('student')}
-                  className="p-2 rounded-lg bg-blue-50 hover:bg-blue-600 border border-blue-200 text-blue-900 hover:text-white font-bold text-xs flex flex-col items-center gap-1 transition-colors cursor-pointer group"
-                >
-                  <GraduationCap className="w-3.5 h-3.5 text-[#173bff] group-hover:text-white" />
-                  <span>Student</span>
-                </button>
-                <button
-                  onClick={() => launchDemoMode('professor')}
-                  className="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-600 border border-indigo-200 text-indigo-900 hover:text-white font-bold text-xs flex flex-col items-center gap-1 transition-colors cursor-pointer group"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-600 group-hover:text-white" />
-                  <span>Professor</span>
-                </button>
-                <button
-                  onClick={() => launchDemoMode('admin')}
-                  className="p-2 rounded-lg bg-purple-50 hover:bg-purple-600 border border-purple-200 text-purple-900 hover:text-white font-bold text-xs flex flex-col items-center gap-1 transition-colors cursor-pointer group"
-                >
-                  <Shield className="w-3.5 h-3.5 text-purple-600 group-hover:text-white" />
-                  <span>Admin</span>
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </header>
@@ -592,45 +556,6 @@ export const PortalLanding: React.FC = () => {
                   <Building2 className="w-4 h-4 text-[#173bff] group-hover:scale-110 transition-transform duration-300" />
                   <span>Request Campus Access</span>
                 </button>
-              </div>
-
-              {/* Quick Persona Live Demo Selector */}
-              <div className="pt-2 max-w-xl">
-                <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>Instant Live Demo — Choose Persona:</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => launchDemoMode('student')}
-                    className="p-2.5 rounded-xl bg-blue-50/80 hover:bg-blue-600 border border-blue-200 text-blue-900 hover:text-white transition-all duration-200 flex flex-col items-center justify-center gap-1 shadow-2xs hover:shadow-md cursor-pointer group"
-                    title="Experience ProCollege as a Student"
-                  >
-                    <GraduationCap className="w-4 h-4 text-[#173bff] group-hover:text-white transition-colors" />
-                    <span className="text-xs font-bold leading-none">Demo as Student</span>
-                    <span className="text-[10px] text-zinc-500 group-hover:text-blue-100 font-medium">Classes & Work</span>
-                  </button>
-
-                  <button
-                    onClick={() => launchDemoMode('professor')}
-                    className="p-2.5 rounded-xl bg-indigo-50/80 hover:bg-indigo-600 border border-indigo-200 text-indigo-900 hover:text-white transition-all duration-200 flex flex-col items-center justify-center gap-1 shadow-2xs hover:shadow-md cursor-pointer group"
-                    title="Experience ProCollege as a Professor / Lecturer"
-                  >
-                    <BookOpen className="w-4 h-4 text-indigo-600 group-hover:text-white transition-colors" />
-                    <span className="text-xs font-bold leading-none">Demo as Professor</span>
-                    <span className="text-[10px] text-zinc-500 group-hover:text-indigo-100 font-medium">Teaching & LMS</span>
-                  </button>
-
-                  <button
-                    onClick={() => launchDemoMode('admin')}
-                    className="p-2.5 rounded-xl bg-purple-50/80 hover:bg-purple-600 border border-purple-200 text-purple-900 hover:text-white transition-all duration-200 flex flex-col items-center justify-center gap-1 shadow-2xs hover:shadow-md cursor-pointer group"
-                    title="Experience ProCollege as a Campus Administrator"
-                  >
-                    <Shield className="w-4 h-4 text-purple-600 group-hover:text-white transition-colors" />
-                    <span className="text-xs font-bold leading-none">Demo as Admin</span>
-                    <span className="text-[10px] text-zinc-500 group-hover:text-purple-100 font-medium">Admin Center</span>
-                  </button>
-                </div>
               </div>
 
               {/* Note below buttons (hero-note) */}
@@ -690,123 +615,10 @@ export const PortalLanding: React.FC = () => {
           </p>
         </div>
 
-        {/* Interactive Live Demo Bar (Role Perspectives - Student, Professor, Admin) */}
-        <div className="mb-10 p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#0c132c] via-[#111e49] to-[#0a183b] border-2 border-blue-500/30 shadow-2xl text-white">
-          <div className="max-w-2xl mb-6 text-left">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-[11px] font-black tracking-widest uppercase text-cyan-300">
-                LIVE DEMO WORKSPACE (ONE-CLICK ACCESS)
-              </span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-bold text-white mt-1.5 tracking-tight font-fraunces">
-              Explore ProCollege as Student, Professor, or Campus Admin
-            </h3>
-            <p className="text-xs sm:text-sm text-blue-200/80 mt-1.5 leading-relaxed">
-              Click any demo role below to launch directly into that persona's exact interface, permissions, and academic workflow:
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* 1. Student Demo Card */}
-            <div 
-              onClick={() => launchDemoMode('student')}
-              className="bg-white/10 hover:bg-white/15 border border-blue-400/30 hover:border-blue-400 rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 hover:shadow-xl"
-              title="Launch Student Experience (Alex Johnson)"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-11 h-11 rounded-xl bg-blue-500/20 text-cyan-300 flex items-center justify-center border border-blue-400/40 group-hover:scale-110 transition-transform">
-                    <GraduationCap className="w-6 h-6" />
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/30 text-cyan-200 border border-blue-400/40">
-                    Student
-                  </span>
-                </div>
-                <h4 className="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">
-                  Demo as Student
-                </h4>
-                <div className="text-[11px] text-blue-200 font-medium mt-0.5">
-                  Alex Johnson · Computer Science
-                </div>
-                <p className="text-xs text-blue-100/75 mt-2.5 leading-relaxed">
-                  Attend lecture rooms, submit problem sets, turn in homework, track grades, and view assignment calendar.
-                </p>
-              </div>
-              <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-bold text-cyan-300 group-hover:text-white">
-                <span>Launch Student Interface</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </div>
-            </div>
-
-            {/* 2. Professor Demo Card */}
-            <div 
-              onClick={() => launchDemoMode('professor')}
-              className="bg-white/10 hover:bg-white/15 border border-indigo-400/30 hover:border-indigo-400 rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 hover:shadow-xl"
-              title="Launch Faculty Professor Experience (Prof. Alan Turing)"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-11 h-11 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center border border-indigo-400/40 group-hover:scale-110 transition-transform">
-                    <BookOpen className="w-6 h-6" />
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">
-                    Professor
-                  </span>
-                </div>
-                <h4 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">
-                  Demo as Professor
-                </h4>
-                <div className="text-[11px] text-indigo-200 font-medium mt-0.5">
-                  Prof. Alan Turing · Computer Science & Engineering
-                </div>
-                <p className="text-xs text-indigo-100/75 mt-2.5 leading-relaxed">
-                  Publish class announcements, author and distribute assignments with due dates, upload lecture notes, and grade submissions.
-                </p>
-              </div>
-              <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-bold text-indigo-300 group-hover:text-white">
-                <span>Launch Professor Interface</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </div>
-            </div>
-
-            {/* 3. Campus Admin Demo Card */}
-            <div 
-              onClick={() => launchDemoMode('admin')}
-              className="bg-white/10 hover:bg-white/15 border border-purple-400/30 hover:border-purple-400 rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between cursor-pointer group hover:-translate-y-1 hover:shadow-xl"
-              title="Launch Campus Administration Center (Dr. Margaret Hamilton)"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-11 h-11 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center border border-purple-400/40 group-hover:scale-110 transition-transform">
-                    <Shield className="w-6 h-6" />
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/30 text-purple-200 border border-purple-400/40">
-                    Admin
-                  </span>
-                </div>
-                <h4 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
-                  Demo as Admin
-                </h4>
-                <div className="text-[11px] text-purple-200 font-medium mt-0.5">
-                  Dr. Margaret Hamilton · Dean & Campus Operations
-                </div>
-                <p className="text-xs text-purple-100/75 mt-2.5 leading-relaxed">
-                  Campus Administration Center: manage faculties & academic departments, provision classes & subjects, run semester rollovers, and manage student rosters.
-                </p>
-              </div>
-              <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-bold text-purple-300 group-hover:text-white">
-                <span>Launch Admin Center</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* 4 Feature Cards Grid: 1 col on mobile, 2 cols on tablet, 4 cols on desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Card 1: ProCollege Teams */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-[#173bff] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => launchDemoMode('student')}>
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-[#173bff] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
               <div className="w-10 h-10 rounded-xl bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
                 <Users className="w-5 h-5" />
@@ -823,14 +635,14 @@ export const PortalLanding: React.FC = () => {
             </div>
             <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 group-hover:bg-[#173bff] text-[#173bff] group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
-                <span>Demo as Student</span>
+                <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
             </div>
           </div>
 
           {/* Card 2: ProCollege Meet */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-cyan-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => launchDemoMode('student')}>
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-cyan-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
               <div className="w-10 h-10 rounded-xl bg-cyan-50 group-hover:bg-cyan-500 text-cyan-600 group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
                 <Video className="w-5 h-5" />
@@ -847,14 +659,14 @@ export const PortalLanding: React.FC = () => {
             </div>
             <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-50 group-hover:bg-cyan-600 text-cyan-700 group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
-                <span>Demo Classroom Meet</span>
+                <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
             </div>
           </div>
 
           {/* Card 3: ProCollege LMS */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-emerald-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => launchDemoMode('professor')}>
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-emerald-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
               <div className="w-10 h-10 rounded-xl bg-emerald-50 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
                 <FileCheck className="w-5 h-5" />
@@ -871,14 +683,14 @@ export const PortalLanding: React.FC = () => {
             </div>
             <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 group-hover:bg-emerald-600 text-emerald-700 group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
-                <span>Demo as Professor</span>
+                <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
             </div>
           </div>
 
           {/* Card 4: ProCollege Cloud */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-purple-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => launchDemoMode('admin')}>
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:shadow-lg hover:border-purple-500 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
             <div>
               <div className="w-10 h-10 rounded-xl bg-purple-50 group-hover:bg-purple-600 text-purple-600 group-hover:text-white flex items-center justify-center mb-3 sm:mb-4 transition-colors duration-300">
                 <FolderOpen className="w-5 h-5" />
@@ -895,7 +707,7 @@ export const PortalLanding: React.FC = () => {
             </div>
             <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-zinc-100 flex items-center">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50 group-hover:bg-purple-600 text-purple-700 group-hover:text-white text-xs font-bold transition-all duration-200 shadow-2xs group-hover:shadow-sm">
-                <span>Demo as Admin</span>
+                <span>See how it connects</span>
                 <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </span>
             </div>
@@ -1647,194 +1459,84 @@ export const PortalLanding: React.FC = () => {
               </button>
             </div>
 
-            {/* Step 1: Institutional Credentials or Live Demo */}
+            {/* Step 1: Institutional Credentials */}
             {authStep === 'credentials' && (
               <>
-                {/* Segmented Top Tabs: Demo Login vs Institutional Sign-In */}
-                <div className="mt-4 flex rounded-xl bg-zinc-100 p-1 text-xs font-bold">
-                  <button
-                    type="button"
-                    onClick={() => setSignInTab('demo')}
-                    className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      signInTab === 'demo'
-                        ? 'bg-white text-blue-700 shadow-xs'
-                        : 'text-zinc-600 hover:text-zinc-900'
-                    }`}
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Demo Login</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSignInTab('institutional')}
-                    className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      signInTab === 'institutional'
-                        ? 'bg-white text-blue-700 shadow-xs'
-                        : 'text-zinc-600 hover:text-zinc-900'
-                    }`}
-                  >
-                    <Key className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Institutional Sign-In</span>
-                  </button>
+                <div className="mt-5">
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Institutional Sign-In</h3>
+                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                    Enter your registered institutional credentials to access your academic workspace.
+                  </p>
                 </div>
 
-                {signInTab === 'demo' ? (
-                  <div className="mt-5 space-y-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Live Demo Sandbox</h3>
-                      <p className="text-xs text-[#586680] mt-1 leading-relaxed">
-                        Select a persona to immediately experience ProCollege without credentials:
-                      </p>
+                <form onSubmit={handleInstitutionalLogin} className="mt-5 space-y-4">
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
                     </div>
+                  )}
 
-                    <div className="space-y-2.5">
-                      <button
-                        type="button"
-                        onClick={() => launchDemoMode('student')}
-                        className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-blue-50/70 hover:bg-blue-600 border border-blue-200/80 hover:border-blue-600 text-blue-950 hover:text-white transition-all duration-200 group cursor-pointer text-left shadow-2xs hover:shadow-md"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 group-hover:bg-blue-500 text-blue-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-                            <GraduationCap className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-sm">Demo as Student</div>
-                            <div className="text-[11px] text-blue-700/80 group-hover:text-blue-100">
-                              Student View: Classes, Assignments, Submissions & Calendar
-                            </div>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-blue-400 group-hover:text-white transition-transform group-hover:translate-x-1" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => launchDemoMode('professor')}
-                        className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-indigo-50/70 hover:bg-indigo-600 border border-indigo-200/80 hover:border-indigo-600 text-indigo-950 hover:text-white transition-all duration-200 group cursor-pointer text-left shadow-2xs hover:shadow-md"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-100 group-hover:bg-indigo-500 text-indigo-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-                            <BookOpen className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-sm">Demo as Professor</div>
-                            <div className="text-[11px] text-indigo-700/80 group-hover:text-indigo-100">
-                              Faculty View: Lectures, Assignment Authoring & Grading
-                            </div>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-indigo-400 group-hover:text-white transition-transform group-hover:translate-x-1" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => launchDemoMode('admin')}
-                        className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-purple-50/70 hover:bg-purple-600 border border-purple-200/80 hover:border-purple-600 text-purple-950 hover:text-white transition-all duration-200 group cursor-pointer text-left shadow-2xs hover:shadow-md"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-purple-100 group-hover:bg-purple-500 text-purple-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
-                            <Shield className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-sm">Demo as Admin</div>
-                            <div className="text-[11px] text-purple-700/80 group-hover:text-purple-100">
-                              Campus Admin Center: Classes, Faculties, Roster & Roles
-                            </div>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-purple-400 group-hover:text-white transition-transform group-hover:translate-x-1" />
-                      </button>
-                    </div>
-
-                    <div className="pt-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setSignInTab('institutional')}
-                        className="text-xs text-[#173bff] hover:underline font-semibold"
-                      >
-                        Have an official university account? Sign in here →
-                      </button>
-                    </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Institutional Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={loginEmail}
+                      onChange={e => setLoginEmail(e.target.value)}
+                      placeholder="name@institution.edu"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
                   </div>
-                ) : (
-                  <>
-                    <div className="mt-5">
-                      <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Institutional Sign-In</h3>
-                      <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
-                        Enter your registered institutional credentials to access your academic workspace.
-                      </p>
-                    </div>
 
-                    <form onSubmit={handleInstitutionalLogin} className="mt-5 space-y-4">
-                      {loginError && (
-                        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                          {loginError}
-                        </div>
-                      )}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={loginPassword}
+                      onChange={e => setLoginPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                          Institutional Email
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          autoComplete="email"
-                          value={loginEmail}
-                          onChange={e => setLoginEmail(e.target.value)}
-                          placeholder="name@institution.edu"
-                          className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
-                        />
-                      </div>
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn}
+                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
+                  >
+                    {isLoggingIn ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Signing in...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Key className="w-4 h-4" />
+                        <span>Sign In</span>
+                      </>
+                    )}
+                  </button>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                          Password
-                        </label>
-                        <input
-                          type="password"
-                          required
-                          autoComplete="current-password"
-                          value={loginPassword}
-                          onChange={e => setLoginPassword(e.target.value)}
-                          placeholder="Enter your password"
-                          className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isLoggingIn}
-                        className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
-                      >
-                        {isLoggingIn ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Signing in...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Key className="w-4 h-4" />
-                            <span>Sign In</span>
-                          </>
-                        )}
-                      </button>
-
-                      <div className="pt-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSignInModal(false);
-                            setShowRequestModal(true);
-                          }}
-                          className="text-xs text-[#173bff] hover:underline font-semibold"
-                        >
-                          Need an account for your university? Request Campus Deployment →
-                        </button>
-                      </div>
-                    </form>
-                  </>
-                )}
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSignInModal(false);
+                        setShowRequestModal(true);
+                      }}
+                      className="text-xs text-[#173bff] hover:underline font-semibold"
+                    >
+                      Need an account for your university? Request Campus Deployment →
+                    </button>
+                  </div>
+                </form>
               </>
             )}
 

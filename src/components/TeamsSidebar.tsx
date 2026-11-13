@@ -224,9 +224,6 @@ export const TeamsSidebar: React.FC = () => {
                   </div>
                 </div>
               </div>
-                  </div>
-                </div>
-              </div>
 
               {/* Channels List Under Course */}
               {isExpanded && (() => {
@@ -310,7 +307,7 @@ export const TeamsSidebar: React.FC = () => {
               })()}
             </div>
           );
-        })}
+        }))}
       </div>
 
       {/* Admin Quick Action Bar at bottom - Only visible to Admin / Developer */}
