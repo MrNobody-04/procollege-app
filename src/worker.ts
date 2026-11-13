@@ -712,6 +712,27 @@ app.get('/api/workspace/bootstrap', async (c) => {
   }
 });
 
+// Get all faculties
+app.get('/api/faculties', async (c) => {
+  try {
+    const db = getDb(c);
+    const res = await db.execute('SELECT * FROM faculties ORDER BY name ASC;');
+    const faculties = res.rows.map(r => ({
+      id: String(r.id),
+      name: String(r.name),
+      code: String(r.code),
+      deanId: r.dean_id ? String(r.dean_id) : undefined,
+      deanName: r.dean_name ? String(r.dean_name) : undefined,
+      description: r.description ? String(r.description) : undefined,
+      institutionName: r.institution_name ? String(r.institution_name) : undefined,
+    }));
+    return c.json({ success: true, faculties });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
 // 7. Persist newly created Faculty (R13, R22)
 app.post('/api/faculties', async (c) => {
   try {

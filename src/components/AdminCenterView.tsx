@@ -22,11 +22,12 @@ import {
   Key,
   FolderTree,
   Megaphone,
-  ClipboardList
+  ClipboardList,
+  ArrowLeft
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { useApp } from '../context/AppContext';
-import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest } from '../types';
+import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest, FacultyDepartment } from '../types';
 
 export const AdminCenterView: React.FC = () => {
   const {
@@ -52,6 +53,8 @@ export const AdminCenterView: React.FC = () => {
     addPost,
     faculties,
     createFaculty,
+    deleteFaculty,
+    addMembersToFaculty,
     createInstitutionalAdmin,
     selectedInstitution,
     setSelectedInstitution,
@@ -172,6 +175,10 @@ export const AdminCenterView: React.FC = () => {
 
   // Faculty Filter in Tab 1
   const [selectedFacultyFilter, setSelectedFacultyFilter] = useState<string>('all');
+  const [showFacultyMembersModal, setShowFacultyMembersModal] = useState<boolean>(false);
+  const [selectedFacultyForMembers, setSelectedFacultyForMembers] = useState<FacultyDepartment | null>(null);
+  const [selectedMemberIdsForFaculty, setSelectedMemberIdsForFaculty] = useState<string[]>([]);
+  const [searchFacultyQuery, setSearchFacultyQuery] = useState<string>('');
 
   // Batch / Preset Subjects Library State
   const [showBatchPasteInput, setShowBatchPasteInput] = useState<boolean>(false);
@@ -501,14 +508,121 @@ export const AdminCenterView: React.FC = () => {
     setStudentsToAddToClass([]);
   };
 
-  // Count classes belonging to a faculty
-  const getFacultyClassCount = (fac: (typeof faculties)[0]) => {
+  // Courses belonging to a faculty
+  const getFacultyCourses = (fac: FacultyDepartment) => {
     return courses.filter(c => {
       const matchName = c.department.toLowerCase() === fac.name.toLowerCase();
       const matchCode = c.department.toLowerCase().includes(fac.code.toLowerCase());
       const matchInclude = fac.name.toLowerCase().includes(c.department.toLowerCase());
       return matchName || matchCode || matchInclude;
+    });
+  };
+
+  // Count classes belonging to a faculty
+  const getFacultyClassCount = (fac: FacultyDepartment) => {
+    return getFacultyCourses(fac).length;
+  };
+
+  // Count members (teachers/professors/staff) belonging to a faculty
+  const getFacultyMemberCount = (fac: FacultyDepartment) => {
+    if (fac.memberIds && fac.memberIds.length > 0) return fac.memberIds.length;
+    return availableUsers.filter(u => {
+      if (u.role === 'student') return false;
+      if (!u.department) return false;
+      return (
+        u.department.toLowerCase() === fac.name.toLowerCase() ||
+        u.department.toLowerCase().includes(fac.code.toLowerCase()) ||
+        fac.name.toLowerCase().includes(u.department.toLowerCase())
+      );
     }).length;
+  };
+
+  // Filter faculties by search query in All Faculties directory
+  const filteredFaculties = faculties.filter(f => {
+    if (!searchFacultyQuery.trim()) return true;
+    const q = searchFacultyQuery.toLowerCase();
+    return (
+      f.name.toLowerCase().includes(q) ||
+      f.code.toLowerCase().includes(q) ||
+      (f.deanName && f.deanName.toLowerCase().includes(q))
+    );
+  });
+
+  // Delete Faculty Handler
+  const handleDeleteFaculty = (fac: FacultyDepartment) => {
+    const facCourses = getFacultyCourses(fac);
+    showDialog(
+      `Are you sure you want to delete the faculty "${fac.name}" (${fac.code})?${
+        facCourses.length > 0
+          ? `\n\nNotice: This faculty currently has ${facCourses.length} active classes associated with it.`
+          : ''
+      }`,
+      {
+        type: 'warning',
+        title: 'Delete Academic Faculty',
+        confirmText: 'Delete Faculty',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          deleteFaculty(fac.id);
+          if (selectedFacultyFilter === fac.id) {
+            setSelectedFacultyFilter('all');
+          }
+          showDialog(`Faculty "${fac.name}" has been permanently deleted.`, {
+            type: 'success',
+            title: 'Faculty Removed'
+          });
+        }
+      }
+    );
+  };
+
+  // Delete Course Handler
+  const handleDeleteCourse = (course: CourseTeam) => {
+    showDialog(
+      `Are you sure you want to delete class "${course.code} - ${course.name}"? This will permanently delete all associated channels, assignments, and records.`,
+      {
+        type: 'warning',
+        title: 'Delete Class',
+        confirmText: 'Delete Class',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+          deleteCourse(course.id);
+          showDialog(`Class "${course.code}" has been deleted.`, {
+            type: 'success',
+            title: 'Class Deleted'
+          });
+        }
+      }
+    );
+  };
+
+  // Open Faculty Members Modal
+  const openFacultyMembersModal = (fac: FacultyDepartment) => {
+    setSelectedFacultyForMembers(fac);
+    const currentMemberIds = fac.memberIds || availableUsers
+      .filter(u => {
+        if (u.role === 'student') return false;
+        if (!u.department) return false;
+        return (
+          u.department.toLowerCase() === fac.name.toLowerCase() ||
+          u.department.toLowerCase().includes(fac.code.toLowerCase()) ||
+          fac.name.toLowerCase().includes(u.department.toLowerCase())
+        );
+      })
+      .map(u => u.id);
+    setSelectedMemberIdsForFaculty(currentMemberIds);
+    setShowFacultyMembersModal(true);
+  };
+
+  // Save Faculty Members
+  const handleSaveFacultyMembers = () => {
+    if (!selectedFacultyForMembers) return;
+    addMembersToFaculty(selectedFacultyForMembers.id, selectedMemberIdsForFaculty);
+    setShowFacultyMembersModal(false);
+    showDialog(`Assigned ${selectedMemberIdsForFaculty.length} faculty members to "${selectedFacultyForMembers.name}".`, {
+      type: 'success',
+      title: 'Faculty Members Updated'
+    });
   };
 
   // Filtered courses based on selected faculty filter and search query
@@ -586,7 +700,7 @@ export const AdminCenterView: React.FC = () => {
                 title="Directly create and provision an Institutional Admin for any university"
               >
                 <Key className="w-3.5 h-3.5" />
-                <span>+ Create Org Admin</span>
+                <span>Create Org Admin</span>
               </button>
             )}
 
@@ -596,7 +710,7 @@ export const AdminCenterView: React.FC = () => {
               title="Add a new academic faculty / department"
             >
               <FolderTree className="w-3.5 h-3.5" />
-              <span>+ Add Faculty</span>
+              <span>Add Faculty</span>
             </button>
 
             <button
@@ -605,7 +719,7 @@ export const AdminCenterView: React.FC = () => {
               title="Add a new class with subjects and dedicated teachers"
             >
               <Plus className="w-4 h-4" />
-              <span>+ New Class</span>
+              <span>New Class</span>
             </button>
 
             <button
@@ -753,30 +867,7 @@ export const AdminCenterView: React.FC = () => {
         {/* ========================================================= */}
         {activeAdminTab === 'classes' && (
           <div className="space-y-4">
-            {/* Top Toolbar */}
-            <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold text-zinc-900">Academic Classes & Subject Structure</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Assign dedicated lecturers to subjects, manage enrolled students, and rollover classes to the next semester.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="relative w-full sm:w-60">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchClassQuery}
-                    onChange={e => setSearchClassQuery(e.target.value)}
-                    placeholder="Search classes or term..."
-                    className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Faculty Filter & Hierarchy Selector */}
+            {/* Faculty Department Filter Toolbar */}
             <div className="bg-white rounded-xl border border-zinc-200 p-3 sm:p-4 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-zinc-100">
                 <div className="flex items-center gap-2">
@@ -788,7 +879,7 @@ export const AdminCenterView: React.FC = () => {
                   className="text-xs text-[#5b5fc7] hover:underline font-semibold flex items-center gap-1 cursor-pointer self-start sm:self-auto"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add New Faculty</span>
+                  <span>Add New Faculty</span>
                 </button>
               </div>
 
@@ -805,7 +896,7 @@ export const AdminCenterView: React.FC = () => {
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     selectedFacultyFilter === 'all' ? 'bg-white/20 text-white' : 'bg-zinc-200 text-zinc-700'
                   }`}>
-                    {courses.length}
+                    {faculties.length}
                   </span>
                 </button>
 
@@ -832,43 +923,266 @@ export const AdminCenterView: React.FC = () => {
                   );
                 })}
               </div>
+            </div>
 
-              {/* Active Faculty Details Banner when a faculty is selected */}
-              {selectedFacultyFilter !== 'all' && (() => {
-                const currentFac = faculties.find(f => f.id === selectedFacultyFilter);
-                if (!currentFac) return null;
-                const count = getFacultyClassCount(currentFac);
-                return (
-                  <div className="bg-indigo-50/60 border border-indigo-100 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-xs text-zinc-900">{currentFac.name}</span>
-                        <span className="text-[10px] font-mono bg-white text-[#5b5fc7] px-2 py-0.5 rounded border border-indigo-200 font-bold">
-                          {currentFac.code}
-                        </span>
-                        <span className="text-[11px] text-zinc-500">
-                          • Dean: <strong className="text-zinc-800">{currentFac.deanName}</strong>
-                        </span>
-                        <span className="text-[11px] text-zinc-500">
-                          • <strong>{count}</strong> {count === 1 ? 'class' : 'classes'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-zinc-600">{currentFac.description}</p>
+            {/* When 'All Faculties' is active, show ONLY Faculties Directory */}
+            {selectedFacultyFilter === 'all' ? (
+              <div className="space-y-4">
+                <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-zinc-900">Academic Faculties & Collegiate Departments</h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Select any academic faculty below to view its included classes, manage assigned faculty members, or add new classes.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-full sm:w-60">
+                      <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchFacultyQuery}
+                        onChange={e => setSearchFacultyQuery(e.target.value)}
+                        placeholder="Search faculties by name or code..."
+                        className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+                      />
                     </div>
                     <button
-                      onClick={() => {
-                        setSelectedFacultyId(currentFac.id);
-                        setShowNewClassModal(true);
-                      }}
-                      className="px-3 py-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+                      onClick={() => setShowAddFacultyModal(true)}
+                      className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Add Class to {currentFac.code}</span>
+                      <Plus className="w-4 h-4" />
+                      <span>Add Faculty</span>
                     </button>
                   </div>
-                );
-              })()}
-            </div>
+                </div>
+
+                {filteredFaculties.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-zinc-200 p-8 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto text-zinc-400">
+                      <FolderTree className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold text-zinc-900">No faculties found</h3>
+                      <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                        No academic faculties matched your filter. Click below to add a collegiate faculty.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowAddFacultyModal(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Faculty</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredFaculties.map(faculty => {
+                      const facCourses = getFacultyCourses(faculty);
+                      const memberCount = getFacultyMemberCount(faculty);
+
+                      return (
+                        <div
+                          key={faculty.id}
+                          className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-indigo-300 transition-all hover:shadow-sm"
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 text-[#5b5fc7] flex items-center justify-center font-bold text-sm shrink-0">
+                                  {faculty.code.slice(0, 3)}
+                                </div>
+                                <div>
+                                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-700">
+                                    {faculty.code}
+                                  </span>
+                                  <h3 className="text-sm font-bold text-zinc-900 mt-0.5 leading-snug">
+                                    {faculty.name}
+                                  </h3>
+                                </div>
+                              </div>
+
+                              {isDeveloperOrAdmin && (
+                                <button
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleDeleteFaculty(faculty);
+                                  }}
+                                  className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Faculty"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed">
+                              {faculty.description || `Academic department overseeing ${faculty.name} degree curricula.`}
+                            </p>
+
+                            <div className="bg-zinc-50 rounded-lg p-2.5 border border-zinc-100 text-xs space-y-1.5">
+                              <div className="flex items-center justify-between text-zinc-600">
+                                <span className="text-[11px] font-medium text-zinc-500">Appointed Dean:</span>
+                                <span className="font-semibold text-zinc-800">{faculty.deanName || 'Academic Dean'}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-zinc-600">
+                                <span className="text-[11px] font-medium text-zinc-500">Active Classes:</span>
+                                <span className="font-bold text-[#5b5fc7]">{facCourses.length} {facCourses.length === 1 ? 'class' : 'classes'}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-zinc-600">
+                                <span className="text-[11px] font-medium text-zinc-500">Faculty Members:</span>
+                                <span className="font-semibold text-emerald-700">{memberCount} teachers</span>
+                              </div>
+                            </div>
+
+                            {facCourses.length > 0 && (
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block mb-1">
+                                  Included Classes:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {facCourses.map(c => (
+                                    <span
+                                      key={c.id}
+                                      className="text-[10px] bg-zinc-100 text-zinc-700 font-medium px-2 py-0.5 rounded border border-zinc-200"
+                                    >
+                                      {c.code}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-2 pt-2 border-t border-zinc-100">
+                            <button
+                              onClick={() => setSelectedFacultyFilter(faculty.id)}
+                              className="w-full py-2 px-3 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                            >
+                              <BookOpen className="w-3.5 h-3.5" />
+                              <span>View Classes ({facCourses.length})</span>
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedFacultyId(faculty.id);
+                                  setShowNewClassModal(true);
+                                }}
+                                className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span>Add Class</span>
+                              </button>
+
+                              <button
+                                onClick={() => openFacultyMembersModal(faculty)}
+                                className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <GraduationCap className="w-3 h-3 text-[#5b5fc7]" />
+                                <span>Add Members</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* CASE 2: When a particular faculty is selected, show classes in that faculty */
+              (() => {
+                const currentFac = faculties.find(f => f.id === selectedFacultyFilter);
+                if (!currentFac) return null;
+                const facCourses = getFacultyCourses(currentFac);
+                const memberCount = getFacultyMemberCount(currentFac);
+
+                return (
+                  <div className="space-y-4">
+                    {/* Header Banner for Selected Faculty */}
+                    <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-4 sm:p-5 shadow-xs space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => setSelectedFacultyFilter('all')}
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[#5b5fc7] hover:underline cursor-pointer mb-1"
+                          >
+                            <ArrowLeft className="w-3.5 h-3.5" />
+                            <span>Back to All Faculties</span>
+                          </button>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-base font-bold text-zinc-900">{currentFac.name}</h2>
+                            <span className="text-xs font-mono bg-white text-[#5b5fc7] px-2.5 py-0.5 rounded-full border border-indigo-200 font-bold">
+                              {currentFac.code}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-zinc-600 flex-wrap pt-0.5">
+                            <span>Dean: <strong className="text-zinc-800">{currentFac.deanName || 'Academic Dean'}</strong></span>
+                            <span>•</span>
+                            <span><strong>{facCourses.length}</strong> {facCourses.length === 1 ? 'class' : 'classes'}</span>
+                            <span>•</span>
+                            <span><strong className="text-emerald-700">{memberCount}</strong> faculty members</span>
+                          </div>
+                          <p className="text-xs text-zinc-600 pt-1 leading-relaxed">{currentFac.description}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          <button
+                            onClick={() => openFacultyMembersModal(currentFac)}
+                            className="px-3 py-2 bg-white hover:bg-zinc-50 text-zinc-800 text-xs font-semibold rounded-lg border border-zinc-200 shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 text-[#5b5fc7]" />
+                            <span>Add Faculty Members</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedFacultyId(currentFac.id);
+                              setShowNewClassModal(true);
+                            }}
+                            className="px-3.5 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>New Class</span>
+                          </button>
+
+                          {isDeveloperOrAdmin && (
+                            <button
+                              onClick={() => handleDeleteFaculty(currentFac)}
+                              className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 bg-white rounded-lg border border-zinc-200 transition-colors cursor-pointer"
+                              title="Delete Faculty"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Classes Toolbar with Search */}
+                    <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-zinc-900">Classes included in {currentFac.name}</h3>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          Manage class modules, assign subject lecturers, enroll students, or remove classes.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="relative w-full sm:w-60">
+                          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={searchClassQuery}
+                            onChange={e => setSearchClassQuery(e.target.value)}
+                            placeholder="Search classes in faculty..."
+                            className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#5b5fc7]"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
             {/* Class Cards Grid or Empty State */}
             {filteredCourses.length === 0 ? (
@@ -892,7 +1206,7 @@ export const AdminCenterView: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>+ Add Class</span>
+                  <span>Add Class</span>
                 </button>
               </div>
             ) : (
@@ -1072,12 +1386,8 @@ export const AdminCenterView: React.FC = () => {
                         </button>
 
                         <button
-                          onClick={() => {
-                            if (confirm(`Delete class ${course.code}?`)) {
-                              deleteCourse(course.id);
-                            }
-                          }}
-                          className="text-xs text-rose-500 hover:text-rose-700 p-1"
+                          onClick={() => handleDeleteCourse(course)}
+                          className="text-xs text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
                           title="Delete class"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1090,7 +1400,11 @@ export const AdminCenterView: React.FC = () => {
             </div>
             )}
           </div>
-        )}
+        );
+      })()
+    )}
+  </div>
+)}
 
         {/* ========================================================= */}
         {/* TAB 2: USERS & LICENSES                                   */}
@@ -1219,18 +1533,14 @@ export const AdminCenterView: React.FC = () => {
                 className="flex items-center gap-1.5 bg-[#5b5fc7] hover:bg-[#4f52b2] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Create Faculty</span>
+                <span>Create Faculty</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {faculties.map(faculty => {
-                const associatedClasses = courses.filter(
-                  c =>
-                    c.department?.toLowerCase() === faculty.name.toLowerCase() ||
-                    c.department?.toLowerCase().includes(faculty.code.toLowerCase()) ||
-                    c.name.toLowerCase().includes(faculty.code.toLowerCase())
-                );
+                const associatedClasses = getFacultyCourses(faculty);
+                const memberCount = getFacultyMemberCount(faculty);
 
                 return (
                   <div
@@ -1254,6 +1564,19 @@ export const AdminCenterView: React.FC = () => {
                             </h3>
                           </div>
                         </div>
+
+                        {isDeveloperOrAdmin && (
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleDeleteFaculty(faculty);
+                            }}
+                            className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Faculty"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed">
@@ -1263,11 +1586,15 @@ export const AdminCenterView: React.FC = () => {
                       <div className="bg-zinc-50 rounded-lg p-2.5 border border-zinc-100 text-xs space-y-1.5">
                         <div className="flex items-center justify-between text-zinc-600">
                           <span className="text-[11px] font-medium text-zinc-500">Appointed Dean:</span>
-                          <span className="font-semibold text-zinc-800">{faculty.deanName}</span>
+                          <span className="font-semibold text-zinc-800">{faculty.deanName || 'Academic Dean'}</span>
                         </div>
                         <div className="flex items-center justify-between text-zinc-600">
                           <span className="text-[11px] font-medium text-zinc-500">Active Classes:</span>
                           <span className="font-bold text-[#5b5fc7]">{associatedClasses.length} {associatedClasses.length === 1 ? 'class' : 'classes'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-zinc-600">
+                          <span className="text-[11px] font-medium text-zinc-500">Faculty Members:</span>
+                          <span className="font-semibold text-emerald-700">{memberCount} teachers</span>
                         </div>
                       </div>
 
@@ -1290,16 +1617,39 @@ export const AdminCenterView: React.FC = () => {
                       )}
                     </div>
 
-                    <button
-                      onClick={() => {
-                        setSelectedFacultyId(faculty.id);
-                        setShowNewClassModal(true);
-                      }}
-                      className="w-full py-2 px-3 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Class to {faculty.code}</span>
-                    </button>
+                    <div className="space-y-2 pt-2 border-t border-zinc-100">
+                      <button
+                        onClick={() => {
+                          setSelectedFacultyFilter(faculty.id);
+                          setActiveAdminTab('classes');
+                        }}
+                        className="w-full py-2 px-3 rounded-lg bg-[#5b5fc7] hover:bg-[#4f52b2] text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>View Classes ({associatedClasses.length})</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedFacultyId(faculty.id);
+                            setShowNewClassModal(true);
+                          }}
+                          className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Add Class</span>
+                        </button>
+
+                        <button
+                          onClick={() => openFacultyMembersModal(faculty)}
+                          className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <GraduationCap className="w-3 h-3 text-[#5b5fc7]" />
+                          <span>Add Members</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -1330,7 +1680,7 @@ export const AdminCenterView: React.FC = () => {
                 className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
               >
                 <Key className="w-3.5 h-3.5" />
-                <span>+ Create Org Admin</span>
+                <span>Create Org Admin</span>
               </button>
             </div>
 
@@ -1643,7 +1993,7 @@ export const AdminCenterView: React.FC = () => {
                     className="text-xs text-[#5b5fc7] font-semibold hover:underline flex items-center gap-1 cursor-pointer self-start sm:self-auto"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    + Add Single Subject
+                    <span>Add Single Subject</span>
                   </button>
                 </div>
 
@@ -2045,7 +2395,7 @@ export const AdminCenterView: React.FC = () => {
                     className="text-xs text-[#5b5fc7] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
-                    + Add Subject
+                    <span>Add Subject</span>
                   </button>
                 </div>
 
@@ -2326,6 +2676,145 @@ export const AdminCenterView: React.FC = () => {
               >
                 Add {studentsToAddToClass.length} Selected Student(s)
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 4B: MANAGE FACULTY MEMBERS                          */}
+      {/* ========================================================= */}
+      {showFacultyMembersModal && selectedFacultyForMembers && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-hidden">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[88vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-[#5b5fc7]" />
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">Manage Faculty Members</h3>
+                  <p className="text-[11px] text-zinc-500">
+                    {selectedFacultyForMembers.name} ({selectedFacultyForMembers.code})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowFacultyMembersModal(false)}
+                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+              <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100 text-xs space-y-1">
+                <p className="font-semibold text-zinc-900">Department / Faculty Assignment</p>
+                <p className="text-zinc-600 text-[11px] leading-relaxed">
+                  Select professors, lecturers, and teaching assistants to assign to <strong>{selectedFacultyForMembers.name}</strong>. Assigned members can lead classes and instruct subjects within this faculty.
+                </p>
+              </div>
+
+              {/* Members Selection List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-zinc-800">
+                    Teaching Staff & Professors ({facultyMembers.length} Available)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMemberIdsForFaculty(facultyMembers.map(m => m.id));
+                      }}
+                      className="text-xs text-[#5b5fc7] font-semibold hover:underline cursor-pointer"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-zinc-300">|</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMemberIdsForFaculty([]);
+                      }}
+                      className="text-xs text-zinc-500 font-semibold hover:underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                  {facultyMembers.map(member => {
+                    const isChecked = selectedMemberIdsForFaculty.includes(member.id);
+                    return (
+                      <label
+                        key={member.id}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                          isChecked
+                            ? 'bg-indigo-50/70 border-indigo-300 shadow-2xs'
+                            : 'bg-white border-zinc-200 hover:bg-zinc-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setSelectedMemberIdsForFaculty(prev => [...prev, member.id]);
+                              } else {
+                                setSelectedMemberIdsForFaculty(prev => prev.filter(id => id !== member.id));
+                              }
+                            }}
+                            className="rounded text-[#5b5fc7] cursor-pointer"
+                          />
+                          <img
+                            src={member.avatar}
+                            alt={member.name}
+                            className="w-7 h-7 rounded-full object-cover shrink-0"
+                          />
+                          <div>
+                            <span className="font-bold text-zinc-900 block leading-tight">{member.name}</span>
+                            <span className="text-[11px] text-zinc-500">{member.email}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                            member.role === 'professor'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {member.role}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 sm:p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between gap-2 shrink-0">
+              <span className="text-xs text-zinc-500">
+                <strong>{selectedMemberIdsForFaculty.length}</strong> selected
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFacultyMembersModal(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFacultyMembers}
+                  className="px-4 py-1.5 text-xs font-semibold bg-[#5b5fc7] hover:bg-[#4f52b2] text-white rounded-lg cursor-pointer shadow-xs transition-colors"
+                >
+                  Save Faculty Members
+                </button>
+              </div>
             </div>
           </div>
         </div>
