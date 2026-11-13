@@ -241,10 +241,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedToken = localStorage.getItem('procollege_token');
       if (savedUserStr && savedToken) {
         const u = JSON.parse(savedUserStr);
+        const roleStr = u.role;
         const mappedRole: UserRole =
-          u.role === 'admin'
+          roleStr === 'developer'
+            ? 'developer'
+            : roleStr === 'admin'
             ? 'admin'
-            : u.role === 'teacher'
+            : roleStr === 'teacher'
             ? 'professor'
             : 'student';
 
@@ -254,11 +257,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           email: u.email,
           role: mappedRole,
           license:
-            u.role === 'admin' || u.role === 'teacher'
+            mappedRole === 'developer' || mappedRole === 'admin' || mappedRole === 'professor'
               ? 'Microsoft 365 A5 for Faculty'
               : 'Microsoft 365 A5 for Students',
-          department: u.role === 'admin' ? 'Administration' : 'Department of BIT',
-          institutionName: 'Padmashree College',
+          department:
+            mappedRole === 'developer'
+              ? 'Platform Architecture & Operations'
+              : mappedRole === 'admin'
+              ? 'Administration'
+              : 'Department of BIT',
+          institutionName:
+            mappedRole === 'developer'
+              ? 'ProCollege Platform Operations'
+              : u.institutionName || 'Padmashree College',
           avatar:
             u.avatar_url ||
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',

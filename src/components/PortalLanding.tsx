@@ -78,7 +78,9 @@ export const PortalLanding: React.FC = () => {
 
       const roleStr = data.user.role;
       const mappedRole: UserRole =
-        roleStr === 'admin'
+        roleStr === 'developer'
+          ? 'developer'
+          : roleStr === 'admin'
           ? 'admin'
           : roleStr === 'teacher'
           ? 'professor'
@@ -90,11 +92,19 @@ export const PortalLanding: React.FC = () => {
         email: data.user.email,
         role: mappedRole,
         license:
-          data.user.role === 'admin' || data.user.role === 'teacher'
+          mappedRole === 'developer' || mappedRole === 'admin' || mappedRole === 'professor'
             ? 'Microsoft 365 A5 for Faculty'
             : 'Microsoft 365 A5 for Students',
-        department: data.user.role === 'admin' ? 'Administration' : 'Department of BIT',
-        institutionName: data.college?.name || 'Padmashree College',
+        department:
+          mappedRole === 'developer'
+            ? 'Platform Architecture & Operations'
+            : mappedRole === 'admin'
+            ? 'Administration'
+            : 'Department of BIT',
+        institutionName:
+          mappedRole === 'developer'
+            ? 'ProCollege Platform Operations'
+            : data.college?.name || 'Padmashree College',
         avatar: data.user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
         status: 'available',
       };

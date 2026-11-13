@@ -425,7 +425,26 @@ async function init() {
         'Department of BIT',
       ],
     });
-    console.log('   ✔ Seeded Users for Padmashree College');
+
+    // Master Platform Developer / Root Creator
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url, institution_name, department)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'user_dev_root',
+        collegeId,
+        sectionId,
+        'Platform Creator',
+        'developer@procollege.io',
+        'developer',
+        'password123',
+        'password123',
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+        'ProCollege Platform Operations',
+        'Platform Architecture & Operations',
+      ],
+    });
+    console.log('   ✔ Seeded Users (including Root Developer) for Platform');
 
     // Faculties for Padmashree
     await db.execute({
