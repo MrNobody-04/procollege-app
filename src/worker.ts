@@ -840,6 +840,7 @@ app.post('/api/platform/institutions/provision', async (c) => {
         name: contactName,
         email,
         temporaryPassword: tempPassword,
+        otpCode,
         role: 'admin',
         institutionId,
         institutionName: name,
@@ -929,6 +930,70 @@ app.post('/api/platform/institutions/:id/renew', async (c) => {
       id,
       status: 'active',
       message: `Subscription for organization ${id} renewed successfully for 1 year.`
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.8 Reset Admin Password & 2FA OTP for an Organization (Platform Developer Master Only)
+app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const id = c.req.param('id');
+    const db = getDb(c);
+
+    // Look up the admin user for this institution
+    const adminRes = await db.execute({
+      sql: `SELECT u.id, u.name, u.email, u.institution_name, u.college_id, u.institution_id, c.name as college_name
+            FROM users u
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
+            WHERE (u.college_id = ? OR u.institution_id = ? OR c.id = ?) AND u.role = 'admin'
+            ORDER BY u.created_at DESC
+            LIMIT 1;`,
+      args: [id, id, id],
+    });
+
+    if (adminRes.rows.length === 0) {
+      return c.json({ error: `No administrator account found for organization with ID: ${id}` }, 404);
+    }
+
+    const admin = adminRes.rows[0];
+    const orgName = String(admin.college_name || admin.institution_name || 'Academic Institution');
+
+    // Generate a fresh temporary password and 6-digit 2FA OTP
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const newTempPassword = `Admin#${randomSuffix}`;
+    const newHash = await hashPassword(newTempPassword);
+
+    const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const newOtpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h validity
+
+    // Update in Turso: reset password, set must_change_password = 1, set new OTP
+    await db.execute({
+      sql: `UPDATE users
+            SET password = ?, password_hash = ?, must_change_password = 1, otp_code = ?, otp_expires_at = ?
+            WHERE id = ?;`,
+      args: [newTempPassword, newHash, newOtpCode, newOtpExpires, admin.id],
+    });
+
+    console.log(`[DEV-RESET] Admin credentials reset for ${admin.email} (Org: ${orgName}): TempPass: ${newTempPassword}, OTP: ${newOtpCode}`);
+
+    return c.json({
+      success: true,
+      institutionId: id,
+      institutionName: orgName,
+      adminId: String(admin.id),
+      adminName: String(admin.name),
+      adminEmail: String(admin.email),
+      temporaryPassword: newTempPassword,
+      otpCode: newOtpCode,
+      message: `Administrator credentials for "${orgName}" have been reset. On next login, 2FA OTP verification and password reset will be required.`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1340,8 +1405,18 @@ app.get('/api/workspace/bootstrap', async (c) => {
 
     const db = getDb(c);
     let collegeId = c.req.query('collegeId') || c.req.header('x-college-id') || callerInstId || '';
-    if (!collegeId) {
-      collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
+    if (!collegeId || collegeId === 'col_procollege_network') {
+      if (institutionParam && institutionParam !== 'all') {
+        const colLookup = await db.execute({
+          sql: `SELECT id FROM colleges WHERE LOWER(name) = LOWER(?) UNION SELECT id FROM institutions WHERE LOWER(name) = LOWER(?) LIMIT 1;`,
+          args: [institutionParam, institutionParam],
+        });
+        if (colLookup.rows.length > 0 && colLookup.rows[0].id) {
+          collegeId = String(colLookup.rows[0].id);
+        } else {
+          collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
+        }
+      }
     }
 
     let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes, filesRes;
@@ -1365,8 +1440,8 @@ app.get('/api/workspace/bootstrap', async (c) => {
         args: [institutionParam, collegeId],
       });
       channelsRes = await db.execute({
-        sql: 'SELECT * FROM channels WHERE college_id = ? ORDER BY name ASC;',
-        args: [collegeId],
+        sql: 'SELECT * FROM channels WHERE college_id = ? OR course_id IN (SELECT id FROM courses WHERE institution_name = ? OR college_id = ?) ORDER BY name ASC;',
+        args: [collegeId, institutionParam, collegeId],
       });
       assignmentsRes = await db.execute({
         sql: 'SELECT * FROM assignments WHERE institution_name = ? OR college_id = ? ORDER BY created_at DESC;',
