@@ -580,6 +580,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Phase 1: Provision Class Team
   const createCourse = (newCourse: CourseTeam) => {
     const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
+    const collegeId = currentUser.collegeId || currentUser.institutionId || (selectedInstitution !== 'all' ? selectedInstitution : undefined);
     const courseWithInst: CourseTeam = {
       ...newCourse,
       institutionName: newCourse.institutionName || inst
@@ -592,11 +593,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new class & channels to live Turso SQL database (R14) - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
       fetch('/api/courses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(courseWithInst),
-      }).catch(() => {});
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {}),
+          ...(inst ? { 'x-institution-name': inst } : {})
+        },
+        body: JSON.stringify({
+          ...courseWithInst,
+          college_id: collegeId,
+          institution_id: collegeId,
+          institution_name: inst,
+          channels: courseWithInst.channels
+        }),
+      }).catch(console.error);
     }
   };
 
@@ -612,8 +625,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
       fetch(`/api/courses/${courseId}`, {
         method: 'DELETE',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       }).catch(() => {});
     }
   };
@@ -650,8 +667,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Enforce deletion in Turso with server protection (R20) - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
       fetch(`/api/courses/${encodeURIComponent(courseId)}/subjects/${encodeURIComponent(channelId)}`, {
         method: 'DELETE',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       }).then(async res => {
         if (!res.ok) {
           const data = await res.json();
@@ -666,7 +687,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     courseId: string,
     channelData: { name: string; description: string; subjectLecturerName?: string; subjectLecturerId?: string }
   ) => {
-    const newChanId = `ch_${Date.now()}`;
+    const newChanId = `ch_${courseId}_${Date.now()}`;
     const newChan: Channel = {
       id: newChanId,
       courseId,
@@ -714,6 +735,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         author: currentUser
       };
       setNotifications(prev => [notif, ...prev]);
+    }
+
+    // Persist new subject channel to live Turso SQL database
+    if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
+      const collegeId = currentUser.collegeId || currentUser.institutionId;
+      fetch(`/api/courses/${encodeURIComponent(courseId)}/channels`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {}),
+          ...(currentUser.institutionName ? { 'x-institution-name': currentUser.institutionName } : {})
+        },
+        body: JSON.stringify({
+          id: newChanId,
+          name: newChan.name,
+          description: newChan.description,
+          isGeneral: false,
+          studentFilePermission: newChan.studentFilePermission,
+          subjectLecturerName: newChan.subjectLecturerName,
+          subjectLecturerId: newChan.subjectLecturerId,
+          college_id: collegeId,
+          institution_name: currentUser.institutionName
+        })
+      }).catch(console.error);
     }
   };
 
@@ -857,9 +904,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist automated Semester Rollover to live Turso SQL database (R23) - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
+      const collegeId = currentUser.collegeId || currentUser.institutionId;
       fetch('/api/courses/rollover', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+        },
         body: JSON.stringify({
           sourceCourseId,
           code: data.code,
@@ -867,8 +920,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           term: data.term,
           instructorId: data.instructorId,
           channels: data.channels,
+          college_id: collegeId,
+          institution_name: currentUser.institutionName
         }),
-      }).catch(() => {});
+      }).catch(console.error);
     }
 
     // Initialize posts for each new channel with a clean welcome announcement
@@ -1794,6 +1849,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const createFaculty = (data: Omit<FacultyDepartment, 'id'>) => {
     const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
+    const collegeId = currentUser.collegeId || currentUser.institutionId;
     const newFac: FacultyDepartment = {
       ...data,
       institutionName: data.institutionName || inst,
@@ -1803,11 +1859,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new faculty/department to live Turso SQL database (R13, R22) - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
       fetch('/api/faculties', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newFac),
-      }).catch(() => {});
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {}),
+          ...(inst ? { 'x-institution-name': inst } : {})
+        },
+        body: JSON.stringify({
+          ...newFac,
+          college_id: collegeId,
+          institution_id: collegeId
+        }),
+      }).catch(console.error);
     }
   };
 
@@ -1816,8 +1882,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist deletion to live Turso SQL database - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_auth_token');
       fetch(`/api/faculties/${facultyId}`, {
         method: 'DELETE',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       }).catch(() => {});
     }
   };

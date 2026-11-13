@@ -89,6 +89,58 @@ function extractUserFromHeader(c: any): { id?: string; email?: string; role?: st
   return null;
 }
 
+// Helper to resolve and ensure a valid college_id that satisfies FOREIGN KEY constraint
+async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
+  const caller = extractUserFromHeader(c);
+  let cid = (body?.college_id || body?.collegeId || body?.institution_id || body?.institutionId ||
+             c.req.header('x-college-id') || c.req.header('x-institution-id') ||
+             caller?.college_id || caller?.institution_id || '').trim();
+
+  const instName = (body?.institution_name || body?.institutionName ||
+                    c.req.header('x-institution-name') || caller?.institution_name || '').trim();
+
+  if ((!cid || cid === 'padmashree-demo' || cid === 'col_procollege_network') && instName) {
+    try {
+      const found = await db.execute({
+        sql: "SELECT id FROM colleges WHERE LOWER(name) = LOWER(?) UNION SELECT id FROM institutions WHERE LOWER(name) = LOWER(?) LIMIT 1;",
+        args: [instName, instName]
+      });
+      if (found.rows.length > 0 && found.rows[0].id) {
+        cid = String(found.rows[0].id);
+      }
+    } catch {}
+  }
+
+  // Check if cid exists in colleges table
+  if (cid && cid !== 'padmashree-demo') {
+    try {
+      const exists = await db.execute({
+        sql: "SELECT id FROM colleges WHERE id = ? LIMIT 1;",
+        args: [cid]
+      });
+      if (exists.rows.length > 0) {
+        return cid;
+      }
+      // If cid not in colleges, try to register it so FK constraints never fail
+      await db.execute({
+        sql: "INSERT OR IGNORE INTO colleges (id, name) VALUES (?, ?);",
+        args: [cid, instName || cid]
+      });
+      return cid;
+    } catch {}
+  }
+
+  // Fallback: pick the first real college from colleges table
+  try {
+    const firstCol = await db.execute("SELECT id FROM colleges WHERE id != 'platform_root' LIMIT 1;");
+    if (firstCol.rows.length > 0 && firstCol.rows[0].id) {
+      return String(firstCol.rows[0].id);
+    }
+  } catch {}
+
+  return 'col_public-english-boarding-school_wr3t';
+}
+
 // --- 2FA Multi-Provider Email Dispatch Engine ---
 async function send2FAEmail(params: {
   to: string;
@@ -1814,8 +1866,9 @@ app.post('/api/colleges/request-access', async (c) => {
 app.post('/api/notices', async (c) => {
   try {
     const body = await c.req.json();
+    const db = getDb(c);
+    const collegeId = await resolveCollegeId(c, body, db);
     const id = body.id || `not_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    const collegeId = body.college_id || body.collegeId || 'padmashree-demo';
     const title = (body.title || '').trim();
     const content = (body.content || '').trim();
     const priority = body.priority || 'normal';
@@ -1827,7 +1880,6 @@ app.post('/api/notices', async (c) => {
       return c.json({ error: 'Title and content are required' }, 400);
     }
 
-    const db = getDb(c);
     await db.execute({
       sql: `INSERT INTO notices (id, college_id, title, content, priority, author_id, author_name, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -2167,9 +2219,10 @@ app.get('/api/faculties', async (c) => {
 app.post('/api/faculties', async (c) => {
   try {
     const body = await c.req.json();
+    const db = getDb(c);
+    const collegeId = await resolveCollegeId(c, body, db);
     const id = body.id || `fac_${Date.now()}`;
-    const collegeId = body.college_id || 'padmashree-demo';
-    const institutionName = body.institutionName || body.institution_name || 'Padmashree College';
+    const institutionName = body.institutionName || body.institution_name || 'PUBLIC ENGLISH BOARDING SCHOOL';
     const name = (body.name || '').trim();
     const code = (body.code || '').trim().toUpperCase();
     const deanId = body.deanId || body.dean_id || 'usr-admin-01';
@@ -2180,9 +2233,8 @@ app.post('/api/faculties', async (c) => {
       return c.json({ error: 'Faculty name and code are required' }, 400);
     }
 
-    const db = getDb(c);
     await db.execute({
-      sql: `INSERT INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
+      sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [id, collegeId, institutionName, name, code, deanId, deanName, description],
     });
@@ -2215,21 +2267,23 @@ app.delete('/api/faculties/:id', async (c) => {
 app.post('/api/courses', async (c) => {
   try {
     const body = await c.req.json();
+    const db = getDb(c);
+    const collegeId = await resolveCollegeId(c, body, db);
+
     const id = body.id || `course_${Date.now()}`;
-    const collegeId = body.college_id || 'padmashree-demo';
-    const institutionName = body.institutionName || body.institution_name || 'Padmashree College';
+    const institutionName = body.institutionName || body.institution_name || 'PUBLIC ENGLISH BOARDING SCHOOL';
     const code = (body.code || '').trim().toUpperCase();
     const name = (body.name || '').trim();
-    const department = (body.department || 'Department of BIT').trim();
+    const department = (body.department || 'PEBS CLASSES').trim();
     const facultyId = body.facultyId || body.faculty_id || null;
     const term = (body.term || 'Fall 2026').trim();
     const color = body.color || '#4f46e5';
-    const icon = body.icon || '⚡';
+    const icon = body.icon || '🏛️';
     const instructor = body.instructor || {};
     const instructorId = instructor.id || 'usr-teacher-01';
-    const instructorName = instructor.name || 'Er. Ramesh Sharma';
-    const memberCount = Number(body.memberCount || 45);
-    const model = body.model || 'model-a';
+    const instructorName = instructor.name || 'Lead Instructor';
+    const memberCount = Number(body.memberCount || 0);
+    const model = body.model || 'model-b';
     const template = body.template || 'Class';
     const enrolledStudents = body.enrolledStudents ? JSON.stringify(body.enrolledStudents) : '[]';
 
@@ -2237,29 +2291,28 @@ app.post('/api/courses', async (c) => {
       return c.json({ error: 'Course code and name are required' }, 400);
     }
 
-    const db = getDb(c);
     await db.execute({
-      sql: `INSERT INTO courses (id, college_id, institution_name, code, name, department, faculty_id, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
+      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, faculty_id, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [id, collegeId, institutionName, code, name, department, facultyId, term, color, icon, instructorId, instructorName, JSON.stringify(instructor), memberCount, 1, model, template, enrolledStudents],
     });
 
     // Default protected Announcements channel
-    const defaultChanId = `ch_${id}_announcements`;
+    const defaultChanId = `ch_${id}_gen`;
     await db.execute({
-      sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
-            VALUES (?, ?, ?, ?, ?, 1, 'announcements', 'read-only', ?, ?);`,
-      args: [defaultChanId, collegeId, id, 'Announcements', 'Class-wide notices, exam schedules, and alerts from all lecturers', instructorName, instructorId],
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+            VALUES (?, ?, ?, 'Announcements', ?, 1, 'announcements', 'read-only', ?, ?);`,
+      args: [defaultChanId, collegeId, id, `${name} Announcements Noticeboard`, instructorName, instructorId],
     });
 
     // Any additional subject channels passed in creation
     const channels = body.channels || [];
     for (let i = 0; i < channels.length; i++) {
       const ch = channels[i];
-      if (ch.name && ch.name !== 'Announcements') {
-        const chanId = ch.id || `ch_${id}_${i + 1}`;
+      if (ch.name && ch.name.toLowerCase() !== 'announcements') {
+        const chanId = ch.id || `ch_${id}_sub_${i + 1}`;
         await db.execute({
-          sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+          sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
                 VALUES (?, ?, ?, ?, ?, 0, 'general', ?, ?, ?);`,
           args: [chanId, collegeId, id, ch.name, ch.description || `Subject Channel: ${ch.name}`, ch.studentFilePermission || 'read-only', ch.subjectLecturerName || instructorName, ch.subjectLecturerId || instructorId],
         });
@@ -2327,6 +2380,38 @@ app.delete('/api/courses/:courseId/subjects/:subjectId', async (c) => {
   }
 });
 
+// 9b. Add subject channel to existing course
+app.post('/api/courses/:courseId/channels', async (c) => {
+  const courseId = c.req.param('courseId');
+  try {
+    const body = await c.req.json();
+    const db = getDb(c);
+    const collegeId = await resolveCollegeId(c, body, db);
+
+    const name = (body.name || '').trim();
+    if (!name) {
+      return c.json({ error: 'Channel name is required' }, 400);
+    }
+    const id = body.id || `ch_${courseId}_${Date.now()}`;
+    const description = (body.description || `Subject: ${name}`).trim();
+    const isGeneral = body.isGeneral ? 1 : 0;
+    const studentFilePermission = body.studentFilePermission || 'read-only';
+    const subjectLecturerName = body.subjectLecturerName || null;
+    const subjectLecturerId = body.subjectLecturerId || null;
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+            VALUES (?, ?, ?, ?, ?, ?, 'general', ?, ?, ?);`,
+      args: [id, collegeId, courseId, name, description, isGeneral, studentFilePermission, subjectLecturerName, subjectLecturerId],
+    });
+
+    return c.json({ success: true, channelId: id }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
 // 10. Persist automated Semester Rollover (R23)
 app.post('/api/courses/rollover', async (c) => {
   try {
@@ -2352,12 +2437,12 @@ app.post('/api/courses/rollover', async (c) => {
     }
 
     const src = sourceRes.rows[0];
+    const collegeId = await resolveCollegeId(c, { college_id: src.college_id, institution_name: src.institution_name, ...body }, db);
     const newCourseId = `course_rollover_${Date.now()}`;
-    const collegeId = String(src.college_id || 'padmashree-demo');
-    const institutionName = String(src.institution_name || 'Padmashree College');
+    const institutionName = String(src.institution_name || 'PUBLIC ENGLISH BOARDING SCHOOL');
 
     await db.execute({
-      sql: `INSERT INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, member_count, is_activated, model, template, enrolled_students)
+      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, member_count, is_activated, model, template, enrolled_students)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'Class', ?);`,
       args: [
         newCourseId,
@@ -2371,7 +2456,7 @@ app.post('/api/courses/rollover', async (c) => {
         src.icon || '🏛️',
         instructorId,
         'Er. Ramesh Sharma',
-        src.member_count || 45,
+        src.member_count || 0,
         src.model || 'model-b',
         src.enrolled_students || '[]',
       ],
@@ -2379,7 +2464,7 @@ app.post('/api/courses/rollover', async (c) => {
 
     // Create Announcement channel for rollover
     await db.execute({
-      sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission)
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission)
             VALUES (?, ?, ?, 'Announcements', ?, 1, 'announcements', 'read-only');`,
       args: [`ch_${newCourseId}_gen`, collegeId, newCourseId, `${newName} Class announcements and notices`],
     });
@@ -2389,9 +2474,9 @@ app.post('/api/courses/rollover', async (c) => {
     for (let i = 0; i < channels.length; i++) {
       const ch = channels[i];
       await db.execute({
-        sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+        sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
               VALUES (?, ?, ?, ?, ?, 0, 'general', 'read-only', ?, ?);`,
-        args: [`ch_${newCourseId}_${i + 1}`, collegeId, newCourseId, ch.name, ch.description || `Subject: ${ch.name}`, ch.subjectLecturerName, ch.subjectLecturerId],
+        args: [`ch_${newCourseId}_sub_${i + 1}`, collegeId, newCourseId, ch.name, ch.description || `Subject: ${ch.name}`, ch.subjectLecturerName, ch.subjectLecturerId],
       });
     }
 
@@ -2406,9 +2491,10 @@ app.post('/api/courses/rollover', async (c) => {
 app.post('/api/assignments', async (c) => {
   try {
     const body = await c.req.json();
+    const db = getDb(c);
+    const collegeId = await resolveCollegeId(c, body, db);
     const id = body.id || `asgn_${Date.now()}`;
-    const collegeId = body.college_id || body.collegeId || 'padmashree-demo';
-    const institutionName = body.institution_name || body.institutionName || 'ProCollege University Network';
+    const institutionName = body.institution_name || body.institutionName || 'PUBLIC ENGLISH BOARDING SCHOOL';
     const facultyId = body.faculty_id || body.facultyId || 'fac_cs';
     const courseId = body.course_id || body.courseId || 'course_cs301';
     const courseCode = body.course_code || body.courseCode || 'CS 301';
@@ -2427,8 +2513,6 @@ app.post('/api/assignments', async (c) => {
     if (!title) {
       return c.json({ error: 'Assignment title is required' }, 400);
     }
-
-    const db = getDb(c);
 
     // Safely ensure new boundary columns exist
     const colsToEnsure = [
@@ -2587,8 +2671,9 @@ app.post('/api/courses/:courseId/files', async (c) => {
   const courseId = c.req.param('courseId');
   try {
     const body = await c.req.json();
+    const db = getDb(c);
+    const collegeId = await resolveCollegeId(c, body, db);
     const id = body.id || `file_${Date.now()}`;
-    const collegeId = body.collegeId || body.college_id || 'padmashree-demo';
     const channelId = body.channelId || body.channel_id || null;
     const name = (body.name || 'document.pdf').trim();
     const category = body.category || 'Class Materials';
@@ -2599,7 +2684,6 @@ app.post('/api/courses/:courseId/files', async (c) => {
     const permission = body.permission || 'read-only';
     const uploadedAt = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    const db = getDb(c);
     await db.execute({
       sql: `INSERT INTO course_files (id, course_id, college_id, channel_id, name, category, size, type, uploaded_by, is_class_material, permission, uploaded_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
