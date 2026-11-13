@@ -1141,18 +1141,18 @@ export const PortalLanding: React.FC = () => {
 
       {/* 8. Institutional Access Request Modal (Contact Form) */}
       {showRequestModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-4xl lg:max-w-5xl w-full p-5 sm:p-7 md:p-8 shadow-2xl border border-zinc-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
+          <div className="bg-[#0d0d10] rounded-2xl sm:rounded-3xl max-w-4xl lg:max-w-5xl w-full p-5 sm:p-7 md:p-8 shadow-[0_0_80px_rgba(0,0,0,0.95)] border border-[#CDCBCA]/25 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#CDCBCA]/15">
               <div className="flex items-center gap-2">
-                <ProCollegeLogo size="sm" variant="dark-text" />
+                <ProCollegeLogo size="sm" variant="crimson-text" />
               </div>
               <button
                 onClick={() => {
                   setShowRequestModal(false);
                   setRequestSubmitted(false);
                 }}
-                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#18181b] hover:bg-[#25252a] flex items-center justify-center text-[#CDCBCA] hover:text-white border border-[#CDCBCA]/20 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1161,8 +1161,8 @@ export const PortalLanding: React.FC = () => {
             {!requestSubmitted ? (
               <div className="mt-4 sm:mt-5">
                 <div className="mb-4">
-                  <h3 className="text-xl sm:text-2xl font-black text-[#101b46]">Request Campus Deployment</h3>
-                  <p className="text-xs text-[#586680] mt-1 leading-relaxed">
+                  <h3 className="text-xl sm:text-2xl font-black text-white">Request Campus Deployment</h3>
+                  <p className="text-xs text-[#CDCBCA] mt-1 leading-relaxed">
                     Connect with our deployment team. Once verified, we will issue your university an official Organization Admin Login ID to register and manage your students and lecturers.
                   </p>
                 </div>
@@ -1173,7 +1173,7 @@ export const PortalLanding: React.FC = () => {
                     <form onSubmit={handleOrgRequestSubmit} className="space-y-3 sm:space-y-3.5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 mb-1">
+                          <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                             College / University Name *
                           </label>
                           <input
@@ -1182,12 +1182,12 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.institutionName}
                             onChange={e => setOrgForm({ ...orgForm, institutionName: e.target.value })}
                             placeholder="College or University Name"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 mb-1">
+                          <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                             Department / Faculty Unit
                           </label>
                           <input
@@ -1195,14 +1195,14 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.department}
                             onChange={e => setOrgForm({ ...orgForm, department: e.target.value })}
                             placeholder="Department or Faculty Unit"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 mb-1">
+                          <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                             Contact Person Name & Title *
                           </label>
                           <input
@@ -1211,12 +1211,12 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.contactName}
                             onChange={e => setOrgForm({ ...orgForm, contactName: e.target.value })}
                             placeholder="Full Name & Academic Role"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 mb-1">
+                          <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                             Official Institutional Email *
                           </label>
                           <input
@@ -1225,21 +1225,21 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.email}
                             onChange={e => setOrgForm({ ...orgForm, email: e.target.value })}
                             placeholder="official.email@institution.edu"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 mb-1">
+                          <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                             Contact Phone Number
                           </label>
                           <div className="flex items-center gap-2">
                             <select
                               value={phoneCountryCode}
                               onChange={e => setPhoneCountryCode(e.target.value)}
-                              className="w-28 text-xs sm:text-sm border border-zinc-300 rounded-xl px-2.5 py-2.5 text-zinc-900 bg-zinc-50 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff] shrink-0 font-medium cursor-pointer"
+                              className="w-28 text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-2.5 py-2.5 text-white bg-[#18181c] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514] shrink-0 font-medium cursor-pointer"
                             >
                               <option value="+977">+977 (NP)</option>
                               <option value="+1">+1 (US/CA)</option>
@@ -1264,20 +1264,20 @@ export const PortalLanding: React.FC = () => {
                                 setOrgForm(prev => ({ ...prev, phone: digits }));
                               }}
                               placeholder="10-digit number"
-                              className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                              className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                             />
                           </div>
-                          <p className="text-[11px] text-zinc-400 mt-1">Numbers only, maximum 10 digits.</p>
+                          <p className="text-[11px] text-[#8E8C8B] mt-1">Numbers only, maximum 10 digits.</p>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-700 mb-1">
+                          <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                             Projected Student Count
                           </label>
                           <select
                             value={orgForm.studentCount}
                             onChange={e => setOrgForm({ ...orgForm, studentCount: Number(e.target.value) })}
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff] bg-white cursor-pointer"
+                            className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514] cursor-pointer"
                           >
                             <option value={500}>Up to 500 students</option>
                             <option value={1500}>500 - 2,500 students</option>
@@ -1288,7 +1288,7 @@ export const PortalLanding: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-zinc-700 mb-1">
+                        <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                           Target Deployment Plan
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
@@ -1296,12 +1296,12 @@ export const PortalLanding: React.FC = () => {
                             onClick={() => setOrgForm({ ...orgForm, deploymentType: 'campus-pro' })}
                             className={`p-3 rounded-xl border cursor-pointer transition-all ${
                               orgForm.deploymentType === 'campus-pro'
-                                ? 'border-[#173bff] bg-blue-50/50 text-[#173bff] font-bold'
-                                : 'border-zinc-200 text-zinc-600'
+                                ? 'border-[#D41514] bg-[#D41514]/15 text-white font-bold shadow-[0_0_15px_rgba(212,21,20,0.25)]'
+                                : 'border-[#CDCBCA]/20 text-[#CDCBCA] bg-[#131316] hover:border-[#CDCBCA]/40'
                             }`}
                           >
                             <div>Campus Pro ($6 / mo)</div>
-                            <p className="text-[10px] text-zinc-500 font-normal mt-0.5">
+                            <p className="text-[10px] text-[#8E8C8B] font-normal mt-0.5">
                               Standard college departments
                             </p>
                           </label>
@@ -1310,12 +1310,12 @@ export const PortalLanding: React.FC = () => {
                             onClick={() => setOrgForm({ ...orgForm, deploymentType: 'enterprise' })}
                             className={`p-3 rounded-xl border cursor-pointer transition-all ${
                               orgForm.deploymentType === 'enterprise'
-                                ? 'border-[#173bff] bg-blue-50/50 text-[#173bff] font-bold'
-                                : 'border-zinc-200 text-zinc-600'
+                                ? 'border-[#D41514] bg-[#D41514]/15 text-white font-bold shadow-[0_0_15px_rgba(212,21,20,0.25)]'
+                                : 'border-[#CDCBCA]/20 text-[#CDCBCA] bg-[#131316] hover:border-[#CDCBCA]/40'
                             }`}
                           >
                             <div>Enterprise University</div>
-                            <p className="text-[10px] text-zinc-500 font-normal mt-0.5">
+                            <p className="text-[10px] text-[#8E8C8B] font-normal mt-0.5">
                               Full institution + custom SIS
                             </p>
                           </label>
@@ -1323,7 +1323,7 @@ export const PortalLanding: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-zinc-700 mb-1">
+                        <label className="block text-xs font-bold text-[#CDCBCA] mb-1">
                           Implementation Notes / Specific Requirements
                         </label>
                         <textarea
@@ -1331,7 +1331,7 @@ export const PortalLanding: React.FC = () => {
                           value={orgForm.notes}
                           onChange={e => setOrgForm({ ...orgForm, notes: e.target.value })}
                           placeholder="Implementation requirements, SIS integration needs, or campus specifics..."
-                          className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                          className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                         />
                       </div>
 
@@ -1339,7 +1339,7 @@ export const PortalLanding: React.FC = () => {
                         <button
                           type="submit"
                           disabled={isSubmittingRequest}
-                          className="btn-hive w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#173bff] to-[#0c2de6] text-white text-xs sm:text-sm font-black shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50"
+                          className="btn-hive-crimson w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm font-black shadow-[0_0_20px_rgba(212,21,20,0.5)] border border-[#D41514]/50 hover:shadow-[0_0_30px_rgba(212,21,20,0.7)] transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50"
                         >
                           {isSubmittingRequest ? (
                             <>
@@ -1358,54 +1358,54 @@ export const PortalLanding: React.FC = () => {
                   </div>
 
                   {/* Right Column: Direct Deployment & Contact Card (5 cols on desktop) */}
-                  <div className="lg:col-span-5 bg-gradient-to-br from-[#101b46] via-[#0d173b] to-[#090f28] text-white rounded-2xl p-5 sm:p-6 border border-blue-900/50 shadow-xl flex flex-col justify-between space-y-4">
+                  <div className="lg:col-span-5 bg-gradient-to-br from-[#121216] via-[#0d0d10] to-[#070709] text-white rounded-2xl p-5 sm:p-6 border border-[#CDCBCA]/20 shadow-xl flex flex-col justify-between space-y-4">
                     <div>
-                      <div className="text-[11px] font-bold tracking-wider uppercase text-blue-400">
+                      <div className="text-[11px] font-bold tracking-wider uppercase text-[#D41514]">
                         Direct Deployment Contacts
                       </div>
                       <h4 className="text-base sm:text-lg font-black text-white mt-1">
                         Connect with Our Team
                       </h4>
-                      <p className="text-xs text-blue-200/80 mt-1 leading-relaxed">
+                      <p className="text-xs text-[#CDCBCA] mt-1 leading-relaxed">
                         Speak directly with our campus deployment lead for fast onboarding, agreement details, and institutional rollouts.
                       </p>
 
-                      <div className="mt-4 pt-4 border-t border-blue-800/40 space-y-3.5">
+                      <div className="mt-4 pt-4 border-t border-[#CDCBCA]/15 space-y-3.5">
                         {/* Name */}
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8E8C8B]">
                             Name & Leadership
                           </div>
                           <div className="text-sm sm:text-base font-extrabold text-white mt-0.5">
                             Sujan GC
                           </div>
-                          <div className="text-[11px] text-blue-200/70">
+                          <div className="text-[11px] text-[#CDCBCA]">
                             Campus Deployment & Academic Systems
                           </div>
                         </div>
 
                         {/* Email */}
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8E8C8B]">
                             Email ID
                           </div>
                           <a
                             href="mailto:gcsujan321@gmail.com"
-                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-100 hover:text-white hover:underline mt-0.5 group"
+                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#CDCBCA] hover:text-[#D41514] hover:underline mt-0.5 group transition-colors"
                           >
-                            <Mail className="w-4 h-4 text-blue-400 shrink-0" />
+                            <Mail className="w-4 h-4 text-[#D41514] shrink-0" />
                             <span className="break-all">gcsujan321@gmail.com</span>
                           </a>
                         </div>
 
                         {/* Contact Info */}
                         <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#8E8C8B]">
                             Contact Info (WhatsApp / Cell Phone)
                           </div>
                           <a
                             href="tel:+9779848962315"
-                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-100 hover:text-white hover:underline mt-0.5"
+                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#CDCBCA] hover:text-white hover:underline mt-0.5 transition-colors"
                           >
                             <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
                             <span>+977 9848962315</span>
@@ -1415,7 +1415,7 @@ export const PortalLanding: React.FC = () => {
                     </div>
 
                     {/* Quick Contact Actions */}
-                    <div className="pt-3 border-t border-blue-800/40 space-y-2">
+                    <div className="pt-3 border-t border-[#CDCBCA]/15 space-y-2">
                       <a
                         href="https://wa.me/9779848962315"
                         target="_blank"
@@ -1428,13 +1428,13 @@ export const PortalLanding: React.FC = () => {
 
                       <a
                         href="mailto:gcsujan321@gmail.com?subject=ProCollege%20Campus%20Deployment%20Inquiry"
-                        className="w-full py-2.5 px-3.5 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-[#D41514] to-[#b80f0e] hover:from-[#ea201f] hover:to-[#9f0a09] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(212,21,20,0.4)]"
                       >
                         <Mail className="w-4 h-4" />
                         <span>Send Official Inquiry</span>
                       </a>
 
-                      <div className="text-[11px] text-blue-300/80 text-center pt-1">
+                      <div className="text-[11px] text-[#8E8C8B] text-center pt-1">
                         Direct response within 1 to 2 hours
                       </div>
                     </div>
@@ -1443,19 +1443,19 @@ export const PortalLanding: React.FC = () => {
               </div>
             ) : (
               <div className="py-4 sm:py-6 text-center space-y-3 sm:space-y-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#D41514]/15 border border-[#D41514]/40 text-[#D41514] flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(212,21,20,0.3)]">
                   <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-[#101b46]">Request Successfully Dispatched!</h3>
-                <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 sm:p-4 text-xs text-blue-900 text-left space-y-2">
-                  <div className="font-bold text-xs sm:text-sm text-[#101b46] flex items-center gap-1.5">
-                    <Key className="w-4 h-4 text-[#173bff]" />
+                <h3 className="text-xl sm:text-2xl font-black text-white">Request Successfully Dispatched!</h3>
+                <div className="bg-[#121215] border border-[#CDCBCA]/20 rounded-2xl p-3.5 sm:p-4 text-xs text-[#CDCBCA] text-left space-y-2">
+                  <div className="font-bold text-xs sm:text-sm text-white flex items-center gap-1.5">
+                    <Key className="w-4 h-4 text-[#D41514]" />
                     <span>Next Step: Organization Admin Login ID Verification</span>
                   </div>
-                  <p className="leading-relaxed text-[#44536c]">
+                  <p className="leading-relaxed text-[#CDCBCA]">
                     Our university deployment specialist will review your institutional credentials for <strong>{orgForm.institutionName}</strong> and contact <strong>{orgForm.contactName}</strong> at <strong>{orgForm.email}</strong>.
                   </p>
-                  <p className="leading-relaxed text-[#44536c]">
+                  <p className="leading-relaxed text-[#CDCBCA]">
                     Upon verification, you will receive your official <strong>Organization Admin Login ID (ORG-ADMIN-XX)</strong>, enabling you to provision all student and lecturer accounts.
                   </p>
                 </div>
@@ -1463,7 +1463,7 @@ export const PortalLanding: React.FC = () => {
                 <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3">
                   <button
                     onClick={() => launchDemoMode()}
-                    className="btn-hive w-full sm:w-auto py-3 px-6 rounded-xl bg-gradient-to-r from-[#173bff] to-[#0c2de6] text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 group"
+                    className="btn-hive-crimson w-full sm:w-auto py-3 px-6 rounded-xl bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm font-bold shadow-[0_0_20px_rgba(212,21,20,0.5)] transition-all cursor-pointer flex items-center justify-center gap-2 group"
                   >
                     <span>Open Platform Workspace</span>
                     <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -1473,7 +1473,7 @@ export const PortalLanding: React.FC = () => {
                       setShowRequestModal(false);
                       setRequestSubmitted(false);
                     }}
-                    className="w-full sm:w-auto py-3 px-5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs sm:text-sm font-bold transition-all cursor-pointer"
+                    className="w-full sm:w-auto py-3 px-5 rounded-xl bg-[#161619] hover:bg-[#202025] text-[#CDCBCA] hover:text-white border border-[#CDCBCA]/20 text-xs sm:text-sm font-bold transition-all cursor-pointer"
                   >
                     Close
                   </button>
@@ -1486,13 +1486,13 @@ export const PortalLanding: React.FC = () => {
 
       {/* 9. Institutional Sign-In Modal */}
       {showSignInModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
-              <ProCollegeLogo size="sm" variant="dark-text" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
+          <div className="bg-[#0d0d10] rounded-2xl sm:rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-[0_0_80px_rgba(0,0,0,0.95)] border border-[#CDCBCA]/25 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-[#CDCBCA]/15">
+              <ProCollegeLogo size="sm" variant="crimson-text" />
               <button
                 onClick={resetAuthModal}
-                className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#18181b] hover:bg-[#25252a] flex items-center justify-center text-[#CDCBCA] hover:text-white border border-[#CDCBCA]/20 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1502,21 +1502,21 @@ export const PortalLanding: React.FC = () => {
             {authStep === 'credentials' && (
               <>
                 <div className="mt-5">
-                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Institutional Sign-In</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <h3 className="text-xl font-bold text-white tracking-tight">Institutional Sign-In</h3>
+                  <p className="text-xs text-[#CDCBCA] mt-1.5 leading-relaxed">
                     Enter your registered institutional credentials to access your academic workspace.
                   </p>
                 </div>
 
                 <form onSubmit={handleInstitutionalLogin} className="mt-5 space-y-4">
                   {loginError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                    <div className="p-3 rounded-xl bg-[#280808] border border-[#D41514]/60 text-xs text-[#ff6b6a]">
                       {loginError}
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#CDCBCA] mb-1.5">
                       Institutional Email
                     </label>
                     <input
@@ -1526,12 +1526,12 @@ export const PortalLanding: React.FC = () => {
                       value={loginEmail}
                       onChange={e => setLoginEmail(e.target.value)}
                       placeholder="name@institution.edu"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#CDCBCA] mb-1.5">
                       Password
                     </label>
                     <input
@@ -1541,14 +1541,14 @@ export const PortalLanding: React.FC = () => {
                       value={loginPassword}
                       onChange={e => setLoginPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoggingIn}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
+                    className="btn-hive-crimson w-full py-3.5 rounded-xl bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm font-bold shadow-[0_0_25px_rgba(212,21,20,0.5)] border border-[#D41514]/50 hover:shadow-[0_0_35px_rgba(212,21,20,0.7)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
                   >
                     {isLoggingIn ? (
                       <>
@@ -1570,7 +1570,7 @@ export const PortalLanding: React.FC = () => {
                         setShowSignInModal(false);
                         setShowRequestModal(true);
                       }}
-                      className="text-xs text-[#173bff] hover:underline font-semibold"
+                      className="text-xs text-[#D41514] hover:underline font-semibold"
                     >
                       Need an account for your university? Request Campus Deployment →
                     </button>
@@ -1583,41 +1583,41 @@ export const PortalLanding: React.FC = () => {
             {authStep === 'otp' && (
               <>
                 <div className="mt-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#173bff]/10 text-[#173bff] flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#D41514]/15 border border-[#D41514]/40 text-[#D41514] flex items-center justify-center mb-3 shadow-[0_0_15px_rgba(212,21,20,0.3)]">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Two-Factor Security Verification</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
-                    A 6-digit security code was dispatched directly to <span className="font-semibold text-zinc-900">{otpEmail}</span>. Please check your inbox and spam folder.
+                  <h3 className="text-xl font-bold text-white tracking-tight">Two-Factor Security Verification</h3>
+                  <p className="text-xs text-[#CDCBCA] mt-1.5 leading-relaxed">
+                    A 6-digit security code was dispatched directly to <span className="font-semibold text-white">{otpEmail}</span>. Please check your inbox and spam folder.
                   </p>
                 </div>
 
-                <div className="mt-4 p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs text-blue-900 flex items-start gap-2.5">
-                  <Mail className="w-4 h-4 text-[#173bff] shrink-0 mt-0.5" />
+                <div className="mt-4 p-3 rounded-xl bg-[#141418] border border-[#CDCBCA]/20 text-xs text-[#CDCBCA] flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 text-[#D41514] shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <p className="font-semibold text-blue-950">Check Your Registered Mailbox</p>
-                    <p className="text-blue-800/80 leading-relaxed">
+                    <p className="font-semibold text-white">Check Your Registered Mailbox</p>
+                    <p className="text-[#CDCBCA]/90 leading-relaxed">
                       Enter the 6-digit code received via email to verify your identity and access your dashboard.
                     </p>
                   </div>
                 </div>
 
                 {resendMessage && (
-                  <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="mt-3 p-3 rounded-xl bg-emerald-950/60 border border-emerald-600/50 text-xs text-emerald-300 font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>{resendMessage}</span>
                   </div>
                 )}
 
                 <form onSubmit={handleVerifyOtp} className="mt-5 space-y-4">
                   {loginError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                    <div className="p-3 rounded-xl bg-[#280808] border border-[#D41514]/60 text-xs text-[#ff6b6a]">
                       {loginError}
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5 text-center">
+                    <label className="block text-xs font-semibold text-[#CDCBCA] mb-1.5 text-center">
                       Enter 6-Digit Verification Code
                     </label>
                     <input
@@ -1628,17 +1628,17 @@ export const PortalLanding: React.FC = () => {
                       value={otpCode}
                       onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="• • • • • •"
-                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-3 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-[#CDCBCA]/30 rounded-xl px-4 py-3 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-zinc-500 px-1">
+                  <div className="flex items-center justify-between text-xs text-[#8E8C8B] px-1">
                     <span>Didn't get the code?</span>
                     <button
                       type="button"
                       onClick={handleResendOtp}
                       disabled={resendCooldown > 0 || isResending}
-                      className="font-semibold text-[#173bff] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
+                      className="font-semibold text-[#D41514] hover:underline disabled:text-[#8E8C8B]/60 disabled:no-underline cursor-pointer"
                     >
                       {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : isResending ? 'Sending...' : 'Resend Code'}
                     </button>
@@ -1647,7 +1647,7 @@ export const PortalLanding: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isVerifyingOtp || otpCode.trim().length !== 6}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                    className="btn-hive-crimson w-full py-3.5 rounded-xl bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm font-bold shadow-[0_0_25px_rgba(212,21,20,0.5)] border border-[#D41514]/50 hover:shadow-[0_0_35px_rgba(212,21,20,0.7)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
                   >
                     {isVerifyingOtp ? (
                       <>
@@ -1670,7 +1670,7 @@ export const PortalLanding: React.FC = () => {
                         setLoginError('');
                         setResendMessage('');
                       }}
-                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                      className="inline-flex items-center gap-1.5 text-xs text-[#8E8C8B] hover:text-white font-semibold"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Back to Email & Password</span>
@@ -1684,24 +1684,24 @@ export const PortalLanding: React.FC = () => {
             {authStep === 'change-password' && (
               <>
                 <div className="mt-5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center mb-3">
                     <Lock className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Set Permanent Password</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <h3 className="text-xl font-bold text-white tracking-tight">Set Permanent Password</h3>
+                  <p className="text-xs text-[#CDCBCA] mt-1.5 leading-relaxed">
                     You are signing in with a temporary roster password. Please create a secure permanent password to protect your student records.
                   </p>
                 </div>
 
                 <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
                   {loginError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                    <div className="p-3 rounded-xl bg-[#280808] border border-[#D41514]/60 text-xs text-[#ff6b6a]">
                       {loginError}
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#CDCBCA] mb-1.5">
                       New Password
                     </label>
                     <input
@@ -1710,12 +1710,12 @@ export const PortalLanding: React.FC = () => {
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="At least 6 characters"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                    <label className="block text-xs font-semibold text-[#CDCBCA] mb-1.5">
                       Confirm New Password
                     </label>
                     <input
@@ -1724,14 +1724,14 @@ export const PortalLanding: React.FC = () => {
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter new password"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-[#CDCBCA]/25 rounded-xl px-3.5 py-2.5 text-white bg-[#131316] placeholder-[#8E8C8B] focus:outline-none focus:border-[#D41514] focus:ring-1 focus:ring-[#D41514]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isChangingPassword || !newPassword || !confirmPassword}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(16,185,129,0.35)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                    className="btn-hive-crimson w-full py-3.5 rounded-xl bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm font-bold shadow-[0_0_25px_rgba(212,21,20,0.5)] border border-[#D41514]/50 hover:shadow-[0_0_35px_rgba(212,21,20,0.7)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
                   >
                     {isChangingPassword ? (
                       <>
@@ -1753,7 +1753,7 @@ export const PortalLanding: React.FC = () => {
                         setAuthStep('credentials');
                         setLoginError('');
                       }}
-                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                      className="inline-flex items-center gap-1.5 text-xs text-[#8E8C8B] hover:text-white font-semibold"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Back to Sign In</span>
