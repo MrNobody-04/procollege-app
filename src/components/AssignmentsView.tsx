@@ -3,7 +3,8 @@ import {
   FileCheck,
   Calendar,
   Clock,
-  Plus
+  Plus,
+  Paperclip
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CreateAssignmentModal } from './CreateAssignmentModal';
@@ -43,6 +44,10 @@ export const AssignmentsView: React.FC = () => {
 
   // Helper to determine student submission status
   const getStudentStatus = (asgn: Assignment) => {
+    // If scheduled in the future, it's not pending yet
+    if (asgn.scheduleDate && new Date(asgn.scheduleDate).getTime() > currentTime) {
+      return 'scheduled';
+    }
     const studentSub = asgn.submissions.find(s => s.studentId === currentUser.id);
     const isSubmitted = studentSub?.status === 'turned-in' || studentSub?.status === 'graded';
     const isPassed = isDeadlinePassed(asgn);
@@ -57,6 +62,10 @@ export const AssignmentsView: React.FC = () => {
   const completedAssignments = assignments.filter(a => getStudentStatus(a) === 'completed');
   const duePassedAssignments = assignments.filter(a => getStudentStatus(a) === 'due-passed');
 
+  const visibleAssignments = currentUser.role === 'student'
+    ? assignments.filter(a => !a.scheduleDate || new Date(a.scheduleDate).getTime() <= currentTime)
+    : assignments;
+
   const displayedAssignments =
     activeFilter === 'pending'
       ? pendingAssignments
@@ -64,7 +73,7 @@ export const AssignmentsView: React.FC = () => {
       ? completedAssignments
       : activeFilter === 'due-passed'
       ? duePassedAssignments
-      : assignments;
+      : visibleAssignments;
 
   return (
     <div className="flex-1 bg-[#f5f5f5] p-3 sm:p-5 md:p-6 overflow-y-auto select-none">
@@ -169,18 +178,41 @@ export const AssignmentsView: React.FC = () => {
                   className="p-4 flex items-center justify-between hover:bg-zinc-50/80 cursor-pointer transition-colors"
                 >
                   <div className="min-w-0 pr-4 space-y-1">
-                    <h3 className="font-semibold text-xs text-zinc-900 hover:text-[#5b5fc7] transition-colors truncate">
-                      {asgn.title}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-xs text-zinc-900 hover:text-[#5b5fc7] transition-colors truncate">
+                        {asgn.title}
+                      </h3>
+                      {asgn.scheduleDate && new Date(asgn.scheduleDate).getTime() > currentTime && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                          Scheduled
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 text-[11px] text-zinc-500">
                       <span>{asgn.courseCode}</span>
                       <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-zinc-400" />
-                        Due {asgn.dueAt}
-                      </span>
+                      {asgn.scheduleDate && new Date(asgn.scheduleDate).getTime() > currentTime ? (
+                        <span className="flex items-center gap-1 text-amber-700">
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          Releases {new Date(asgn.scheduleDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-zinc-400" />
+                          Due {asgn.dueAt}
+                        </span>
+                      )}
                       <span>•</span>
                       <span>{asgn.points} points</span>
+                      {asgn.referenceFiles && asgn.referenceFiles.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 text-zinc-600">
+                            <Paperclip className="w-3 h-3 text-zinc-400" />
+                            {asgn.referenceFiles.length} {asgn.referenceFiles.length === 1 ? 'file' : 'files'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -209,12 +241,19 @@ export const AssignmentsView: React.FC = () => {
                         </div>
                       )
                     ) : (
-                      <div>
-                        <p className="text-xs font-medium text-zinc-700">
-                          {asgn.submissions.length} turned in
-                        </p>
-                        <p className="text-[10px] text-[#5b5fc7] hover:underline">SpeedGrader</p>
-                      </div>
+                      asgn.scheduleDate && new Date(asgn.scheduleDate).getTime() > currentTime ? (
+                        <div>
+                          <p className="text-xs font-medium text-amber-700">Scheduled</p>
+                          <p className="text-[10px] text-zinc-400">Hidden from students</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-xs font-medium text-zinc-700">
+                            {asgn.submissions.length} turned in
+                          </p>
+                          <p className="text-[10px] text-[#5b5fc7] hover:underline">SpeedGrader</p>
+                        </div>
+                      )
                     )}
                   </div>
                 </div>

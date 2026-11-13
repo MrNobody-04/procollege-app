@@ -4,6 +4,9 @@ import {
   Lock,
   Trash2,
   FileText,
+  File,
+  Presentation,
+  FileArchive,
   FileCheck,
   CheckCircle2,
   RotateCcw,
@@ -312,19 +315,29 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
           {/* Reference Materials */}
           {assignment.referenceFiles && assignment.referenceFiles.length > 0 && (
             <div className="space-y-1.5">
-              <h3 className="font-semibold text-zinc-900">Reference Materials</h3>
+              <h3 className="font-semibold text-zinc-900 text-xs">Reference Materials ({assignment.referenceFiles.length})</h3>
               <div className="space-y-1.5">
                 {assignment.referenceFiles.map(rf => (
                   <div
                     key={rf.id}
-                    className="p-2.5 bg-zinc-50 rounded border border-zinc-200 flex items-center justify-between"
+                    className="p-2.5 bg-zinc-50 rounded-lg border border-zinc-200 flex items-center justify-between hover:border-zinc-300 transition-colors"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-md border flex items-center justify-center shrink-0 ${
+                        rf.type === 'pdf' ? 'bg-rose-50 border-rose-200 text-rose-600' :
+                        rf.type === 'ppt' ? 'bg-amber-50 border-amber-200 text-amber-600' :
+                        rf.type === 'archive' ? 'bg-purple-50 border-purple-200 text-purple-600' :
+                        'bg-blue-50 border-blue-200 text-blue-600'
+                      }`}>
+                        {rf.type === 'pdf' ? <FileText className="w-4 h-4" /> :
+                         rf.type === 'ppt' ? <Presentation className="w-4 h-4" /> :
+                         rf.type === 'archive' ? <FileArchive className="w-4 h-4" /> :
+                         <File className="w-4 h-4" />}
+                      </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-zinc-900 truncate">{rf.name}</p>
-                        <p className="text-[11px] text-zinc-400">
-                          {rf.size} • Read-only class material
+                        <p className="font-medium text-xs text-zinc-900 truncate">{rf.name}</p>
+                        <p className="text-[10px] text-zinc-400">
+                          {rf.size} • Read-only reference material
                         </p>
                       </div>
                     </div>
