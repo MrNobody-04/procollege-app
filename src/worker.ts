@@ -376,6 +376,7 @@ app.post('/api/auth/login', async (c) => {
     const result = await db.execute({
       sql: `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
                    u.password, u.password_hash, u.institution_name, u.department, u.must_change_password,
+                   u.otp_code, u.otp_expires_at,
                    c.name as college_name, c.code as college_code, c.status as college_status
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)

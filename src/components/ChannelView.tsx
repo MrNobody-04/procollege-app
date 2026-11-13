@@ -40,7 +40,8 @@ export const ChannelView: React.FC = () => {
     currentUser,
     mobileSidebarOpen,
     setMobileSidebarOpen,
-    showDialog
+    showDialog,
+    setActiveTab
   } = useApp();
 
   const [postTitle, setPostTitle] = useState('');
@@ -87,8 +88,38 @@ export const ChannelView: React.FC = () => {
     }
   };
 
-  const currentChannelPosts = posts[selectedChannel.id] || [];
-  const activeInstitution = currentUser.institutionName || selectedCourse.institutionName || 'ProCollege University Network';
+  if (!selectedCourse || !selectedChannel) {
+    const isAdminOrDev = currentUser.role === 'admin' || currentUser.role === 'developer' || currentUser.role === 'platform_admin';
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-zinc-50/50 text-center">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-zinc-200/80 shadow-sm p-8 flex flex-col items-center">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#173bff] mb-4">
+            <GraduationCap className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900 mb-1.5">
+            Welcome to {currentUser.institutionName || 'Your Campus Workspace'}
+          </h2>
+          <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
+            {isAdminOrDev
+              ? 'Your institutional campus environment is active and ready. Start by adding faculties, creating classes, or uploading your student roster.'
+              : 'No classes have been provisioned for your account yet. Please contact your campus administration to be enrolled.'}
+          </p>
+          {isAdminOrDev && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs font-bold shadow-[0_4px_18px_rgba(23,59,255,0.3)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.45)] transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Go to Admin Center & Create Classes</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const currentChannelPosts = (selectedChannel?.id && posts[selectedChannel.id]) ? posts[selectedChannel.id] : [];
+  const activeInstitution = currentUser.institutionName || selectedCourse?.institutionName || 'ProCollege University Network';
   const currentSubjectAssignments = assignments.filter(a => {
     if (currentUser.role !== 'developer') {
       if (a.institutionName && activeInstitution && a.institutionName !== activeInstitution) return false;

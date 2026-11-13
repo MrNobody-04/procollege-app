@@ -89,10 +89,15 @@ export const PortalLanding: React.FC = () => {
   };
 
   const finishLoginSession = (data: any) => {
-    // Store credentials in localStorage
+    // Store credentials in localStorage with robust institution name preservation
+    const instName = data.college?.name || data.user?.institution_name || data.user?.institutionName || 'Academic Institution';
+    if (data.user) {
+      data.user.institution_name = instName;
+      data.user.institutionName = instName;
+    }
     localStorage.setItem('procollege_token', data.token);
     localStorage.setItem('procollege_user', JSON.stringify(data.user));
-    localStorage.setItem('procollege_college', JSON.stringify(data.college));
+    localStorage.setItem('procollege_college', JSON.stringify(data.college || { name: instName }));
 
     const roleStr = data.user.role;
     const mappedRole: UserRole =
@@ -124,7 +129,7 @@ export const PortalLanding: React.FC = () => {
       institutionName:
         mappedRole === 'developer'
           ? 'ProCollege Platform Operations'
-          : data.college?.name || 'Padmashree College',
+          : instName,
       avatar: data.user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
       status: 'available',
     };
@@ -238,7 +243,10 @@ export const PortalLanding: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${pendingAuthResponse?.token || ''}`,
         },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify({
+          newPassword,
+          email: pendingAuthResponse?.user?.email || otpEmail,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {

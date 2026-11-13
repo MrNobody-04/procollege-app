@@ -284,7 +284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           institutionName:
             mappedRole === 'developer'
               ? 'ProCollege Platform Operations'
-              : u.institutionName || 'Padmashree College',
+              : u.institution_name || u.institutionName || 'Padmashree College',
           avatar:
             u.avatar_url ||
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
@@ -304,41 +304,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const inst = instName || currentUser.institutionName || 'Padmashree College';
       const role = userRole || currentUser.role;
-      const res = await fetch(`/api/workspace/bootstrap?institution=${encodeURIComponent(inst)}&role=${encodeURIComponent(role)}`);
+      const token = localStorage.getItem('procollege_token') || '';
+      const res = await fetch(`/api/workspace/bootstrap?institution=${encodeURIComponent(inst)}&role=${encodeURIComponent(role)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (!res.ok) return;
       const data = await res.json();
       if (data.success) {
-        if (data.faculties && data.faculties.length > 0) {
-          setFaculties(data.faculties);
-        }
-        if (data.courses && data.courses.length > 0) {
-          setCourses(data.courses);
+        // 1. Faculties
+        setFaculties(data.faculties || []);
+
+        // 2. Courses & Active Selection
+        const loadedCourses: CourseTeam[] = data.courses || [];
+        setCourses(loadedCourses);
+        if (loadedCourses.length > 0) {
           setSelectedCourse(prev => {
-            const found = data.courses.find((c: CourseTeam) => c.id === prev.id);
-            return found || data.courses[0];
+            const found = prev ? loadedCourses.find((c: CourseTeam) => c.id === prev.id) : null;
+            return found || loadedCourses[0];
           });
-          if (data.courses[0].channels && data.courses[0].channels.length > 0) {
+          const firstC = loadedCourses[0];
+          if (firstC.channels && firstC.channels.length > 0) {
             setSelectedChannel(prev => {
-              const c = data.courses.find((x: CourseTeam) => x.id === selectedCourse.id) || data.courses[0];
-              const ch = c.channels.find((x: Channel) => x.id === prev.id);
-              return ch || c.channels[0];
+              const found = prev ? firstC.channels.find((ch: Channel) => ch.id === prev.id) : null;
+              return found || firstC.channels[0];
             });
           }
+        } else {
+          setSelectedCourse(null as any);
+          setSelectedChannel(null as any);
         }
-        if (data.assignments && data.assignments.length > 0) {
-          setAssignments(data.assignments);
-        }
-        if (data.files && data.files.length > 0) {
-          setCourseFiles(data.files);
-        }
+
+        // 3. Assignments & Files
+        setAssignments(data.assignments || []);
+        setCourseFiles(data.files || []);
+
+        // 4. Users
         if (data.users && data.users.length > 0) {
           setAvailableUsers(data.users);
         }
+
+        // 5. Tenant Posts & Notices (guarantees clean fresh board for new organizations)
+        const newPosts: Record<string, ThreadPost[]> = {};
+        loadedCourses.forEach(c => {
+          c.channels?.forEach(ch => {
+            newPosts[ch.id] = [];
+          });
+        });
+
+        if (Array.isArray(data.notices) && data.notices.length > 0) {
+          data.notices.forEach((n: any) => {
+            const chId = n.channel_id || n.target_channel_id || (loadedCourses[0]?.channels[0]?.id) || 'c1-general';
+            if (!newPosts[chId]) newPosts[chId] = [];
+            newPosts[chId].push({
+              id: String(n.id),
+              channelId: chId,
+              author: {
+                id: String(n.author_id || 'admin'),
+                name: String(n.author_name || 'Campus Administration'),
+                email: String(n.author_email || 'admin@campus.edu'),
+                role: 'admin',
+                license: 'ProCollege Verified for Faculty',
+                department: 'Administration',
+                institutionName: inst,
+                avatar: String(n.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+                status: 'available',
+              },
+              title: String(n.title),
+              content: String(n.content || n.message || ''),
+              timestamp: String(n.created_at || 'Recently'),
+              reactions: {},
+              replies: [],
+              isAnnouncement: true,
+            });
+          });
+        }
+        setPosts(newPosts);
       }
     } catch (err) {
       console.warn('Bootstrap fetch fallback to memory fixtures:', err);
     }
-  }, [currentUser.institutionName, currentUser.role, selectedCourse.id]);
+  }, [currentUser.institutionName, currentUser.role]);
 
   useEffect(() => {
     loadWorkspaceBootstrap(currentUser.institutionName, currentUser.role);
