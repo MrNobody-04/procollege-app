@@ -34,6 +34,8 @@ const secrets = [
   { key: 'TURSO_AUTH_TOKEN', val: vars.TURSO_AUTH_TOKEN },
   { key: 'ABLY_API_KEY', val: vars.ABLY_API_KEY },
   { key: 'JWT_SECRET', val: vars.JWT_SECRET },
+  { key: 'CLOUDINARY_API_KEY', val: vars.CLOUDINARY_API_KEY },
+  { key: 'CLOUDINARY_API_SECRET', val: vars.CLOUDINARY_API_SECRET },
 ];
 
 console.log('🔐 Pushing Encrypted Cloudflare Worker Secrets...');

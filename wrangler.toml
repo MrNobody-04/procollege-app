@@ -9,9 +9,15 @@ directory = "./dist"
 not_found_handling = "single-page-application"
 binding = "ASSETS"
 
+[[d1_databases]]
+binding = "procollege_vault"
+database_name = "procollege-vault"
+database_id = "605f2e0f-a519-4ba6-a050-48b32ad02686"
+
 [vars]
 TURSO_DB_URL = "libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io"
 VITE_ABLY_SUBSCRIBE_KEY = "wbIoLQ.X8L0qQ:LYTf7p-Isq-UIhJoZ-xv9-JqwkwmQd5v6Awwb8GC-jw"
+CLOUDINARY_CLOUD_NAME = "pf66y0wq"
 
 [observability]
 enabled = true

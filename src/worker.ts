@@ -1,10 +1,31 @@
 import { Hono } from 'hono';
 import { createClient } from '@libsql/client/web';
 
+export interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(colName?: string): Promise<T | null>;
+  run(): Promise<{ success: boolean; meta: Record<string, unknown>; error?: string }>;
+  all<T = unknown>(): Promise<{ results?: T[]; success: boolean; meta: Record<string, unknown>; error?: string }>;
+  raw<T = unknown>(): Promise<T[]>;
+}
+
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  dump(): Promise<ArrayBuffer>;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<{ results?: T[]; success: boolean }[]>;
+  exec(query: string): Promise<{ count: number; duration: number }>;
+}
+
 export type Env = {
   TURSO_DB_URL: string;
   TURSO_AUTH_TOKEN: string;
   ABLY_API_KEY: string;
+  VITE_ABLY_SUBSCRIBE_KEY?: string;
+  CLOUDINARY_CLOUD_NAME?: string;
+  CLOUDINARY_API_KEY?: string;
+  CLOUDINARY_API_SECRET?: string;
+  JWT_SECRET?: string;
+  procollege_vault?: D1Database;
   ASSETS: {
     fetch: (request: Request | string, init?: RequestInit) => Promise<Response>;
   };
@@ -24,15 +45,37 @@ function getDb(c: { env: Env }) {
   return createClient({ url, authToken });
 }
 
-// 1. Health check & DB verification
+// 1. Health check & DB verification (Turso + D1 procollege_vault + Cloudinary)
 app.get('/api/health', async (c) => {
   try {
     const db = getDb(c);
     const result = await db.execute('SELECT count(*) as count FROM colleges;');
     const count = Number(result.rows[0]?.count ?? 0);
+
+    let d1Status = 'not_bound';
+    let d1TablesCount = 0;
+    if (c.env.procollege_vault) {
+      try {
+        const d1Res = await c.env.procollege_vault.prepare("SELECT count(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';").first<{ count: number }>();
+        d1Status = 'connected';
+        d1TablesCount = Number(d1Res?.count ?? 0);
+      } catch (d1Err) {
+        d1Status = `error: ${d1Err instanceof Error ? d1Err.message : String(d1Err)}`;
+      }
+    }
+
     return c.json({
       status: 'ok',
       collegesCount: count,
+      d1Vault: {
+        status: d1Status,
+        tablesCount: d1TablesCount,
+        binding: 'procollege_vault',
+      },
+      storage: {
+        provider: 'cloudinary',
+        cloudName: c.env.CLOUDINARY_CLOUD_NAME || 'pf66y0wq',
+      },
       timestamp: new Date().toISOString(),
     });
   } catch (err: unknown) {
@@ -1209,6 +1252,108 @@ app.delete('/api/courses/:courseId/files/:fileId', async (c) => {
     });
 
     return c.json({ success: true, message: `Deleted ${file.name}` });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 17. Cloudflare D1 procollege_vault: Backup snapshot from Turso
+app.post('/api/vault/backup', async (c) => {
+  try {
+    if (!c.env.procollege_vault) {
+      return c.json({ error: 'Cloudflare D1 procollege_vault binding not found' }, 503);
+    }
+    const db = getDb(c);
+    const tables = ['colleges', 'users', 'courses', 'assignments', 'notices', 'course_files'];
+    const snapshotTime = new Date().toISOString();
+    const results: Record<string, number> = {};
+
+    for (const table of tables) {
+      try {
+        const res = await db.execute(`SELECT * FROM ${table};`);
+        const rows = res.rows;
+        const count = rows.length;
+        results[table] = count;
+        const id = `snap_${table}_${Date.now()}`;
+        await c.env.procollege_vault.prepare(
+          'INSERT OR REPLACE INTO backup_vault (id, snapshot_time, table_name, record_count, status, data_json) VALUES (?, ?, ?, ?, ?, ?);'
+        ).bind(id, snapshotTime, table, count, 'completed', JSON.stringify(rows)).run();
+      } catch (tableErr) {
+        results[table] = -1;
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: 'Turso database successfully backed up to Cloudflare D1 procollege_vault',
+      snapshotTime,
+      backedUpTables: results,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 18. Cloudflare D1 procollege_vault: List recent backups
+app.get('/api/vault/backups', async (c) => {
+  try {
+    if (!c.env.procollege_vault) {
+      return c.json({ error: 'Cloudflare D1 procollege_vault binding not found' }, 503);
+    }
+    const result = await c.env.procollege_vault.prepare(
+      'SELECT id, snapshot_time, table_name, record_count, status, created_at FROM backup_vault ORDER BY created_at DESC LIMIT 50;'
+    ).all();
+    return c.json({ success: true, backups: result.results });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 19. Cloudinary 25GB Storage Config
+app.get('/api/storage/config', (c) => {
+  return c.json({
+    provider: 'cloudinary',
+    cloudName: c.env.CLOUDINARY_CLOUD_NAME || 'pf66y0wq',
+    uploadEndpoint: `https://api.cloudinary.com/v1_1/${c.env.CLOUDINARY_CLOUD_NAME || 'pf66y0wq'}/auto/upload`,
+  });
+});
+
+// 20. Cloudinary 25GB Storage: Register uploaded file metadata
+app.post('/api/storage/files', async (c) => {
+  try {
+    const body = await c.req.json();
+    const id = body.id || `asset_${Date.now()}`;
+    const fileName = body.name || body.fileName || 'file.pdf';
+    const cloudName = c.env.CLOUDINARY_CLOUD_NAME || 'pf66y0wq';
+    const fileUrl = body.url || body.fileUrl || `https://res.cloudinary.com/${cloudName}/image/upload/${id}`;
+    const fileSize = body.size || body.fileSize || '1.0 MB';
+    const fileType = body.type || body.fileType || 'pdf';
+    const publicId = body.publicId || id;
+    const uploadedBy = body.uploadedBy || 'User';
+    const courseId = body.courseId || 'course_padma_bit_sem5';
+
+    // 1. Record into Cloudflare D1 procollege_vault
+    if (c.env.procollege_vault) {
+      await c.env.procollege_vault.prepare(
+        'INSERT OR REPLACE INTO storage_assets (id, file_name, file_url, file_size, file_type, provider, cloud_name, public_id, uploaded_by, course_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);'
+      ).bind(id, fileName, fileUrl, fileSize, fileType, 'cloudinary', cloudName, publicId, uploadedBy, courseId).run();
+    }
+
+    // 2. Also register into Turso course_files so it appears in the active course workspace
+    const db = getDb(c);
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO course_files (id, course_id, college_id, name, category, size, type, uploaded_by, is_class_material, permission)
+            VALUES (?, ?, 'padmashree-demo', ?, 'Class Materials', ?, ?, ?, 1, 'read-only');`,
+      args: [id, courseId, fileName, fileSize, fileType, uploadedBy],
+    });
+
+    return c.json({
+      success: true,
+      asset: { id, fileName, fileUrl, fileSize, fileType, publicId, courseId }
+    }, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
