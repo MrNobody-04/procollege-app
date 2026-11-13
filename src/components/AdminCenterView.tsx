@@ -143,48 +143,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       if (data.success && Array.isArray(data.organizations)) {
         setOrganizations(data.organizations);
       } else {
-        setOrganizations([
-          {
-            id: 'padmashree-demo',
-            name: 'Padmashree College',
-            code: 'PDC',
-            status: 'active',
-            billingPlan: 'enterprise',
-            studentCount: 154,
-            facultyCount: 4,
-            contactEmail: 'dean@padmashree.edu.np',
-            adminName: 'Academic Dean',
-            createdAt: '2026-11-12'
-          },
-          {
-            id: 'col_procollege_network',
-            name: 'ProCollege University Network',
-            code: 'PCN',
-            status: 'active',
-            billingPlan: 'campus-pro',
-            studentCount: 88,
-            facultyCount: 2,
-            contactEmail: 'admin@procollege.edu',
-            adminName: 'Platform Administrator',
-            createdAt: '2026-11-12'
-          }
-        ]);
+        setOrganizations([]);
       }
     } catch {
-      setOrganizations([
-        {
-          id: 'padmashree-demo',
-          name: 'Padmashree College',
-          code: 'PDC',
-          status: 'active',
-          billingPlan: 'enterprise',
-          studentCount: 154,
-          facultyCount: 4,
-          contactEmail: 'dean@padmashree.edu.np',
-          adminName: 'Academic Dean',
-          createdAt: '2026-11-12'
-        }
-      ]);
+      setOrganizations([]);
     }
   };
 
@@ -663,7 +625,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           role: 'professor',
           avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
           department: deptName,
-          institutionName: currentUser?.institutionName || 'Padmashree College',
+          institutionName: currentUser?.institutionName || 'Academic Institution',
           license: 'ProCollege Verified for Faculty',
           status: 'available'
         };

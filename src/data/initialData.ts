@@ -1101,32 +1101,4 @@ export const INITIAL_NOTIFICATIONS: ActivityNotification[] = [
   }
 ];
 
-export const INITIAL_INSTITUTIONAL_REQUESTS: InstitutionalRequest[] = [
-  {
-    id: 'req_1',
-    institutionName: 'Stanford Engineering Institute',
-    department: 'Computer Science & AI',
-    contactName: 'Prof. Donald Knuth',
-    email: 'knuth@cs.stanford.edu',
-    phone: '+1 (650) 723-2300',
-    studentCount: 3200,
-    deploymentType: 'enterprise',
-    notes: 'Need 100% Canvas SIS synchronization and FERPA compliant storage.',
-    status: 'verified',
-    submittedAt: 'Nov 10, 2026',
-    assignedAdminId: 'ORG-ADMIN-01'
-  },
-  {
-    id: 'req_2',
-    institutionName: 'Cambridge University Faculty of Mathematics',
-    department: 'Applied Mathematics & Theoretical Physics',
-    contactName: 'Dr. Roger Penrose',
-    email: 'r.penrose@maths.cam.ac.uk',
-    phone: '+44 1223 337999',
-    studentCount: 1800,
-    deploymentType: 'campus-pro',
-    notes: 'Department pilot for graduate student lectures and code reviews.',
-    status: 'pending',
-    submittedAt: 'Nov 12, 2026'
-  }
-];
+export const INITIAL_INSTITUTIONAL_REQUESTS: InstitutionalRequest[] = [];

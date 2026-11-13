@@ -124,15 +124,15 @@ export const ChannelView: React.FC = () => {
     if (currentUser.role !== 'developer') {
       if (a.institutionName && activeInstitution && a.institutionName !== activeInstitution) return false;
     }
-    if (a.courseId !== selectedCourse.id) return false;
+    if (!selectedCourse || a.courseId !== selectedCourse.id) return false;
     const asgnChannelId = a.channelId || a.targetChannelId;
-    return asgnChannelId === selectedChannel.id;
+    return asgnChannelId === selectedChannel?.id;
   });
-  const currentCourseFiles = courseFiles.filter(f => f.courseId === selectedCourse.id);
+  const currentCourseFiles = courseFiles.filter(f => f.courseId === selectedCourse?.id);
 
   const handleCreatePost = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postContent.trim()) return;
+    if (!postContent.trim() || !selectedChannel?.id) return;
     addPost(
       selectedChannel.id,
       postTitle.trim(),
@@ -152,8 +152,8 @@ export const ChannelView: React.FC = () => {
 
     const isCM = uploadCategory === 'Class Materials';
     const res = uploadCourseFile({
-      courseId: selectedCourse.id,
-      channelId: selectedChannel.id,
+      courseId: selectedCourse?.id || '',
+      channelId: selectedChannel?.id || '',
       name: newFileName.trim(),
       category: isCM ? 'Class Materials' : 'Subject Files',
       size: selectedFileSize || '2.4 MB',
@@ -193,10 +193,10 @@ export const ChannelView: React.FC = () => {
     !isGeneralChannel && (
       currentUser.role === 'developer' ||
       currentUser.role === 'admin' ||
-      selectedChannel.subjectLecturerId === currentUser.id ||
-      (selectedChannel.subjectLecturerName && selectedChannel.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase())) ||
-      selectedCourse.instructor.id === currentUser.id ||
-      selectedCourse.coOwners?.some(co => co.id === currentUser.id)
+      selectedChannel?.subjectLecturerId === currentUser.id ||
+      (selectedChannel?.subjectLecturerName && selectedChannel.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase())) ||
+      selectedCourse?.instructor?.id === currentUser.id ||
+      selectedCourse?.coOwners?.some(co => co.id === currentUser.id)
     )
   );
 
@@ -217,20 +217,20 @@ export const ChannelView: React.FC = () => {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-sm sm:text-base text-zinc-900 truncate tracking-tight">
-                {selectedChannel.name}
+                {selectedChannel?.name || 'Channel'}
               </h1>
-              {selectedChannel.isGeneral ? (
+              {selectedChannel?.isGeneral ? (
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full shrink-0">
                   Noticeboard
                 </span>
-              ) : selectedChannel.subjectLecturerName ? (
+              ) : selectedChannel?.subjectLecturerName ? (
                 <span className="text-[10px] font-medium text-zinc-600 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-full truncate shrink-0">
                   {selectedChannel.subjectLecturerName}
                 </span>
               ) : null}
             </div>
             <p className="text-[11px] sm:text-xs text-zinc-500 truncate">
-              {selectedCourse.code} • {selectedCourse.name}
+              {selectedCourse?.code || ''} {selectedCourse?.name ? `• ${selectedCourse.name}` : ''}
             </p>
           </div>
         </div>
@@ -250,8 +250,8 @@ export const ChannelView: React.FC = () => {
           <button
             onClick={() =>
               startMeeting(
-                `${selectedCourse.code}: ${selectedChannel.name}`,
-                selectedCourse.code
+                `${selectedCourse?.code || 'Class'}: ${selectedChannel?.name || 'Room'}`,
+                selectedCourse?.code || ''
               )
             }
             className="flex items-center gap-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 px-2.5 sm:px-3 py-1.5 rounded text-xs font-medium border border-zinc-300 transition-colors"
@@ -526,7 +526,7 @@ export const ChannelView: React.FC = () => {
                       Assignments: {selectedChannel.name}
                     </h2>
                     <p className="text-xs text-zinc-500">
-                      {selectedCourse.code} • {selectedCourse.name} {selectedChannel.subjectLecturerName ? `• Lecturer: ${selectedChannel.subjectLecturerName}` : ''}
+                      {selectedCourse?.code || ''} • {selectedCourse?.name || ''} {selectedChannel?.subjectLecturerName ? `• Lecturer: ${selectedChannel.subjectLecturerName}` : ''}
                     </p>
                   </div>
 

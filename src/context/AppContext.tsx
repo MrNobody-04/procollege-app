@@ -284,7 +284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           institutionName:
             mappedRole === 'developer'
               ? 'ProCollege Platform Operations'
-              : u.institution_name || u.institutionName || 'Padmashree College',
+              : u.institution_name || u.institutionName || 'Academic Institution',
           avatar:
             u.avatar_url ||
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
@@ -302,7 +302,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Hydrate workspace state from Turso database via multi-tenant bootstrap
   const loadWorkspaceBootstrap = useCallback(async (instName?: string, userRole?: string) => {
     try {
-      const inst = instName || currentUser.institutionName || 'Padmashree College';
+      const isDev = (userRole || currentUser.role) === 'developer' || (userRole || currentUser.role) === 'platform_admin';
+      const inst = instName || currentUser.institutionName || (isDev ? 'all' : 'Public English School');
       const role = userRole || currentUser.role;
       const token = localStorage.getItem('procollege_token') || '';
       const res = await fetch(`/api/workspace/bootstrap?institution=${encodeURIComponent(inst)}&role=${encodeURIComponent(role)}`, {
@@ -550,18 +551,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return c;
       })
     );
-    if (selectedCourse.id === courseId) {
-      setSelectedCourse(prev => ({ ...prev, isActivated: true }));
+    if (selectedCourse?.id === courseId) {
+      setSelectedCourse(prev => prev ? ({ ...prev, isActivated: true }) : prev);
     }
 
     // Broadcast automated notification to students
     const newNotif: ActivityNotification = {
       id: `notif_${Date.now()}`,
       type: 'announcement',
-      title: `${selectedCourse.code} is now Activated!`,
+      title: `${selectedCourse?.code || 'Course'} is now Activated!`,
       detail: `${currentUser.name} has unlocked the Class Team for student access. Course materials are now viewable.`,
       timestamp: 'Just now',
-      courseCode: selectedCourse.code,
+      courseCode: selectedCourse?.code || '',
       isRead: false,
       author: currentUser
     };
@@ -570,7 +571,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Phase 1: Provision Class Team
   const createCourse = (newCourse: CourseTeam) => {
-    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Padmashree College');
+    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
     const courseWithInst: CourseTeam = {
       ...newCourse,
       institutionName: newCourse.institutionName || inst
@@ -593,11 +594,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteCourse = (courseId: string) => {
     setCourses(prev => prev.filter(c => c.id !== courseId));
-    if (selectedCourse.id === courseId) {
+    if (selectedCourse?.id === courseId) {
       const remaining = courses.filter(c => c.id !== courseId);
       if (remaining.length > 0) {
         setSelectedCourse(remaining[0]);
-        setSelectedChannel(remaining[0].channels[0]);
+        if (remaining[0].channels && remaining[0].channels.length > 0) {
+          setSelectedChannel(remaining[0].channels[0]);
+        }
       }
     }
     if (!isDemoMode) {
@@ -625,13 +628,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    if (selectedCourse.id === courseId) {
+    if (selectedCourse?.id === courseId) {
       setSelectedCourse(prev => {
+        if (!prev) return prev;
         const updated = prev.channels.filter(ch => ch.id !== channelId || ch.isGeneral);
         return { ...prev, channels: updated };
       });
-      if (selectedChannel.id === channelId) {
-        const fallback = selectedCourse.channels.find(ch => ch.id !== channelId) || selectedCourse.channels[0];
+      if (selectedChannel?.id === channelId) {
+        const fallback = selectedCourse?.channels?.find(ch => ch.id !== channelId) || selectedCourse?.channels?.[0];
         if (fallback) setSelectedChannel(fallback);
       }
     }
@@ -679,11 +683,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    if (selectedCourse.id === courseId) {
-      setSelectedCourse(prev => ({
+    if (selectedCourse?.id === courseId) {
+      setSelectedCourse(prev => prev ? ({
         ...prev,
         channels: [...prev.channels, newChan]
-      }));
+      }) : prev);
     }
 
     setPosts(prev => ({ ...prev, [newChanId]: [] }));
@@ -726,8 +730,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    if (selectedCourse.id === courseId) {
+    if (selectedCourse?.id === courseId) {
       setSelectedCourse(prev => {
+        if (!prev) return prev;
         const currentEnrolled = prev.enrolledStudents || [];
         const currentIds = new Set(currentEnrolled.map(s => s.id));
         const newlyAdded = studentsToEnroll.filter(s => !currentIds.has(s.id));
@@ -944,17 +949,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Broadcast automated notification to students when administrator/lecturer publishes
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer' || currentUser.role === 'admin') {
-      const channelObj = selectedCourse.channels.find(c => c.id === channelId);
+      const channelObj = selectedCourse?.channels?.find(c => c.id === channelId);
+      const code = selectedCourse?.code || 'Course';
       const notifTitle = isAnnouncement
-        ? `Class Announcement: ${selectedCourse.code}`
-        : `New Post in ${selectedCourse.code} • ${channelObj?.name || 'Channel'}`;
+        ? `Class Announcement: ${code}`
+        : `New Post in ${code} • ${channelObj?.name || 'Channel'}`;
       const newNotif: ActivityNotification = {
         id: `notif_${Date.now()}`,
         type: isAnnouncement ? 'announcement' : 'mention',
         title: notifTitle,
         detail: title ? `"${title}": ${content.substring(0, 90)}` : content.substring(0, 100),
         timestamp: 'Just now',
-        courseCode: selectedCourse.code,
+        courseCode: selectedCourse?.code || '',
         channelId,
         isRead: false,
         author: currentUser
@@ -967,8 +973,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            college_id: 'padmashree-demo',
-            title: title || `${selectedCourse.code} Announcement`,
+            college_id: (selectedCourse as any)?.collegeId || (selectedCourse as any)?.institutionId || 'campus',
+            institution_name: currentUser.institutionName || selectedCourse?.institutionName || 'Academic Institution',
+            title: title || `${selectedCourse?.code || 'Campus'} Announcement`,
             content: content,
             priority: isAnnouncement ? 'important' : 'normal',
             author_id: currentUser.id,
@@ -1527,7 +1534,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         headers: {
           'Content-Type': 'application/json',
           'x-user-role': currentUser.role,
-          'x-institution-name': currentUser.institutionName || 'Padmashree College',
+          'x-institution-name': currentUser.institutionName || 'Academic Institution',
         },
         body: JSON.stringify({
           id: newFile.id,
@@ -1582,7 +1589,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'DELETE',
         headers: {
           'x-user-role': currentUser.role,
-          'x-institution-name': currentUser.institutionName || 'Padmashree College',
+          'x-institution-name': currentUser.institutionName || 'Academic Institution',
         },
       }).catch(err => console.warn('Turso file deletion sync failed:', err));
     }
@@ -1598,8 +1605,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const startMeeting = (title?: string, courseCode?: string) => {
     setMeeting({
       isOpen: true,
-      title: title || `${selectedCourse.code}: Virtual Classroom`,
-      courseCode: courseCode || selectedCourse.code,
+      title: title || `${selectedCourse?.code || 'ProCollege'}: Virtual Classroom`,
+      courseCode: courseCode || selectedCourse?.code || 'Class',
       isMuted: false,
       isCameraOn: true,
       isScreenSharing: false,
@@ -1774,7 +1781,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createFaculty = (data: Omit<FacultyDepartment, 'id'>) => {
-    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Padmashree College');
+    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
     const newFac: FacultyDepartment = {
       ...data,
       institutionName: data.institutionName || inst,
@@ -1895,9 +1902,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           set.add(u.institutionName);
         }
       });
-      // Provisioned university baselines
-      set.add('Stanford Engineering Institute');
-      set.add('Cambridge University Faculty of Mathematics');
       return Array.from(set);
     }
 
@@ -1994,14 +1998,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Keep selectedCourse in sync when switching institution or tenant
   useEffect(() => {
     if (tenantCourses.length > 0) {
-      if (!tenantCourses.some((c: CourseTeam) => c.id === selectedCourse.id)) {
+      if (!selectedCourse || !tenantCourses.some((c: CourseTeam) => c.id === selectedCourse.id)) {
         setSelectedCourse(tenantCourses[0]);
-        if (tenantCourses[0].channels.length > 0) {
+        if (tenantCourses[0].channels && tenantCourses[0].channels.length > 0) {
           setSelectedChannel(tenantCourses[0].channels[0]);
         }
       }
     }
-  }, [tenantCourses, selectedCourse.id]);
+  }, [tenantCourses, selectedCourse?.id]);
 
   return (
     <AppContext.Provider

@@ -380,21 +380,53 @@ async function init() {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_assignments_inst ON assignments(institution_name);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_sub_asgn_stu ON assignment_submissions(assignment_id, student_id);`);
 
-    console.log('\n🌱 3. Seeding Live Demo Multi-Tenant Data...');
+    // Always ensure platform_root exists for developer account
+    await db.execute(`
+      INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan, created_at)
+      VALUES ('platform_root', 'ProCollege Platform Operations', 'PLATFORM', 'active', 'enterprise', datetime('now'));
+    `);
+    await db.execute(`
+      INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, created_at)
+      VALUES ('platform_root', 'ProCollege Platform Operations', 'PLATFORM', 'active', 'enterprise', datetime('now'));
+    `);
 
-    // --- TENANT 1: Padmashree College ('padmashree-demo') ---
-    const collegeId = 'padmashree-demo';
-    const instPadmashree = 'Padmashree College';
+    // Master Platform Developer / Root Creator (Loaded securely from environment, never committed to git)
+    const devEmail = process.env.DEVELOPER_EMAIL;
+    const devPass = process.env.DEVELOPER_PASSWORD;
 
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan) VALUES (?, ?, ?, 'active', 'enterprise');`,
-      args: [collegeId, instPadmashree, 'PDC'],
-    });
+    if (devEmail && devPass) {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO users (id, college_id, institution_id, section_id, name, email, role, password, password_hash, avatar_url, institution_name, department)
+              VALUES (?, 'platform_root', 'platform_root', NULL, ?, ?, 'developer', ?, ?, ?, 'ProCollege Platform Operations', 'Platform Architecture & Operations');`,
+        args: [
+          'user_dev_root',
+          'Platform Creator',
+          devEmail,
+          devPass,
+          devPass,
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+        ],
+      });
+      console.log('   ✔ Seeded Developer Administrator (Platform Creator)');
+    }
 
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email) VALUES (?, ?, ?, 'active', 'enterprise', 'dean@padmashree.edu.np');`,
-      args: [collegeId, instPadmashree, 'PDC'],
-    });
+    const shouldSeedDemo = process.argv.includes('--seed-demo');
+    if (shouldSeedDemo) {
+      console.log('\n🌱 3. Seeding Live Demo Multi-Tenant Data (--seed-demo passed)...');
+
+      // --- TENANT 1: Padmashree College ('padmashree-demo') ---
+      const collegeId = 'padmashree-demo';
+      const instPadmashree = 'Padmashree College';
+
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan) VALUES (?, ?, ?, 'active', 'enterprise');`,
+        args: [collegeId, instPadmashree, 'PDC'],
+      });
+
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email) VALUES (?, ?, ?, 'active', 'enterprise', 'dean@padmashree.edu.np');`,
+        args: [collegeId, instPadmashree, 'PDC'],
+      });
 
     const deptId = 'dept-bit';
     await db.execute({
@@ -462,31 +494,6 @@ async function init() {
         'Department of BIT',
       ],
     });
-
-    // Master Platform Developer / Root Creator (Loaded securely from environment, never committed to git)
-    const devEmail = process.env.DEVELOPER_EMAIL;
-    const devPass = process.env.DEVELOPER_PASSWORD;
-
-    if (devEmail && devPass) {
-      await db.execute({
-        sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url, institution_name, department)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-        args: [
-          'user_dev_root',
-          collegeId,
-          sectionId,
-          'Platform Creator',
-          devEmail,
-          'developer',
-          devPass,
-          devPass,
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-          'ProCollege Platform Operations',
-          'Platform Architecture & Operations',
-        ],
-      });
-      console.log('   ✔ Seeded Developer Administrator from secure environment');
-    }
 
     // Faculties for Padmashree
     await db.execute({
@@ -843,6 +850,9 @@ async function init() {
       });
     }
     console.log('   ✔ Seeded ProCollege University Network fixtures');
+    } else {
+      console.log('\n⏩ Skipping demo tenant seeding (clean production mode). Pass --seed-demo to seed demo data.');
+    }
 
     console.log('\n📊 4. Verifying Live Database Content on Turso...');
     const tablesRes = await db.execute(`

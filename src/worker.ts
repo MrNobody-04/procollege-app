@@ -448,8 +448,8 @@ app.post('/api/auth/login', async (c) => {
       });
     }
 
-    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || 'padmashree-demo');
-    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || 'Padmashree College');
+    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || (isDeveloper ? 'platform_root' : 'col_client'));
+    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || (isDeveloper ? 'ProCollege Platform Operations' : 'Academic Institution'));
 
     // Generate lightweight edge token embedding institution_id and role
     const tokenPayload = {
@@ -540,8 +540,9 @@ app.post('/api/auth/verify-otp', async (c) => {
       args: [userRow.id],
     });
 
-    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || 'padmashree-demo');
-    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || 'Padmashree College');
+    const isDeveloper = userRow.role === 'developer' || userRow.role === 'platform_admin';
+    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || (isDeveloper ? 'platform_root' : 'col_client'));
+    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || (isDeveloper ? 'ProCollege Platform Operations' : 'Academic Institution'));
 
     // Generate authenticated JWT edge token
     const tokenPayload = {
@@ -637,12 +638,22 @@ app.get('/api/platform/institutions', async (c) => {
         COALESCE(i.created_at, c.created_at, datetime('now')) as created_at
       FROM colleges c
       LEFT JOIN institutions i ON c.id = i.id
+      WHERE COALESCE(i.id, c.id) != 'platform_root'
+        AND COALESCE(i.id, c.id) NOT LIKE '%demo%'
+        AND COALESCE(i.id, c.id) != 'col_procollege_network'
+        AND COALESCE(i.name, c.name) NOT LIKE '%demo%'
+        AND COALESCE(i.name, c.name) NOT LIKE '%Padmashree%'
       UNION
       SELECT 
         i.id, i.name, i.code, i.status, i.billing_plan, i.contact_email, i.created_at
       FROM institutions i
       LEFT JOIN colleges c ON i.id = c.id
-      WHERE c.id IS NULL;
+      WHERE c.id IS NULL
+        AND i.id != 'platform_root'
+        AND i.id NOT LIKE '%demo%'
+        AND i.id != 'col_procollege_network'
+        AND i.name NOT LIKE '%demo%'
+        AND i.name NOT LIKE '%Padmashree%';
     `);
 
     // Student counts per institution
@@ -1400,9 +1411,9 @@ app.get('/api/workspace/bootstrap', async (c) => {
     const callerInstId = caller?.institution_id || caller?.college_id;
     const callerInstName = caller?.institution_name;
 
-    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || callerInstName || 'Padmashree College';
     const roleParam = c.req.query('role') || c.req.header('x-user-role') || caller?.role || '';
     const isDeveloper = roleParam === 'developer' || roleParam === 'platform_admin';
+    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || callerInstName || (isDeveloper ? 'all' : 'Public English School');
 
     const db = getDb(c);
     let collegeId = c.req.query('collegeId') || c.req.header('x-college-id') || callerInstId || '';
@@ -1415,7 +1426,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         if (colLookup.rows.length > 0 && colLookup.rows[0].id) {
           collegeId = String(colLookup.rows[0].id);
         } else {
-          collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
+          collegeId = '';
         }
       }
     }
@@ -1478,13 +1489,13 @@ app.get('/api/workspace/bootstrap', async (c) => {
 
     const allCourses = coursesRes.rows.map(cRow => {
       let instructor = {
-        id: String(cRow.instructor_id || 'usr-teacher-01'),
-        name: String(cRow.instructor_name || 'Er. Ramesh Sharma'),
+        id: String(cRow.instructor_id || 'usr_lead_prof'),
+        name: String(cRow.instructor_name || 'Lead Instructor'),
         role: 'professor',
-        email: 'teacher@padmashree.edu.np',
+        email: 'faculty@campus.edu',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
         license: 'ProCollege Verified for Faculty',
-        department: String(cRow.department || 'Department of BIT'),
+        department: String(cRow.department || 'Academic Department'),
         institutionName: String(cRow.institution_name || institutionParam),
         status: 'available' as const,
       };

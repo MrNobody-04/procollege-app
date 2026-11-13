@@ -176,7 +176,7 @@ export const TeamsSidebar: React.FC = () => {
         ) : (
           visibleCourses.map(course => {
           const isExpanded = expandedCourses[course.id] ?? true;
-          const isCourseActive = selectedCourse.id === course.id;
+          const isCourseActive = selectedCourse?.id === course.id;
 
           return (
             <div key={course.id} className="rounded-lg transition-colors">
@@ -239,7 +239,7 @@ export const TeamsSidebar: React.FC = () => {
                       <button
                         onClick={() => handleSelectChannel(course, announcementChannel)}
                         className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs transition-colors ${
-                          selectedCourse.id === course.id && selectedChannel.id === announcementChannel.id
+                          selectedCourse?.id === course.id && selectedChannel?.id === announcementChannel.id
                             ? 'bg-white text-[#5b5fc7] font-bold shadow-xs border border-zinc-200/80'
                             : 'text-zinc-800 hover:bg-zinc-200/60 font-semibold'
                         }`}
@@ -269,7 +269,7 @@ export const TeamsSidebar: React.FC = () => {
                         <div className="space-y-0.5 mt-0.5">
                           {subjectChannels.map(channel => {
                             const isChannelActive =
-                              selectedCourse.id === course.id && selectedChannel.id === channel.id;
+                              selectedCourse?.id === course.id && selectedChannel?.id === channel.id;
 
                             return (
                               <button
