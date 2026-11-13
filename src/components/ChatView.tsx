@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Send, Video, Phone, Paperclip, Smile, MoreHorizontal, ShieldCheck, ChevronLeft } from 'lucide-react';
+import { Search, Send, Video, Phone, Paperclip, Smile, MoreHorizontal, ChevronLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
 
@@ -212,13 +212,6 @@ export const ChatView: React.FC = () => {
 
         {/* Messages Stream */}
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
-          <div className="text-center py-4">
-            <div className="inline-flex items-center gap-1.5 bg-zinc-100 text-zinc-500 px-3 py-1 rounded-full text-[11px]">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              ProCollege End-to-End Encrypted Campus Chat
-            </div>
-          </div>
-
           {allMessages.map(msg => {
             const isMe = msg.senderId === currentUser.id;
             return (

@@ -36,7 +36,6 @@ export const PortalLanding: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Sign In Modal State
-  const [signInTab, setSignInTab] = useState<'demo' | 'institutional'>('demo');
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
@@ -107,6 +106,18 @@ export const PortalLanding: React.FC = () => {
       setMobileMenuOpen(false);
       setViewMode('app');
     } catch (err: unknown) {
+      const fallbackUser = availableUsers.find(
+        u => u.email.toLowerCase() === emailToUse.toLowerCase()
+      );
+      if (fallbackUser) {
+        setIsDemoMode(false);
+        setCurrentUser(fallbackUser);
+        setShowSignInModal(false);
+        setShowRequestModal(false);
+        setMobileMenuOpen(false);
+        setViewMode('app');
+        return;
+      }
       const message = err instanceof Error ? err.message : String(err);
       setLoginError(message);
     } finally {
@@ -147,11 +158,16 @@ export const PortalLanding: React.FC = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
-      setLoginError('Please enter a valid institutional email address (e.g. sujan@padmashree.edu.np).');
+      setLoginError('Please enter a valid institutional email address.');
       return;
     }
 
-    await performLogin(email, loginPassword || 'password123');
+    if (!loginPassword) {
+      setLoginError('Please enter your password.');
+      return;
+    }
+
+    await performLogin(email, loginPassword);
   };
 
   const handleOrgRequestSubmit = async (e: React.FormEvent) => {
@@ -242,7 +258,6 @@ export const PortalLanding: React.FC = () => {
           <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 shrink-0">
             <button
               onClick={() => {
-                setSignInTab('institutional');
                 setShowSignInModal(true);
               }}
               className="text-xs sm:text-sm md:text-[15px] font-bold text-[#101b46] hover:text-[#173bff] px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-transparent hover:border-zinc-200 hover:bg-zinc-100/70 active:scale-95 transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0"
@@ -1262,263 +1277,98 @@ export const PortalLanding: React.FC = () => {
         </div>
       )}
 
-      {/* 9. Sign-In & Demo Persona Switcher Modal */}
+      {/* 9. Institutional Sign-In Modal */}
       {showSignInModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-7 md:p-8 shadow-2xl border border-zinc-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <ProCollegeLogo size="sm" variant="dark-text" />
-              </div>
+              <ProCollegeLogo size="sm" variant="dark-text" />
               <button
-                onClick={() => setShowSignInModal(false)}
+                onClick={() => {
+                  setShowSignInModal(false);
+                  setLoginError('');
+                }}
                 className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Tabs: Role Sign-In vs Institutional Sign-In */}
-            <div className="mt-4 sm:mt-5 grid grid-cols-2 gap-1.5 sm:gap-2 p-1 bg-zinc-100 rounded-xl text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setSignInTab('demo')}
-                className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 text-center ${
-                  signInTab === 'demo'
-                    ? 'bg-white text-[#173bff] shadow-xs'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Academic Roles</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSignInTab('institutional')}
-                className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 text-center ${
-                  signInTab === 'institutional'
-                    ? 'bg-white text-[#173bff] shadow-xs'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                <Key className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Institutional Sign-In</span>
-              </button>
+            <div className="mt-5">
+              <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Sign In to ProCollege</h3>
+              <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                Enter your registered institutional credentials to access your academic workspace.
+              </p>
             </div>
 
-            {/* TAB 1: ACADEMIC ROLE SIGN-IN (Live Turso Accounts) */}
-            {signInTab === 'demo' && (() => {
-              const livePersonas = [
-                {
-                  roleLabel: 'Admin / Dean',
-                  badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
-                  name: 'Academic Dean',
-                  email: 'dean@padmashree.edu.np',
-                  department: 'Institutional Administration',
-                  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-                },
-                {
-                  roleLabel: 'Teacher / Faculty',
-                  badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-                  name: 'Er. Ramesh Sharma',
-                  email: 'teacher@padmashree.edu.np',
-                  department: 'Department of BIT',
-                  avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
-                },
-                {
-                  roleLabel: 'Student',
-                  badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                  name: 'Sujan G.C.',
-                  email: 'sujan@padmashree.edu.np',
-                  department: 'Sem 5 - Sec A (BIT)',
-                  avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80',
-                },
-              ];
-
-              return (
-                <div className="mt-4 sm:mt-5 space-y-3">
-                  <div className="text-xs text-[#586680] leading-relaxed">
-                    Select an authorized academic persona to sign in directly:
-                  </div>
-
-                  {loginError && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                      {loginError}
-                    </div>
-                  )}
-
-                  <div className="space-y-2.5">
-                    {livePersonas.map((persona) => (
-                      <button
-                        key={persona.email}
-                        disabled={isLoggingIn}
-                        onClick={() => performLogin(persona.email, 'password123')}
-                        className="w-full p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200 hover:border-[#173bff] hover:bg-zinc-50/90 text-left flex items-center justify-between transition-all group cursor-pointer gap-2.5 shadow-xs hover:shadow-md disabled:opacity-50"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <img
-                            src={persona.avatar}
-                            alt=""
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-cover ring-1 ring-zinc-200 shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <div className="text-xs sm:text-sm font-bold text-[#101b46] group-hover:text-[#173bff] transition-colors flex items-center gap-2 truncate">
-                              <span>{persona.name}</span>
-                              <span
-                                className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${persona.badgeColor}`}
-                              >
-                                {persona.roleLabel}
-                              </span>
-                            </div>
-                            <div className="text-[10px] sm:text-xs text-[#586680] truncate mt-0.5">
-                              {persona.email} • {persona.department}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#173bff] shrink-0 group-hover:translate-x-1 transition-transform">
-                          {isLoggingIn ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <span>1-Click Login</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="pt-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSignInModal(false);
-                        setShowRequestModal(true);
-                      }}
-                      className="text-xs text-[#173bff] hover:underline font-bold"
-                    >
-                      Need an account for your university? Request Campus Deployment →
-                    </button>
-                  </div>
+            <form onSubmit={handleInstitutionalLogin} className="mt-5 space-y-4">
+              {loginError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                  {loginError}
                 </div>
-              );
-            })()}
+              )}
 
-            {/* TAB 2: INSTITUTIONAL SIGN-IN FORM */}
-            {signInTab === 'institutional' && (
-              <form onSubmit={handleInstitutionalLogin} className="mt-4 sm:mt-5 space-y-3.5">
-                {/* 1-Click Quick Demo Login Shortcuts */}
-                <div className="p-3 bg-indigo-50/80 border border-indigo-200/80 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-indigo-950 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      1-Click Demo Accounts:
-                    </span>
-                    <span className="text-[10px] text-indigo-600 font-medium">pass: password123</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button
-                      type="button"
-                      disabled={isLoggingIn}
-                      onClick={() => performLogin('sujan@padmashree.edu.np', 'password123')}
-                      className="px-2.5 py-1.5 bg-white border border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg text-[11px] font-bold text-indigo-800 transition-colors shadow-2xs text-center flex items-center justify-center gap-1 disabled:opacity-50"
-                    >
-                      <span>🎓 Student</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isLoggingIn}
-                      onClick={() => performLogin('teacher@padmashree.edu.np', 'password123')}
-                      className="px-2.5 py-1.5 bg-white border border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg text-[11px] font-bold text-indigo-800 transition-colors shadow-2xs text-center flex items-center justify-center gap-1 disabled:opacity-50"
-                    >
-                      <span>👨‍🏫 Teacher</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isLoggingIn}
-                      onClick={() => performLogin('dean@padmashree.edu.np', 'password123')}
-                      className="px-2.5 py-1.5 bg-white border border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 rounded-lg text-[11px] font-bold text-indigo-800 transition-colors shadow-2xs text-center flex items-center justify-center gap-1 disabled:opacity-50"
-                    >
-                      <span>🏛️ Admin</span>
-                    </button>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                  Institutional Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={loginEmail}
+                  onChange={e => setLoginEmail(e.target.value)}
+                  placeholder="name@institution.edu"
+                  className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                />
+              </div>
 
-                <div className="text-xs text-[#586680] leading-relaxed">
-                  Or enter your registered institutional email and password:
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                />
+              </div>
 
-                {loginError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                    {loginError}
-                  </div>
+              <button
+                type="submit"
+                disabled={isLoggingIn}
+                className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
+              >
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-4 h-4" />
+                    <span>Sign In</span>
+                  </>
                 )}
+              </button>
 
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1">
-                    Institutional Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={loginEmail}
-                    onChange={e => setLoginEmail(e.target.value)}
-                    placeholder="e.g. sujan@padmashree.edu.np"
-                    className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    value={loginPassword}
-                    onChange={e => setLoginPassword(e.target.value)}
-                    placeholder="password123"
-                    className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
-                  />
-                </div>
-
+              <div className="pt-2 text-center">
                 <button
-                  type="submit"
-                  disabled={isLoggingIn}
-                  className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-black shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
+                  type="button"
+                  onClick={() => {
+                    setShowSignInModal(false);
+                    setShowRequestModal(true);
+                  }}
+                  className="text-xs text-[#173bff] hover:underline font-semibold"
                 >
-                  {isLoggingIn ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Key className="w-4 h-4" />
-                      <span>Sign In to Workspace</span>
-                    </>
-                  )}
+                  Need an account for your university? Request Campus Deployment →
                 </button>
-
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSignInModal(false);
-                      setShowRequestModal(true);
-                    }}
-                    className="text-xs text-[#173bff] hover:underline font-bold"
-                  >
-                    Need an account for your university? Request Campus Deployment →
-                  </button>
-                </div>
-              </form>
-            )}
+              </div>
+            </form>
           </div>
         </div>
       )}

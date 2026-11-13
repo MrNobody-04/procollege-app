@@ -185,9 +185,11 @@ export interface Assignment {
   instructions: string;
   points: number;
   targetChannelId?: string; // Routing: General vs specific subject channel
-  referenceMaterialMode: 'students-cant-edit' | 'students-edit-own-copy'; // Permission setting beside attached file
+  referenceMaterialMode?: 'students-cant-edit' | 'students-edit-own-copy'; // Permission setting beside attached file
   referenceFiles?: Attachment[];
+  publishedAt?: string; // Auto-selected timestamp when published
   scheduleDate?: string; // Schedule to assign in future
+  isScheduled?: boolean;
   dueAt: string; // Mandatory Due Date & Time
   dueTimestamp?: number; // Epoch timestamp for deadline checking
   closeAt?: string; // Close Date & Time (Hard Cutoff)

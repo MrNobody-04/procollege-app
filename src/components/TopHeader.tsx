@@ -12,8 +12,7 @@ import {
   Check,
   ChevronRight,
   UserCheck,
-  Shield,
-  ChevronDown
+  Shield
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -28,7 +27,6 @@ export const TopHeader: React.FC = () => {
     searchQuery,
     setSearchQuery,
     selectedCourse,
-    activeTab,
     setActiveTab,
     setViewMode,
     updateUserPresence,
@@ -42,86 +40,19 @@ export const TopHeader: React.FC = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showSwitchAccounts, setShowSwitchAccounts] = useState(false);
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-
-  const DEMO_PERSONAS = [
-    {
-      id: 'usr-student-01',
-      name: 'Sujan G.C.',
-      email: 'sujan@padmashree.edu.np',
-      role: 'student' as const,
-      badge: '🎓 Student • Sem 5 - Sec A',
-      department: 'Department of BIT',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-    },
-    {
-      id: 'usr-teacher-01',
-      name: 'Er. Ramesh Sharma',
-      email: 'teacher@padmashree.edu.np',
-      role: 'professor' as const,
-      badge: '👨‍🏫 Teacher • Dept of BIT',
-      department: 'Department of BIT',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
-    },
-    {
-      id: 'usr-admin-01',
-      name: 'Academic Dean',
-      email: 'dean@padmashree.edu.np',
-      role: 'admin' as const,
-      badge: '🏛️ Academic Dean • Admin',
-      department: 'Administration',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
-    },
-  ];
 
   const currentBadge = useMemo(() => {
-    if (currentUser.role === 'admin') return '🏛️ Academic Dean • Admin';
+    if (currentUser.role === 'admin') return 'Academic Dean • Admin';
     if (
       currentUser.role === 'professor' ||
       currentUser.role === 'lecturer' ||
       (currentUser as unknown as { role: string }).role === 'teacher'
     ) {
-      return '👨‍🏫 Teacher • Dept of BIT';
+      return 'Faculty Lecturer';
     }
-    if (currentUser.role === 'developer') return '⚡ Developer • Root';
-    return '🎓 Student • Sem 5 - Sec A';
+    if (currentUser.role === 'developer') return 'Platform Admin';
+    return 'Enrolled Student';
   }, [currentUser.role]);
-
-  const handleSwitchPersona = (p: (typeof DEMO_PERSONAS)[0]) => {
-    const newUser: typeof currentUser = {
-      id: p.id,
-      name: p.name,
-      email: p.email,
-      role: p.role,
-      license:
-        p.role === 'student'
-          ? 'Microsoft 365 A5 for Students'
-          : 'Microsoft 365 A5 for Faculty',
-      department: p.department,
-      institutionName: 'Padmashree College',
-      avatar: p.avatar,
-      status: 'available',
-    };
-
-    localStorage.setItem(
-      'procollege_user',
-      JSON.stringify({
-        id: p.id,
-        email: p.email,
-        name: p.name,
-        full_name: p.name,
-        role: p.role === 'professor' ? 'teacher' : p.role,
-        college_id: 'padmashree-demo',
-        avatar_url: p.avatar,
-      })
-    );
-
-    setCurrentUser(newUser);
-    setShowRoleDropdown(false);
-    if (p.role === 'student' && activeTab === 'admin') {
-      setActiveTab('teams');
-    }
-  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -343,55 +274,9 @@ export const TopHeader: React.FC = () => {
 
       {/* Actions: Meet Now & Clean User Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Dynamic Role Badge & 1-Click Demo Switcher */}
-        <div className="relative">
-          <button
-            onClick={() => setShowRoleDropdown(!showRoleDropdown)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700 transition-all cursor-pointer shadow-xs"
-            title="Click to Switch Demo Persona (Student, Teacher, Admin)"
-          >
-            <span>{currentBadge}</span>
-            <ChevronDown className="w-3 h-3 text-zinc-400" />
-          </button>
-
-          {showRoleDropdown && (
-            <div
-              className="absolute right-0 top-10 w-72 bg-white text-zinc-900 rounded-xl shadow-2xl border border-zinc-200 p-3 z-50 animate-in fade-in select-none text-xs"
-              onMouseLeave={() => setShowRoleDropdown(false)}
-            >
-              <div className="pb-2 mb-2 border-b border-zinc-100 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide">
-                  Switch Demo Persona
-                </span>
-                <span className="text-[10px] text-[#5b5fc7] font-semibold">1-Click Live</span>
-              </div>
-              <div className="space-y-1.5">
-                {DEMO_PERSONAS.map(p => {
-                  const isSelected = currentUser.email.toLowerCase() === p.email.toLowerCase();
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => handleSwitchPersona(p)}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-50 border border-indigo-200 shadow-2xs font-bold text-indigo-950'
-                          : 'hover:bg-zinc-100 text-zinc-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img src={p.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-                        <div className="min-w-0">
-                          <p className="font-bold text-xs truncate">{p.name}</p>
-                          <p className="text-[10px] text-zinc-500 truncate">{p.badge}</p>
-                        </div>
-                      </div>
-                      {isSelected && <Check className="w-4 h-4 text-[#5b5fc7] shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        {/* Institutional Role Badge */}
+        <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700/70 shadow-xs">
+          <span>{currentBadge}</span>
         </div>
 
         <button

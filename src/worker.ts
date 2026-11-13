@@ -461,45 +461,450 @@ app.post('/api/notices', async (c) => {
   }
 });
 
-// 6. Get assignments for a college
-app.get('/api/assignments/:collegeId', async (c) => {
-  const collegeId = c.req.param('collegeId');
+// --- Multi-Tenant SQL Isolation & Bootstrap ---
+
+// 6. Bootstrap workspace data for a logged-in user's institution
+app.get('/api/workspace/bootstrap', async (c) => {
   try {
+    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || 'Padmashree College';
+    const roleParam = c.req.query('role') || c.req.header('x-user-role') || '';
+    const isDeveloper = roleParam === 'developer';
+
     const db = getDb(c);
-    const result = await db.execute({
-      sql: `SELECT id, college_id, section_id, title, description, due_at, max_points, created_by, created_at
-            FROM assignments
-            WHERE college_id = ?
-            ORDER BY created_at DESC;`,
-      args: [collegeId],
+    const collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
+
+    let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes;
+
+    if (isDeveloper && institutionParam === 'all') {
+      facultiesRes = await db.execute('SELECT * FROM faculties ORDER BY name ASC;');
+      coursesRes = await db.execute('SELECT * FROM courses ORDER BY code ASC;');
+      channelsRes = await db.execute('SELECT * FROM channels ORDER BY name ASC;');
+      assignmentsRes = await db.execute('SELECT * FROM assignments ORDER BY created_at DESC;');
+      submissionsRes = await db.execute('SELECT * FROM assignment_submissions;');
+      noticesRes = await db.execute('SELECT * FROM notices ORDER BY created_at DESC;');
+      usersRes = await db.execute('SELECT * FROM users ORDER BY name ASC;');
+    } else {
+      facultiesRes = await db.execute({
+        sql: 'SELECT * FROM faculties WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
+        args: [institutionParam, collegeId],
+      });
+      coursesRes = await db.execute({
+        sql: 'SELECT * FROM courses WHERE institution_name = ? OR college_id = ? ORDER BY code ASC;',
+        args: [institutionParam, collegeId],
+      });
+      channelsRes = await db.execute({
+        sql: 'SELECT * FROM channels WHERE college_id = ? ORDER BY name ASC;',
+        args: [collegeId],
+      });
+      assignmentsRes = await db.execute({
+        sql: 'SELECT * FROM assignments WHERE institution_name = ? OR college_id = ? ORDER BY created_at DESC;',
+        args: [institutionParam, collegeId],
+      });
+      submissionsRes = await db.execute('SELECT * FROM assignment_submissions;');
+      noticesRes = await db.execute({
+        sql: 'SELECT * FROM notices WHERE institution_name = ? OR college_id = ? ORDER BY created_at DESC;',
+        args: [institutionParam, collegeId],
+      });
+      usersRes = await db.execute({
+        sql: 'SELECT * FROM users WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
+        args: [institutionParam, collegeId],
+      });
+    }
+
+    // Map channels to courses
+    const allChannels = channelsRes.rows.map(ch => ({
+      id: String(ch.id),
+      courseId: ch.course_id ? String(ch.course_id) : '',
+      name: String(ch.name),
+      description: String(ch.description || ''),
+      isGeneral: Boolean(ch.is_general || ch.name === 'Announcements'),
+      unreadCount: Number(ch.unread_count || 0),
+      studentFilePermission: (ch.student_file_permission || 'read-only') as 'read-only' | 'can-edit',
+      subjectLecturerName: ch.subject_lecturer_name ? String(ch.subject_lecturer_name) : undefined,
+      subjectLecturerId: ch.subject_lecturer_id ? String(ch.subject_lecturer_id) : undefined,
+    }));
+
+    const allCourses = coursesRes.rows.map(cRow => {
+      let instructor = {
+        id: String(cRow.instructor_id || 'usr-teacher-01'),
+        name: String(cRow.instructor_name || 'Er. Ramesh Sharma'),
+        role: 'professor',
+        email: 'teacher@padmashree.edu.np',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
+        license: 'Microsoft 365 A5 for Faculty',
+        department: String(cRow.department || 'Department of BIT'),
+        institutionName: String(cRow.institution_name || institutionParam),
+        status: 'available' as const,
+      };
+      if (cRow.instructor_data) {
+        try {
+          instructor = { ...instructor, ...JSON.parse(String(cRow.instructor_data)) };
+        } catch {}
+      }
+
+      let enrolledStudents: any[] = [];
+      if (cRow.enrolled_students) {
+        try {
+          enrolledStudents = JSON.parse(String(cRow.enrolled_students));
+        } catch {}
+      }
+
+      const courseChannels = allChannels.filter(ch => ch.courseId === String(cRow.id));
+      if (courseChannels.length === 0) {
+        courseChannels.push({
+          id: `ch_${cRow.id}_gen`,
+          courseId: String(cRow.id),
+          name: 'Announcements',
+          description: `${cRow.name} announcements noticeboard`,
+          isGeneral: true,
+          unreadCount: 0,
+          studentFilePermission: 'read-only',
+          subjectLecturerName: instructor.name,
+          subjectLecturerId: instructor.id,
+        });
+      }
+
+      return {
+        id: String(cRow.id),
+        code: String(cRow.code),
+        name: String(cRow.name),
+        department: String(cRow.department || 'Department of BIT'),
+        institutionName: String(cRow.institution_name || institutionParam),
+        term: String(cRow.term || 'Fall 2026'),
+        color: String(cRow.color || '#4f46e5'),
+        icon: String(cRow.icon || '⚡'),
+        instructor,
+        memberCount: Number(cRow.member_count || enrolledStudents.length || 45),
+        isActivated: Boolean(cRow.is_activated ?? true),
+        model: (cRow.model || 'model-a') as 'model-a' | 'model-b',
+        template: 'Class' as const,
+        channels: courseChannels,
+        enrolledStudents,
+      };
     });
-    return c.json({ assignments: result.rows });
+
+    // Map submissions to assignments
+    const allSubmissions = submissionsRes.rows.map(s => {
+      let parsedFiles = [];
+      if (s.files) {
+        try {
+          parsedFiles = JSON.parse(String(s.files));
+        } catch {}
+      } else if (s.file_name) {
+        parsedFiles = [
+          {
+            name: String(s.file_name),
+            size: String(s.file_size || '1.8 MB'),
+            type: 'pdf',
+            isReadOnly: true,
+            uploadedAt: String(s.submitted_at || 'Just now'),
+          },
+        ];
+      }
+
+      return {
+        id: String(s.id),
+        assignmentId: String(s.assignment_id),
+        studentId: String(s.student_id),
+        studentName: String(s.student_name || 'Student'),
+        status: (s.status || 'turned-in') as 'not-turned-in' | 'viewed' | 'turned-in' | 'turned-in-late' | 'graded',
+        submittedAt: String(s.submitted_at || ''),
+        fileName: s.file_name ? String(s.file_name) : undefined,
+        fileSize: s.file_size ? String(s.file_size) : undefined,
+        files: parsedFiles,
+        grade: s.grade ? Number(s.grade) : undefined,
+        feedback: s.feedback ? String(s.feedback) : undefined,
+      };
+    });
+
+    const allAssignments = assignmentsRes.rows.map(a => {
+      let rubric = [
+        { id: 'r1', criterion: 'Technical accuracy and code execution', maxPoints: 60 },
+        { id: 'r2', criterion: 'Documentation and report quality', maxPoints: 40 },
+      ];
+      if (a.rubric) {
+        try {
+          rubric = JSON.parse(String(a.rubric));
+        } catch {}
+      }
+
+      const asgnSubs = allSubmissions.filter(s => s.assignmentId === String(a.id));
+
+      return {
+        id: String(a.id),
+        courseId: String(a.course_id || 'course_padma_bit_sem5'),
+        courseCode: String(a.course_code || 'BIT 501'),
+        title: String(a.title),
+        instructions: String(a.instructions || a.description || ''),
+        points: Number(a.max_points || 100),
+        targetChannelId: a.target_channel_id ? String(a.target_channel_id) : 'ch_padma_announcements',
+        referenceMaterialMode: 'students-cant-edit' as const,
+        referenceFiles: [],
+        dueAt: String(a.due_at || a.due_date || 'Nov 25, 2026, 11:59 PM'),
+        dueTimestamp: a.due_timestamp ? Number(a.due_timestamp) : (a.due_at ? new Date(String(a.due_at)).getTime() : 1795651140000),
+        closeAt: a.close_at ? String(a.close_at) : String(a.due_at || 'Nov 25, 2026, 11:59 PM'),
+        isStrictNoLateSubmission: Boolean(a.is_strict_no_late ?? 1),
+        rubric,
+        submissions: asgnSubs,
+      };
+    });
+
+    const allFaculties = facultiesRes.rows.map(f => ({
+      id: String(f.id),
+      name: String(f.name),
+      code: String(f.code),
+      deanId: String(f.dean_id || 'usr-admin-01'),
+      deanName: String(f.dean_name || 'Academic Dean'),
+      institutionName: String(f.institution_name || institutionParam),
+      description: String(f.description || ''),
+    }));
+
+    const allUsers = usersRes.rows.map(u => ({
+      id: String(u.id),
+      name: String(u.name),
+      email: String(u.email),
+      role: (u.role === 'teacher' ? 'professor' : u.role) as any,
+      license: u.role === 'student' ? 'Microsoft 365 A3 for Students' : 'Microsoft 365 A5 for Faculty',
+      department: String(u.department || 'Department of BIT'),
+      institutionName: String(u.institution_name || institutionParam),
+      avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+      status: 'available' as const,
+    }));
+
+    return c.json({
+      success: true,
+      institution: institutionParam,
+      faculties: allFaculties,
+      courses: allCourses,
+      assignments: allAssignments,
+      notices: noticesRes.rows,
+      users: allUsers,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
   }
 });
 
-// 7. Create assignment in Turso
+// 7. Persist newly created Faculty (R13, R22)
+app.post('/api/faculties', async (c) => {
+  try {
+    const body = await c.req.json();
+    const id = body.id || `fac_${Date.now()}`;
+    const collegeId = body.college_id || 'padmashree-demo';
+    const institutionName = body.institutionName || body.institution_name || 'Padmashree College';
+    const name = (body.name || '').trim();
+    const code = (body.code || '').trim().toUpperCase();
+    const deanId = body.deanId || body.dean_id || 'usr-admin-01';
+    const deanName = body.deanName || body.dean_name || 'Academic Dean';
+    const description = (body.description || '').trim();
+
+    if (!name || !code) {
+      return c.json({ error: 'Faculty name and code are required' }, 400);
+    }
+
+    const db = getDb(c);
+    await db.execute({
+      sql: `INSERT INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, institutionName, name, code, deanId, deanName, description],
+    });
+
+    const faculty = { id, college_id: collegeId, institutionName, name, code, deanId, deanName, description };
+    return c.json({ success: true, faculty }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 8. Persist newly created Course & Channels (R14, R20)
+app.post('/api/courses', async (c) => {
+  try {
+    const body = await c.req.json();
+    const id = body.id || `course_${Date.now()}`;
+    const collegeId = body.college_id || 'padmashree-demo';
+    const institutionName = body.institutionName || body.institution_name || 'Padmashree College';
+    const code = (body.code || '').trim().toUpperCase();
+    const name = (body.name || '').trim();
+    const department = (body.department || 'Department of BIT').trim();
+    const term = (body.term || 'Fall 2026').trim();
+    const color = body.color || '#4f46e5';
+    const icon = body.icon || '⚡';
+    const instructor = body.instructor || {};
+    const instructorId = instructor.id || 'usr-teacher-01';
+    const instructorName = instructor.name || 'Er. Ramesh Sharma';
+    const memberCount = Number(body.memberCount || 45);
+    const model = body.model || 'model-a';
+    const template = body.template || 'Class';
+    const enrolledStudents = body.enrolledStudents ? JSON.stringify(body.enrolledStudents) : '[]';
+
+    if (!code || !name) {
+      return c.json({ error: 'Course code and name are required' }, 400);
+    }
+
+    const db = getDb(c);
+    await db.execute({
+      sql: `INSERT INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, institutionName, code, name, department, term, color, icon, instructorId, instructorName, JSON.stringify(instructor), memberCount, 1, model, template, enrolledStudents],
+    });
+
+    // Default protected Announcements channel
+    const defaultChanId = `ch_${id}_announcements`;
+    await db.execute({
+      sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+            VALUES (?, ?, ?, ?, ?, 1, 'announcements', 'read-only', ?, ?);`,
+      args: [defaultChanId, collegeId, id, 'Announcements', 'Class-wide notices, exam schedules, and alerts from all lecturers', instructorName, instructorId],
+    });
+
+    // Any additional subject channels passed in creation
+    const channels = body.channels || [];
+    for (let i = 0; i < channels.length; i++) {
+      const ch = channels[i];
+      if (ch.name && ch.name !== 'Announcements') {
+        const chanId = ch.id || `ch_${id}_${i + 1}`;
+        await db.execute({
+          sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+                VALUES (?, ?, ?, ?, ?, 0, 'general', ?, ?, ?);`,
+          args: [chanId, collegeId, id, ch.name, ch.description || `Subject Channel: ${ch.name}`, ch.studentFilePermission || 'read-only', ch.subjectLecturerName || instructorName, ch.subjectLecturerId || instructorId],
+        });
+      }
+    }
+
+    return c.json({ success: true, courseId: id }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 9. Delete subject channel with protected Announcements check (R20)
+app.delete('/api/courses/:courseId/subjects/:subjectId', async (c) => {
+  const courseId = c.req.param('courseId');
+  const subjectId = c.req.param('subjectId');
+
+  try {
+    const db = getDb(c);
+    const result = await db.execute({
+      sql: 'SELECT id, name, is_general FROM channels WHERE id = ? AND course_id = ?;',
+      args: [subjectId, courseId],
+    });
+
+    if (result.rows.length === 0) {
+      return c.json({ error: 'Channel not found' }, 404);
+    }
+
+    const chan = result.rows[0];
+    const chanName = String(chan.name || '').toLowerCase();
+    if (chanName === 'announcements' || Boolean(chan.is_general)) {
+      return c.json({ error: 'Cannot delete default protected Announcements channel' }, 403);
+    }
+
+    await db.execute({
+      sql: 'DELETE FROM channels WHERE id = ? AND course_id = ?;',
+      args: [subjectId, courseId],
+    });
+
+    return c.json({ success: true, message: 'Subject channel deleted successfully' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 10. Persist automated Semester Rollover (R23)
+app.post('/api/courses/rollover', async (c) => {
+  try {
+    const body = await c.req.json();
+    const sourceCourseId = body.sourceCourseId;
+    const newCode = (body.code || '').trim().toUpperCase();
+    const newName = (body.name || '').trim();
+    const newTerm = (body.term || '').trim();
+    const instructorId = body.instructorId || 'usr-teacher-01';
+
+    if (!sourceCourseId || !newCode || !newName) {
+      return c.json({ error: 'sourceCourseId, code, and name are required for rollover' }, 400);
+    }
+
+    const db = getDb(c);
+    const sourceRes = await db.execute({
+      sql: 'SELECT * FROM courses WHERE id = ?;',
+      args: [sourceCourseId],
+    });
+
+    if (sourceRes.rows.length === 0) {
+      return c.json({ error: 'Source course not found' }, 404);
+    }
+
+    const src = sourceRes.rows[0];
+    const newCourseId = `course_rollover_${Date.now()}`;
+    const collegeId = String(src.college_id || 'padmashree-demo');
+    const institutionName = String(src.institution_name || 'Padmashree College');
+
+    await db.execute({
+      sql: `INSERT INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, member_count, is_activated, model, template, enrolled_students)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'Class', ?);`,
+      args: [
+        newCourseId,
+        collegeId,
+        institutionName,
+        newCode,
+        newName,
+        src.department,
+        newTerm,
+        src.color || '#0891b2',
+        src.icon || '🏛️',
+        instructorId,
+        'Er. Ramesh Sharma',
+        src.member_count || 45,
+        src.model || 'model-b',
+        src.enrolled_students || '[]',
+      ],
+    });
+
+    // Create Announcement channel for rollover
+    await db.execute({
+      sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission)
+            VALUES (?, ?, ?, 'Announcements', ?, 1, 'announcements', 'read-only');`,
+      args: [`ch_${newCourseId}_gen`, collegeId, newCourseId, `${newName} Class announcements and notices`],
+    });
+
+    // Create additional rollover channels if provided
+    const channels = body.channels || [];
+    for (let i = 0; i < channels.length; i++) {
+      const ch = channels[i];
+      await db.execute({
+        sql: `INSERT INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+              VALUES (?, ?, ?, ?, ?, 0, 'general', 'read-only', ?, ?);`,
+        args: [`ch_${newCourseId}_${i + 1}`, collegeId, newCourseId, ch.name, ch.description || `Subject: ${ch.name}`, ch.subjectLecturerName, ch.subjectLecturerId],
+      });
+    }
+
+    return c.json({ success: true, newCourseId }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 11. Create assignment in Turso
 app.post('/api/assignments', async (c) => {
   try {
     const body = await c.req.json();
     const id = body.id || `asgn_${Date.now()}`;
     const collegeId = body.college_id || body.collegeId || 'padmashree-demo';
+    const institutionName = body.institutionName || 'Padmashree College';
+    const courseId = body.courseId || body.course_id || 'course_padma_bit_sem5';
+    const courseCode = body.courseCode || body.course_code || 'BIT 501';
     const sectionId = body.section_id || body.sectionId || 'sec-sem5-a';
     const title = (body.title || '').trim();
-    const description = (body.description || body.instructions || '').trim();
-    const dueAt = body.due_at || body.dueAt || '2026-11-20';
+    const instructions = (body.instructions || body.description || '').trim();
+    const dueAt = body.due_at || body.dueAt || 'Nov 25, 2026, 11:59 PM';
+    const dueTimestamp = body.dueTimestamp || (body.due_at ? new Date(body.due_at).getTime() : 1795651140000);
     const maxPoints = Number(body.max_points || body.points || 100);
-    let createdBy = body.created_by || body.createdBy || null;
-    if (createdBy === 'Er. Ramesh Sharma' || createdBy === 'Faculty Member') {
-      createdBy = 'usr-teacher-01';
-    } else if (createdBy === 'Academic Dean') {
-      createdBy = 'usr-admin-01';
-    } else if (createdBy && !createdBy.startsWith('usr')) {
-      createdBy = null;
-    }
-    const createdAt = new Date().toISOString();
+    const rubric = body.rubric ? JSON.stringify(body.rubric) : null;
+    let createdBy = body.created_by || body.createdBy || 'usr-teacher-01';
 
     if (!title) {
       return c.json({ error: 'Assignment title is required' }, 400);
@@ -507,24 +912,14 @@ app.post('/api/assignments', async (c) => {
 
     const db = getDb(c);
     await db.execute({
-      sql: `INSERT INTO assignments (id, college_id, section_id, title, description, due_at, max_points, created_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [id, collegeId, sectionId, title, description, dueAt, maxPoints, createdBy, createdAt],
+      sql: `INSERT INTO assignments (id, college_id, institution_name, course_id, course_code, section_id, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, rubric, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?);`,
+      args: [id, collegeId, institutionName, courseId, courseCode, sectionId, title, instructions, instructions, dueAt, dueTimestamp, dueAt, maxPoints, rubric, createdBy],
     });
 
     return c.json({
       success: true,
-      assignment: {
-        id,
-        college_id: collegeId,
-        section_id: sectionId,
-        title,
-        description,
-        due_at: dueAt,
-        max_points: maxPoints,
-        created_by: createdBy,
-        created_at: createdAt,
-      },
+      assignment: { id, title, courseCode, dueAt, dueTimestamp, maxPoints },
     }, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -532,38 +927,43 @@ app.post('/api/assignments', async (c) => {
   }
 });
 
-// 8. Submit assignment
+// 12. Submit assignment with Server-Side Deadline Lock (R3, R4)
 app.post('/api/assignments/:id/submit', async (c) => {
   const assignmentId = c.req.param('id');
   try {
     const body = await c.req.json();
-    const id = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const studentId = body.student_id || body.studentId || 'usr_anonymous';
     const studentName = body.student_name || body.studentName || 'Student';
     const submissionText = body.submission_text || body.notes || '';
     const fileName = body.file_name || body.fileName || 'Submission.pdf';
-    const fileSize = body.file_size || body.fileSize || '1.2 MB';
+    const fileSize = body.file_size || body.fileSize || '1.8 MB';
+    const files = body.files ? JSON.stringify(body.files) : JSON.stringify([
+      { name: fileName, size: fileSize, type: 'pdf', isReadOnly: true, uploadedAt: 'Just now' }
+    ]);
     const submittedAt = new Date().toISOString();
 
     const db = getDb(c);
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS assignment_submissions (
-        id TEXT PRIMARY KEY,
-        assignment_id TEXT NOT NULL,
-        student_id TEXT NOT NULL,
-        student_name TEXT,
-        status TEXT DEFAULT 'turned-in',
-        submission_text TEXT,
-        file_name TEXT,
-        file_size TEXT,
-        submitted_at TEXT DEFAULT (datetime('now'))
-      );
-    `);
 
+    // Verify Assignment & Enforce Server-Side Deadline Lock
+    const asgnRes = await db.execute({
+      sql: 'SELECT id, due_at, due_timestamp FROM assignments WHERE id = ?;',
+      args: [assignmentId],
+    });
+
+    if (asgnRes.rows.length > 0) {
+      const asgn = asgnRes.rows[0];
+      const now = Date.now();
+      const dueTs = asgn.due_timestamp ? Number(asgn.due_timestamp) : (asgn.due_at ? new Date(String(asgn.due_at)).getTime() : 0);
+      if (dueTs > 0 && now > dueTs) {
+        return c.json({ error: 'Submission Closed — Deadline Passed' }, 403);
+      }
+    }
+
+    const id = body.id || `sub_${assignmentId}_${studentId}`;
     await db.execute({
-      sql: `INSERT OR REPLACE INTO assignment_submissions (id, assignment_id, student_id, student_name, status, submission_text, file_name, file_size, submitted_at)
-            VALUES (?, ?, ?, ?, 'turned-in', ?, ?, ?, ?);`,
-      args: [id, assignmentId, studentId, studentName, submissionText, fileName, fileSize, submittedAt],
+      sql: `INSERT OR REPLACE INTO assignment_submissions (id, assignment_id, student_id, student_name, status, submission_text, file_name, file_size, files, submitted_at)
+            VALUES (?, ?, ?, ?, 'turned-in', ?, ?, ?, ?, ?);`,
+      args: [id, assignmentId, studentId, studentName, submissionText, fileName, fileSize, files, submittedAt],
     });
 
     return c.json({
@@ -583,7 +983,43 @@ app.post('/api/assignments/:id/submit', async (c) => {
   }
 });
 
-// 9. Get live campus access requests for Admin Center
+// 13. Undo submission with Server-Side Deadline Lock (R3, R4)
+app.post('/api/assignments/:id/undo', async (c) => {
+  const assignmentId = c.req.param('id');
+  try {
+    const body = await c.req.json();
+    const studentId = body.student_id || body.studentId || 'usr_anonymous';
+
+    const db = getDb(c);
+
+    // Verify Assignment & Enforce Server-Side Deadline Lock
+    const asgnRes = await db.execute({
+      sql: 'SELECT id, due_at, due_timestamp FROM assignments WHERE id = ?;',
+      args: [assignmentId],
+    });
+
+    if (asgnRes.rows.length > 0) {
+      const asgn = asgnRes.rows[0];
+      const now = Date.now();
+      const dueTs = asgn.due_timestamp ? Number(asgn.due_timestamp) : (asgn.due_at ? new Date(String(asgn.due_at)).getTime() : 0);
+      if (dueTs > 0 && now > dueTs) {
+        return c.json({ error: 'Cannot undo submission — Deadline Passed' }, 403);
+      }
+    }
+
+    await db.execute({
+      sql: `UPDATE assignment_submissions SET status = 'not-turned-in' WHERE assignment_id = ? AND student_id = ?;`,
+      args: [assignmentId, studentId],
+    });
+
+    return c.json({ success: true, message: 'Turn in undone successfully' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 14. Get live campus access requests for Admin Center
 app.get('/api/colleges/requests', async (c) => {
   try {
     const db = getDb(c);

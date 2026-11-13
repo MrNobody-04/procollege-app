@@ -43,6 +43,20 @@ const db = createClient({
   authToken,
 });
 
+// Helper to safely add column if missing
+async function ensureColumn(table, column, definition) {
+  try {
+    const res = await db.execute(`PRAGMA table_info(${table});`);
+    const cols = new Set(res.rows.map(r => r.name));
+    if (!cols.has(column)) {
+      await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition};`);
+      console.log(`   ✔ Added column \`${column}\` to table \`${table}\``);
+    }
+  } catch (err) {
+    console.warn(`   ⚠ Column ${column} check on ${table}:`, err.message);
+  }
+}
+
 async function init() {
   try {
     console.log('📦 1. Initializing Multi-Tenant Tables...');
@@ -83,7 +97,54 @@ async function init() {
     `);
     console.log('   ✔ Table `sections` created / verified');
 
-    // 4. users
+    // 4. faculties
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS faculties (
+        id TEXT PRIMARY KEY,
+        college_id TEXT NOT NULL,
+        institution_name TEXT NOT NULL,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        dean_id TEXT,
+        dean_name TEXT,
+        description TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    await ensureColumn('faculties', 'institution_name', 'TEXT');
+    await ensureColumn('faculties', 'dean_id', 'TEXT');
+    await ensureColumn('faculties', 'dean_name', 'TEXT');
+    console.log('   ✔ Table `faculties` created / verified');
+
+    // 5. courses
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS courses (
+        id TEXT PRIMARY KEY,
+        college_id TEXT NOT NULL,
+        institution_name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        name TEXT NOT NULL,
+        department TEXT,
+        term TEXT,
+        color TEXT DEFAULT '#4f46e5',
+        icon TEXT DEFAULT '⚡',
+        instructor_id TEXT,
+        instructor_name TEXT,
+        instructor_data TEXT,
+        member_count INTEGER DEFAULT 0,
+        is_activated INTEGER DEFAULT 1,
+        model TEXT DEFAULT 'model-a',
+        template TEXT DEFAULT 'Class',
+        enrolled_students TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    await ensureColumn('courses', 'institution_name', 'TEXT');
+    await ensureColumn('courses', 'instructor_data', 'TEXT');
+    await ensureColumn('courses', 'enrolled_students', 'TEXT');
+    console.log('   ✔ Table `courses` created / verified');
+
+    // 6. users
     await db.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -95,34 +156,48 @@ async function init() {
         avatar_url TEXT,
         password TEXT,
         password_hash TEXT,
+        institution_name TEXT,
+        department TEXT,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
-    const userColsRes = await db.execute("PRAGMA table_info(users);");
-    const userCols = new Set(userColsRes.rows.map(r => r.name));
-    if (!userCols.has('password')) await db.execute("ALTER TABLE users ADD COLUMN password TEXT;");
-    if (!userCols.has('password_hash')) await db.execute("ALTER TABLE users ADD COLUMN password_hash TEXT;");
-    console.log('   ✔ Table `users` created / verified (with password columns)');
+    await ensureColumn('users', 'password', 'TEXT');
+    await ensureColumn('users', 'password_hash', 'TEXT');
+    await ensureColumn('users', 'institution_name', 'TEXT');
+    await ensureColumn('users', 'department', 'TEXT');
+    console.log('   ✔ Table `users` created / verified');
 
-    // 5. channels
+    // 7. channels
     await db.execute(`
       CREATE TABLE IF NOT EXISTS channels (
         id TEXT PRIMARY KEY,
-        college_id TEXT NOT NULL REFERENCES colleges(id) ON DELETE CASCADE,
-        section_id TEXT REFERENCES sections(id) ON DELETE CASCADE,
+        college_id TEXT NOT NULL,
+        course_id TEXT,
+        section_id TEXT,
         name TEXT NOT NULL,
         description TEXT,
+        is_general INTEGER DEFAULT 0,
         type TEXT NOT NULL DEFAULT 'general',
+        student_file_permission TEXT DEFAULT 'read-only',
+        subject_lecturer_name TEXT,
+        subject_lecturer_id TEXT,
+        unread_count INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
+    await ensureColumn('channels', 'course_id', 'TEXT');
+    await ensureColumn('channels', 'is_general', 'INTEGER DEFAULT 0');
+    await ensureColumn('channels', 'student_file_permission', 'TEXT DEFAULT "read-only"');
+    await ensureColumn('channels', 'subject_lecturer_name', 'TEXT');
+    await ensureColumn('channels', 'subject_lecturer_id', 'TEXT');
+    await ensureColumn('channels', 'unread_count', 'INTEGER DEFAULT 0');
     console.log('   ✔ Table `channels` created / verified');
 
-    // 6. messages
+    // 8. messages
     await db.execute(`
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
-        channel_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+        channel_id TEXT NOT NULL,
         sender_id TEXT,
         sender_name TEXT NOT NULL,
         body TEXT NOT NULL,
@@ -132,21 +207,19 @@ async function init() {
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
-    // Ensure all required columns exist in pre-existing table
-    const msgColsRes = await db.execute("PRAGMA table_info(messages);");
-    const msgCols = new Set(msgColsRes.rows.map(r => r.name));
-    if (!msgCols.has('sender_id')) await db.execute("ALTER TABLE messages ADD COLUMN sender_id TEXT;");
-    if (!msgCols.has('sender_name')) await db.execute("ALTER TABLE messages ADD COLUMN sender_name TEXT;");
-    if (!msgCols.has('body')) await db.execute("ALTER TABLE messages ADD COLUMN body TEXT;");
-    if (!msgCols.has('author_name')) await db.execute("ALTER TABLE messages ADD COLUMN author_name TEXT;");
-    if (!msgCols.has('content')) await db.execute("ALTER TABLE messages ADD COLUMN content TEXT;");
+    await ensureColumn('messages', 'sender_id', 'TEXT');
+    await ensureColumn('messages', 'sender_name', 'TEXT');
+    await ensureColumn('messages', 'body', 'TEXT');
+    await ensureColumn('messages', 'author_name', 'TEXT');
+    await ensureColumn('messages', 'content', 'TEXT');
     console.log('   ✔ Table `messages` created / verified');
 
-    // 7. notices
+    // 9. notices
     await db.execute(`
       CREATE TABLE IF NOT EXISTS notices (
         id TEXT PRIMARY KEY,
-        college_id TEXT NOT NULL REFERENCES colleges(id) ON DELETE CASCADE,
+        college_id TEXT NOT NULL,
+        institution_name TEXT,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
         priority TEXT DEFAULT 'normal',
@@ -155,32 +228,45 @@ async function init() {
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
+    await ensureColumn('notices', 'institution_name', 'TEXT');
     console.log('   ✔ Table `notices` created / verified');
 
-    // 8. assignments
+    // 10. assignments
     await db.execute(`
       CREATE TABLE IF NOT EXISTS assignments (
         id TEXT PRIMARY KEY,
-        college_id TEXT NOT NULL REFERENCES colleges(id) ON DELETE CASCADE,
-        section_id TEXT REFERENCES sections(id) ON DELETE CASCADE,
+        college_id TEXT NOT NULL,
+        institution_name TEXT,
+        section_id TEXT,
+        course_id TEXT,
+        course_code TEXT,
         title TEXT NOT NULL,
+        instructions TEXT,
         description TEXT,
         subject TEXT,
         due_date TEXT,
         due_at TEXT,
+        due_timestamp INTEGER,
+        close_at TEXT,
+        is_strict_no_late INTEGER DEFAULT 0,
+        rubric TEXT,
         max_points INTEGER DEFAULT 100,
         created_by TEXT,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
-    try {
-      await db.execute(`ALTER TABLE assignments ADD COLUMN due_at TEXT;`);
-    } catch {
-      // Column may already exist
-    }
+    await ensureColumn('assignments', 'institution_name', 'TEXT');
+    await ensureColumn('assignments', 'course_id', 'TEXT');
+    await ensureColumn('assignments', 'course_code', 'TEXT');
+    await ensureColumn('assignments', 'instructions', 'TEXT');
+    await ensureColumn('assignments', 'due_at', 'TEXT');
+    await ensureColumn('assignments', 'due_timestamp', 'INTEGER');
+    await ensureColumn('assignments', 'close_at', 'TEXT');
+    await ensureColumn('assignments', 'is_strict_no_late', 'INTEGER DEFAULT 0');
+    await ensureColumn('assignments', 'rubric', 'TEXT');
     console.log('   ✔ Table `assignments` created / verified');
 
-    // 8b. assignment_submissions
+    // 11. assignment_submissions
     await db.execute(`
       CREATE TABLE IF NOT EXISTS assignment_submissions (
         id TEXT PRIMARY KEY,
@@ -191,12 +277,36 @@ async function init() {
         submission_text TEXT,
         file_name TEXT,
         file_size TEXT,
+        file_data TEXT,
+        files TEXT,
+        grade REAL,
+        feedback TEXT,
         submitted_at TEXT DEFAULT (datetime('now'))
       );
     `);
+    await ensureColumn('assignment_submissions', 'files', 'TEXT');
+    await ensureColumn('assignment_submissions', 'grade', 'REAL');
+    await ensureColumn('assignment_submissions', 'feedback', 'TEXT');
     console.log('   ✔ Table `assignment_submissions` created / verified');
 
-    // 9. college_requests (Request Campus Access inquiries)
+    // 12. course_files
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS course_files (
+        id TEXT PRIMARY KEY,
+        course_id TEXT NOT NULL,
+        college_id TEXT,
+        name TEXT NOT NULL,
+        size TEXT,
+        type TEXT,
+        uploaded_by TEXT,
+        is_class_material INTEGER DEFAULT 1,
+        permission TEXT DEFAULT 'read-only',
+        uploaded_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    console.log('   ✔ Table `course_files` created / verified');
+
+    // 13. college_requests
     await db.execute(`
       CREATE TABLE IF NOT EXISTS college_requests (
         id TEXT PRIMARY KEY,
@@ -214,66 +324,44 @@ async function init() {
     `);
     console.log('   ✔ Table `college_requests` created / verified');
 
-    console.log('\n🔍 2. Creating Composite Indexes...');
+    console.log('\n🔍 2. Creating Composite & Foreign Key Indexes...');
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_notices_college_time ON notices(college_id, created_at);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_channels_college_sec ON channels(college_id, section_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_users_college_sec ON users(college_id, section_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_courses_college ON courses(college_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_courses_inst ON courses(institution_name);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_faculties_inst ON faculties(institution_name);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_assignments_inst ON assignments(institution_name);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_sub_asgn_stu ON assignment_submissions(assignment_id, student_id);`);
 
-    // Index 1: idx_messages_channel_time
-    await db.execute(`
-      CREATE INDEX IF NOT EXISTS idx_messages_channel_time 
-      ON messages(channel_id, created_at);
-    `);
-    console.log('   ✔ Index `idx_messages_channel_time` on messages(channel_id, created_at)');
+    console.log('\n🌱 3. Seeding Live Demo Multi-Tenant Data...');
 
-    // Index 2: idx_notices_college_time
-    await db.execute(`
-      CREATE INDEX IF NOT EXISTS idx_notices_college_time 
-      ON notices(college_id, created_at);
-    `);
-    console.log('   ✔ Index `idx_notices_college_time` on notices(college_id, created_at)');
-
-    // Index 3: idx_channels_college_sec
-    await db.execute(`
-      CREATE INDEX IF NOT EXISTS idx_channels_college_sec 
-      ON channels(college_id, section_id);
-    `);
-    console.log('   ✔ Index `idx_channels_college_sec` on channels(college_id, section_id)');
-
-    // Index 4: idx_users_college_sec
-    await db.execute(`
-      CREATE INDEX IF NOT EXISTS idx_users_college_sec 
-      ON users(college_id, section_id);
-    `);
-    console.log('   ✔ Index `idx_users_college_sec` on users(college_id, section_id)');
-
-    console.log('\n🌱 3. Seeding Live Demo Data...');
-
-    // 1 Default College: id: 'padmashree-demo', name: 'Padmashree College'
+    // --- TENANT 1: Padmashree College ('padmashree-demo') ---
     const collegeId = 'padmashree-demo';
+    const instPadmashree = 'Padmashree College';
+
     await db.execute({
       sql: `INSERT OR REPLACE INTO colleges (id, name, code) VALUES (?, ?, ?);`,
-      args: [collegeId, 'Padmashree College', 'PDC'],
+      args: [collegeId, instPadmashree, 'PDC'],
     });
-    console.log('   ✔ Seeded College: "Padmashree College" (ID: padmashree-demo)');
 
-    // 1 Department: BIT
     const deptId = 'dept-bit';
     await db.execute({
       sql: `INSERT OR REPLACE INTO departments (id, college_id, name, code) VALUES (?, ?, ?, ?);`,
       args: [deptId, collegeId, 'BIT', 'BIT'],
     });
-    console.log('   ✔ Seeded Department: "BIT" (ID: dept-bit)');
 
-    // 1 Section: Sem 5 - Sec A
     const sectionId = 'sec-sem5-a';
     await db.execute({
       sql: `INSERT OR REPLACE INTO sections (id, college_id, department_id, name, academic_year) VALUES (?, ?, ?, ?, ?);`,
       args: [sectionId, collegeId, deptId, 'Sem 5 - Sec A', '2026-2027'],
     });
-    console.log('   ✔ Seeded Section: "Sem 5 - Sec A" (ID: sec-sem5-a)');
 
-    // 1 User: Admin (Academic Dean)
+    // Users
     await db.execute({
-      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url, institution_name, department)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [
         'usr-admin-01',
         collegeId,
@@ -283,15 +371,15 @@ async function init() {
         'admin',
         'password123',
         'password123',
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+        instPadmashree,
+        'Administration',
       ],
     });
-    console.log('   ✔ Seeded Admin: "Academic Dean" (dean@padmashree.edu.np / password123)');
 
-    // 2 User: Teacher (Er. Ramesh Sharma)
     await db.execute({
-      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url, institution_name, department)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [
         'usr-teacher-01',
         collegeId,
@@ -301,15 +389,15 @@ async function init() {
         'teacher',
         'password123',
         'password123',
-        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+        'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
+        instPadmashree,
+        'Department of BIT',
       ],
     });
-    console.log('   ✔ Seeded Teacher: "Er. Ramesh Sharma" (teacher@padmashree.edu.np / password123)');
 
-    // 3 User: Student (Sujan G.C.)
     await db.execute({
-      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url, institution_name, department)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [
         'usr-student-01',
         collegeId,
@@ -319,74 +407,336 @@ async function init() {
         'student',
         'password123',
         'password123',
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80',
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+        instPadmashree,
+        'Department of BIT',
       ],
     });
-    console.log('   ✔ Seeded Student: "Sujan G.C." (sujan@padmashree.edu.np / password123)');
+    console.log('   ✔ Seeded Users for Padmashree College');
 
-    // 2 Channels: general and announcements
-    const chGeneralId = 'ch-general';
+    // Faculties for Padmashree
     await db.execute({
-      sql: `INSERT OR REPLACE INTO channels (id, college_id, section_id, name, description, type) VALUES (?, ?, ?, ?, ?, ?);`,
-      args: [chGeneralId, collegeId, sectionId, 'general', 'General discussions for Sem 5 - Sec A', 'general'],
-    });
-    console.log('   ✔ Seeded Channel: "general" (ID: ch-general)');
-
-    const chAnnounceId = 'ch-announcements';
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO channels (id, college_id, section_id, name, description, type) VALUES (?, ?, ?, ?, ?, ?);`,
-      args: [chAnnounceId, collegeId, sectionId, 'announcements', 'Official announcements and notices broadcast', 'announcements'],
-    });
-    console.log('   ✔ Seeded Channel: "announcements" (ID: ch-announcements)');
-
-    // 2 Welcome Notices
-    const userId = 'usr-admin-01';
-    const notice1Id = 'not-welcome-01';
-    await db.execute({
-      sql: `INSERT OR REPLACE INTO notices (id, college_id, title, content, priority, author_id, author_name) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [
-        notice1Id,
+        'fac_padma_bit',
         collegeId,
+        instPadmashree,
+        'Faculty of Information Technology (BIT)',
+        'FBIT',
+        'usr-admin-01',
+        'Academic Dean',
+        'Distributed Systems, Cloud Architecture, Full-Stack Web Engineering',
+      ],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'fac_padma_cs',
+        collegeId,
+        instPadmashree,
+        'Faculty of Computer Science & Software Engineering',
+        'FCSSE',
+        'usr-teacher-01',
+        'Er. Ramesh Sharma',
+        'Algorithms, High-Performance Computing, Systems Engineering',
+      ],
+    });
+    console.log('   ✔ Seeded Faculties for Padmashree College');
+
+    // Courses for Padmashree
+    const course1Id = 'course_padma_bit_sem5';
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        course1Id,
+        collegeId,
+        instPadmashree,
+        'BIT 501',
+        'Cloud Computing & Distributed Systems',
+        'Department of BIT',
+        'Fall 2026',
+        '#4f46e5',
+        '⚡',
+        'usr-teacher-01',
+        'Er. Ramesh Sharma',
+        JSON.stringify({ id: 'usr-teacher-01', name: 'Er. Ramesh Sharma', role: 'teacher', email: 'teacher@padmashree.edu.np' }),
+        45,
+        1,
+        'model-a',
+        'Class',
+      ],
+    });
+
+    // Channels for Course 1
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, section_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'ch_padma_announcements',
+        collegeId,
+        course1Id,
+        sectionId,
+        'Announcements',
+        'Class-wide notices, exam schedules, and alerts from all lecturers',
+        1,
+        'announcements',
+        'read-only',
+        'Er. Ramesh Sharma',
+        'usr-teacher-01',
+      ],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, section_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'ch_padma_lectures',
+        collegeId,
+        course1Id,
+        sectionId,
+        'Cloud Architecture Lectures',
+        'Serverless workers, edge computation, and low latency streaming',
+        0,
+        'general',
+        'read-only',
+        'Er. Ramesh Sharma',
+        'usr-teacher-01',
+      ],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, section_id, name, description, is_general, type, student_file_permission, subject_lecturer_name, subject_lecturer_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'ch_padma_turso_lab',
+        collegeId,
+        course1Id,
+        sectionId,
+        'Turso LibSQL Lab',
+        'Database replication, SQLite edge clients, and schema migration',
+        0,
+        'general',
+        'can-edit',
+        'Er. Ramesh Sharma',
+        'usr-teacher-01',
+      ],
+    });
+
+    const course2Id = 'course_padma_web_sem5';
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        course2Id,
+        collegeId,
+        instPadmashree,
+        'BIT 502',
+        'Full-Stack Web Engineering',
+        'Department of BIT',
+        'Fall 2026',
+        '#0891b2',
+        '🏛️',
+        'usr-teacher-01',
+        'Er. Ramesh Sharma',
+        JSON.stringify({ id: 'usr-teacher-01', name: 'Er. Ramesh Sharma', role: 'teacher', email: 'teacher@padmashree.edu.np' }),
+        45,
+        1,
+        'model-b',
+        'Class',
+      ],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, section_id, name, description, is_general, type, student_file_permission)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'ch_padma_web_announcements',
+        collegeId,
+        course2Id,
+        sectionId,
+        'Announcements',
+        'Full-Stack Web Engineering announcements and milestones',
+        1,
+        'announcements',
+        'read-only',
+      ],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, section_id, name, description, is_general, type, student_file_permission)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'ch_padma_web_react',
+        collegeId,
+        course2Id,
+        sectionId,
+        'React 19 & Hono Microservices',
+        'Client-side state, TanStack patterns, and Edge runtime APIs',
+        0,
+        'general',
+        'can-edit',
+      ],
+    });
+    console.log('   ✔ Seeded Courses and Channels for Padmashree College');
+
+    // Assignments for Padmashree
+    const asgn1Id = 'asgn_padma_01';
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO assignments (id, college_id, institution_name, course_id, course_code, section_id, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        asgn1Id,
+        collegeId,
+        instPadmashree,
+        course1Id,
+        'BIT 501',
+        sectionId,
+        'Cloudflare Workers & Distributed DB Assignment',
+        'Implement serverless Hono Worker connected to live Turso LibSQL database.',
+        'Implement serverless Hono Worker connected to live Turso LibSQL database.',
+        'Nov 25, 2026, 11:59 PM',
+        1795651140000,
+        'Nov 25, 2026, 11:59 PM',
+        1,
+        100,
+        'usr-teacher-01',
+      ],
+    });
+
+    const asgn2Id = 'asgn_padma_02';
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO assignments (id, college_id, institution_name, course_id, course_code, section_id, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        asgn2Id,
+        collegeId,
+        instPadmashree,
+        course1Id,
+        'BIT 501',
+        sectionId,
+        'Turso Edge Multi-Tenancy Architecture Report',
+        'Analyze latency benchmarks of distributed read replicas across cloud edge regions.',
+        'Analyze latency benchmarks of distributed read replicas across cloud edge regions.',
+        'Nov 30, 2026, 11:59 PM',
+        1796083140000,
+        'Nov 30, 2026, 11:59 PM',
+        0,
+        100,
+        'usr-teacher-01',
+      ],
+    });
+
+    const asgn3Id = 'asgn_padma_03_due_passed';
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO assignments (id, college_id, institution_name, course_id, course_code, section_id, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        asgn3Id,
+        collegeId,
+        instPadmashree,
+        course1Id,
+        'BIT 501',
+        sectionId,
+        'Lab 1: Docker & Container Orchestration (Past Deadline)',
+        'Containerize multi-tier web applications with Docker Compose and health checks.',
+        'Containerize multi-tier web applications with Docker Compose and health checks.',
+        'Nov 01, 2026, 11:59 PM',
+        1793587140000, // Past deadline!
+        'Nov 01, 2026, 11:59 PM',
+        1,
+        100,
+        'usr-teacher-01',
+      ],
+    });
+
+    // Seed 1 active submission for Student (Sujan G.C.)
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO assignment_submissions (id, assignment_id, student_id, student_name, status, submission_text, file_name, file_size, files, submitted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'sub_padma_01',
+        asgn1Id,
+        'usr-student-01',
+        'Sujan G.C.',
+        'turned-in',
+        'Submitted live repository link and PDF report.',
+        'BIT501_Cloudflare_Turso_SujanGC.pdf',
+        '1.8 MB',
+        JSON.stringify([
+          { name: 'BIT501_Cloudflare_Turso_SujanGC.pdf', size: '1.8 MB', type: 'pdf', isReadOnly: true, uploadedAt: 'Nov 12, 2026, 03:45 PM' },
+        ]),
+        'Nov 12, 2026, 03:45 PM',
+      ],
+    });
+    console.log('   ✔ Seeded Assignments & Submissions for Padmashree College');
+
+    // Seed Notices
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO notices (id, college_id, institution_name, title, content, priority, author_id, author_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        'not_padma_01',
+        collegeId,
+        instPadmashree,
         'Welcome to Padmashree College Portal',
         'We are thrilled to launch the new ProCollege campus collaboration and academic suite. Explore channels, announcements, and assignments.',
         'important',
-        userId,
+        'usr-admin-01',
         'Academic Dean',
       ],
     });
-    console.log('   ✔ Seeded Notice 1: "Welcome to Padmashree College Portal"');
 
-    const notice2Id = 'not-welcome-02';
     await db.execute({
-      sql: `INSERT OR REPLACE INTO notices (id, college_id, title, content, priority, author_id, author_name) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO notices (id, college_id, institution_name, title, content, priority, author_id, author_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
       args: [
-        notice2Id,
+        'not_padma_02',
         collegeId,
+        instPadmashree,
         'Semester 5 Schedule & Orientation',
         'All Semester 5 Section A lectures commence on Monday at 8:00 AM. Check the Calendar tab for detailed room assignments.',
         'normal',
-        userId,
-        'HOD Department of BIT',
+        'usr-teacher-01',
+        'Er. Ramesh Sharma',
       ],
     });
-    console.log('   ✔ Seeded Notice 2: "Semester 5 Schedule & Orientation"');
+    console.log('   ✔ Seeded Notices for Padmashree College');
 
-    // Seed Initial Messages in General Channel
-    const msgId = 'msg-welcome-01';
+    // --- TENANT 2: ProCollege University Network fixtures ---
+    const instPro = 'ProCollege University Network';
+    const colProId = 'col_procollege_network';
+
     await db.execute({
-      sql: `INSERT OR REPLACE INTO messages (id, channel_id, user_id, sender_id, sender_name, body, author_name, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [
-        msgId,
-        chGeneralId,
-        userId,
-        userId,
-        'Academic Dean',
-        'Welcome to Sem 5 - Sec A General channel! Real-time messaging and class resources are online.',
-        'Academic Dean',
-        'Welcome to Sem 5 - Sec A General channel! Real-time messaging and class resources are online.',
-      ],
+      sql: `INSERT OR REPLACE INTO colleges (id, name, code) VALUES (?, ?, ?);`,
+      args: [colProId, instPro, 'PCN'],
     });
-    console.log('   ✔ Seeded Initial Message in "general" channel');
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: ['fac_cs', colProId, instPro, 'Faculty of Computer Science & Engineering', 'FCSE', 'user_alan', 'Prof. Alan Turing', 'Algorithms, Software Architecture, Operating Systems'],
+    });
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: ['fac_ai', colProId, instPro, 'Faculty of Artificial Intelligence & Data Science', 'FAIDS', 'user_feifei', 'Dr. Fei-Fei Li', 'Neural Networks, Computer Vision, Foundation Models'],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, term, color, icon, instructor_id, instructor_name, member_count, is_activated, model, template)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: ['course_cs301', colProId, instPro, 'CS 301', 'Advanced Algorithms & Complexity', 'Computer Science', 'Fall 2026', '#4f46e5', '⚡', 'user_alan', 'Prof. Alan Turing', 68, 1, 'model-a', 'Class'],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: ['ch_cs301_gen', colProId, 'course_cs301', 'Announcements', 'Class-wide notices, exam schedules, and alerts from all lecturers', 1, 'announcements', 'read-only'],
+    });
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO channels (id, college_id, course_id, name, description, is_general, type, student_file_permission) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: ['ch_cs301_lec', colProId, 'course_cs301', 'Weekly Lectures', 'Slide decks, lecture recordings, and Q&A', 0, 'general', 'read-only'],
+    });
+    console.log('   ✔ Seeded ProCollege University Network fixtures');
 
     console.log('\n📊 4. Verifying Live Database Content on Turso...');
     const tablesRes = await db.execute(`
@@ -396,23 +746,23 @@ async function init() {
     console.log('   Live Tables in Turso:', tableNames.join(', '));
 
     const collegesCount = await db.execute('SELECT count(*) as c FROM colleges;');
-    const deptsCount = await db.execute('SELECT count(*) as c FROM departments;');
-    const sectionsCount = await db.execute('SELECT count(*) as c FROM sections;');
-    const usersCount = await db.execute('SELECT count(*) as c FROM users;');
+    const facultiesCount = await db.execute('SELECT count(*) as c FROM faculties;');
+    const coursesCount = await db.execute('SELECT count(*) as c FROM courses;');
     const channelsCount = await db.execute('SELECT count(*) as c FROM channels;');
-    const noticesCount = await db.execute('SELECT count(*) as c FROM notices;');
-    const messagesCount = await db.execute('SELECT count(*) as c FROM messages;');
+    const assignmentsCount = await db.execute('SELECT count(*) as c FROM assignments;');
+    const submissionsCount = await db.execute('SELECT count(*) as c FROM assignment_submissions;');
+    const usersCount = await db.execute('SELECT count(*) as c FROM users;');
 
     console.log('\n📈 Row Counts:');
-    console.log(`   - colleges:    ${collegesCount.rows[0].c}`);
-    console.log(`   - departments: ${deptsCount.rows[0].c}`);
-    console.log(`   - sections:    ${sectionsCount.rows[0].c}`);
-    console.log(`   - users:       ${usersCount.rows[0].c}`);
-    console.log(`   - channels:    ${channelsCount.rows[0].c}`);
-    console.log(`   - notices:     ${noticesCount.rows[0].c}`);
-    console.log(`   - messages:    ${messagesCount.rows[0].c}`);
+    console.log(`   - colleges:               ${collegesCount.rows[0].c}`);
+    console.log(`   - faculties:              ${facultiesCount.rows[0].c}`);
+    console.log(`   - courses:                ${coursesCount.rows[0].c}`);
+    console.log(`   - channels:               ${channelsCount.rows[0].c}`);
+    console.log(`   - assignments:            ${assignmentsCount.rows[0].c}`);
+    console.log(`   - assignment_submissions: ${submissionsCount.rows[0].c}`);
+    console.log(`   - users:                  ${usersCount.rows[0].c}`);
 
-    console.log('\n🎉 Turso database successfully initialized and verified!');
+    console.log('\n🎉 Turso database successfully initialized, multi-tenant tables isolated, and live data seeded!');
   } catch (err) {
     console.error('❌ Database Initialization Failed:', err);
     process.exit(1);

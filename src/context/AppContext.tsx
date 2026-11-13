@@ -119,8 +119,11 @@ interface AppContextType {
     instructions: string;
     points: number;
     targetChannelId?: string;
-    referenceMaterialMode: 'students-cant-edit' | 'students-edit-own-copy';
+    referenceMaterialMode?: 'students-cant-edit' | 'students-edit-own-copy';
     referenceFiles?: { id: string; name: string; size: string; type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt' }[];
+    publishedAt?: string;
+    scheduleDate?: string;
+    isScheduled?: boolean;
     dueAt: string;
     closeAt?: string;
     isStrictNoLateSubmission?: boolean;
@@ -262,6 +265,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
   }, []);
+
+  // Hydrate workspace state from Turso database via multi-tenant bootstrap
+  const loadWorkspaceBootstrap = useCallback(async (instName?: string, userRole?: string) => {
+    try {
+      const inst = instName || currentUser.institutionName || 'Padmashree College';
+      const role = userRole || currentUser.role;
+      const res = await fetch(`/api/workspace/bootstrap?institution=${encodeURIComponent(inst)}&role=${encodeURIComponent(role)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success) {
+        if (data.faculties && data.faculties.length > 0) {
+          setFaculties(data.faculties);
+        }
+        if (data.courses && data.courses.length > 0) {
+          setCourses(data.courses);
+          setSelectedCourse(prev => {
+            const found = data.courses.find((c: CourseTeam) => c.id === prev.id);
+            return found || data.courses[0];
+          });
+          if (data.courses[0].channels && data.courses[0].channels.length > 0) {
+            setSelectedChannel(prev => {
+              const c = data.courses.find((x: CourseTeam) => x.id === selectedCourse.id) || data.courses[0];
+              const ch = c.channels.find((x: Channel) => x.id === prev.id);
+              return ch || c.channels[0];
+            });
+          }
+        }
+        if (data.assignments && data.assignments.length > 0) {
+          setAssignments(data.assignments);
+        }
+        if (data.users && data.users.length > 0) {
+          setAvailableUsers(data.users);
+        }
+      }
+    } catch (err) {
+      console.warn('Bootstrap fetch fallback to memory fixtures:', err);
+    }
+  }, [currentUser.institutionName, currentUser.role, selectedCourse.id]);
+
+  useEffect(() => {
+    loadWorkspaceBootstrap(currentUser.institutionName, currentUser.role);
+  }, [currentUser.institutionName, currentUser.role, loadWorkspaceBootstrap]);
 
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
@@ -442,7 +487,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Phase 1: Provision Class Team
   const createCourse = (newCourse: CourseTeam) => {
-    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'ProCollege University Network');
+    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Padmashree College');
     const courseWithInst: CourseTeam = {
       ...newCourse,
       institutionName: newCourse.institutionName || inst
@@ -452,6 +497,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (courseWithInst.channels.length > 0) {
       setSelectedChannel(courseWithInst.channels[0]);
     }
+
+    // Persist new class & channels to live Turso SQL database (R14)
+    fetch('/api/courses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(courseWithInst),
+    }).catch(() => {});
   };
 
   const deleteCourse = (courseId: string) => {
@@ -466,6 +518,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteChannel = (courseId: string, channelId: string) => {
+    const targetCourse = courses.find(c => c.id === courseId);
+    const targetChan = targetCourse?.channels.find(ch => ch.id === channelId);
+    if (targetChan && (targetChan.isGeneral || targetChan.name.toLowerCase() === 'announcements')) {
+      showDialog('Cannot delete the default protected Announcements channel.', { type: 'warning', title: 'Protected Channel' });
+      return;
+    }
+
     setCourses(prev =>
       prev.map(c => {
         if (c.id === courseId) {
@@ -486,6 +545,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (fallback) setSelectedChannel(fallback);
       }
     }
+
+    // Enforce deletion in Turso with server protection (R20)
+    fetch(`/api/courses/${encodeURIComponent(courseId)}/subjects/${encodeURIComponent(channelId)}`, {
+      method: 'DELETE',
+    }).then(async res => {
+      if (!res.ok) {
+        const data = await res.json();
+        showDialog(data.error || 'Failed to delete channel from server', { type: 'warning' });
+      }
+    }).catch(() => {});
   };
 
   // Add a new channel/subject to a course with an assigned subject teacher
@@ -680,6 +749,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCourses(prev => [...prev, rolledCourse]);
     setSelectedCourse(rolledCourse);
     setSelectedChannel(newChannels[0]);
+
+    // Persist automated Semester Rollover to live Turso SQL database (R23)
+    fetch('/api/courses/rollover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sourceCourseId,
+        code: data.code,
+        name: data.name,
+        term: data.term,
+        instructorId: data.instructorId,
+        channels: data.channels,
+      }),
+    }).catch(() => {});
 
     // Initialize posts for each new channel with a clean welcome announcement
     newChannels.forEach(ch => {
@@ -886,8 +969,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     instructions: string;
     points: number;
     targetChannelId?: string;
-    referenceMaterialMode: 'students-cant-edit' | 'students-edit-own-copy';
+    referenceMaterialMode?: 'students-cant-edit' | 'students-edit-own-copy';
     referenceFiles?: { id: string; name: string; size: string; type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt' }[];
+    publishedAt?: string;
+    scheduleDate?: string;
+    isScheduled?: boolean;
     dueAt: string;
     closeAt?: string;
     isStrictNoLateSubmission?: boolean;
@@ -895,6 +981,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }) => {
     const asgnId = `asgn_${Date.now()}`;
     const targetChannel = newAsgn.targetChannelId || selectedCourse.channels[0].id;
+    const now = new Date();
+    const publishedAt = newAsgn.publishedAt || now.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+    const dueTimestamp = new Date(newAsgn.dueAt).getTime() || (Date.now() + 7 * 86400000);
 
     const fullAssignment: Assignment = {
       id: asgnId,
@@ -904,13 +993,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       instructions: newAsgn.instructions,
       points: newAsgn.points,
       targetChannelId: targetChannel,
-      referenceMaterialMode: newAsgn.referenceMaterialMode,
+      referenceMaterialMode: newAsgn.referenceMaterialMode || 'students-cant-edit',
       referenceFiles: (newAsgn.referenceFiles || []).map(f => ({
         ...f,
         isClassMaterial: true,
-        permission: newAsgn.referenceMaterialMode === 'students-cant-edit' ? 'read-only' : 'editable'
+        permission: 'read-only' as const
       })),
+      publishedAt,
+      scheduleDate: newAsgn.isScheduled ? newAsgn.scheduleDate : undefined,
+      isScheduled: newAsgn.isScheduled ?? false,
       dueAt: newAsgn.dueAt,
+      dueTimestamp,
       closeAt: newAsgn.closeAt || newAsgn.dueAt,
       isStrictNoLateSubmission: newAsgn.isStrictNoLateSubmission ?? false,
       rubric: newAsgn.rubric,
@@ -930,6 +1023,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         title: newAsgn.title,
         description: newAsgn.instructions,
         due_at: newAsgn.dueAt,
+        dueTimestamp,
         max_points: newAsgn.points,
         created_by: currentUser.name,
       }),
@@ -938,8 +1032,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Channel Notification Routing: Post automated assignment card in target channel
     addPost(
       targetChannel,
-      `📋 Assignment: ${newAsgn.title}`,
-      `A new assignment has been posted for ${newAsgn.courseCode}.\n\n• Points: ${newAsgn.points} pts\n• Due: ${newAsgn.dueAt}\n• Hard Close: ${newAsgn.closeAt || newAsgn.dueAt}\n\nReview instructions in the Assignments tab.`,
+      newAsgn.isScheduled
+        ? `🗓️ Scheduled Assignment: ${newAsgn.title}`
+        : `📋 Assignment: ${newAsgn.title}`,
+      newAsgn.isScheduled
+        ? `A new assignment has been scheduled for ${newAsgn.courseCode}.\n\n• Release: ${new Date(newAsgn.scheduleDate!).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}\n• Due: ${newAsgn.dueAt}\n• Points: ${newAsgn.points} pts`
+        : `A new assignment has been posted for ${newAsgn.courseCode}.\n\n• Published: ${publishedAt}\n• Due: ${newAsgn.dueAt}\n• Points: ${newAsgn.points} pts\n\nReview instructions in the Assignments tab.`,
       true,
       asgnId
     );
@@ -948,8 +1046,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newNotif: ActivityNotification = {
       id: `notif_${Date.now()}`,
       type: 'assignment',
-      title: `New Assignment in ${newAsgn.courseCode}`,
-      detail: `"${newAsgn.title}" is due on ${newAsgn.dueAt}.`,
+      title: newAsgn.isScheduled ? `Scheduled Assignment in ${newAsgn.courseCode}` : `New Assignment in ${newAsgn.courseCode}`,
+      detail: newAsgn.isScheduled
+        ? `"${newAsgn.title}" is scheduled to release on ${new Date(newAsgn.scheduleDate!).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}.`
+        : `"${newAsgn.title}" is due on ${newAsgn.dueAt}.`,
       timestamp: 'Just now',
       courseCode: newAsgn.courseCode,
       isRead: false,
@@ -1104,7 +1204,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     );
 
-    // Sync submission with live Turso database
+    // Sync submission with live Turso database with server-side deadline lock (R3, R4)
     fetch(`/api/assignments/${encodeURIComponent(asgnId)}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1115,6 +1215,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         file_name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
         file_size: '1.8 MB',
       }),
+    }).then(async res => {
+      if (res.status === 403) {
+        const data = await res.json();
+        showDialog(data.error || 'Submission Closed — Deadline Passed', { type: 'warning', title: 'Deadline Lock' });
+        // Revert submission status to not-turned-in
+        setAssignments(prev =>
+          prev.map(asgn => {
+            if (asgn.id !== asgnId) return asgn;
+            return {
+              ...asgn,
+              submissions: asgn.submissions.map(s => s.studentId === studentId ? { ...s, status: 'not-turned-in' } : s)
+            };
+          })
+        );
+      }
     }).catch(() => {});
 
     return { success: true, message: `Submission recorded: ${serverTimestamp}` };
@@ -1150,6 +1265,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
+
+    // Sync undo with live Turso database with server-side deadline check (R3, R4)
+    fetch(`/api/assignments/${encodeURIComponent(asgnId)}/undo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: studentId,
+      }),
+    }).then(async res => {
+      if (res.status === 403) {
+        const data = await res.json();
+        showDialog(data.error || 'Cannot undo submission — Deadline Passed', { type: 'warning', title: 'Deadline Lock' });
+      }
+    }).catch(() => {});
 
     return { success: true, message: 'Turn In undone. Draft unlocked for editing.' };
   };
@@ -1464,13 +1593,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createFaculty = (data: Omit<FacultyDepartment, 'id'>) => {
-    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'ProCollege University Network');
+    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Padmashree College');
     const newFac: FacultyDepartment = {
       ...data,
       institutionName: data.institutionName || inst,
       id: `fac_${Date.now()}`
     };
     setFaculties(prev => [...prev, newFac]);
+
+    // Persist new faculty/department to live Turso SQL database (R13, R22)
+    fetch('/api/faculties', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newFac),
+    }).catch(() => {});
   };
 
   const createInstitutionalAdmin = (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => {
