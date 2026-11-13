@@ -1990,30 +1990,56 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         {/* DEVELOPER SECTION 5: 2FA EMAIL & OTP DISPATCH GATEWAY      */}
         {/* ========================================================= */}
         {isDeveloper && currentDevSection === 'dev-email' && (
-          <div className="space-y-6">
-            {/* Top Gateway Overview Card */}
-            <div className="bg-gradient-to-r from-purple-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-              <div className="relative z-10 max-w-2xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30 text-xs font-semibold mb-3">
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Production 2FA Email Delivery Engine</span>
+          <div className="space-y-5">
+            {/* Clean & Natural Header Card */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 sm:p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700 shrink-0">
+                    <Mail className="w-4 h-4 text-zinc-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm sm:text-base font-bold text-zinc-900">Two-Factor Authentication (2FA) Gateway</h2>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                        emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        {emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'Connected & Active' : 'Setup Recommended'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      Transactional OTP dispatch engine for administrative logins and student roster onboarding.
+                    </p>
+                  </div>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Two-Factor Authentication Email Gateway</h2>
-                <p className="text-xs sm:text-sm text-purple-200/90 mt-2 leading-relaxed">
-                  When new organization administrators or enrolled students log in using their temporary credentials, ProCollege automatically generates a 6-digit OTP code and dispatches it directly to their registered Gmail / email address for verification.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                    emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                    {emailSettings.relayUrl || emailSettings.apiKey || emailSettings.hasEnvKey ? 'Gateway Connected' : 'Configuration Recommended'}
-                  </span>
-                  <span className="text-xs text-purple-200/70">
-                    Active Provider: <strong className="text-white uppercase font-mono">{emailSettings.provider || 'Relay'}</strong>
-                  </span>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <div className="px-3 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200 text-xs text-zinc-600 flex items-center gap-1.5">
+                    <span className="text-zinc-400 text-[11px]">Active Provider:</span>
+                    <span className="font-semibold text-zinc-900 font-mono uppercase text-xs">{emailSettings.provider || 'Relay'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clean 3-Metric Summary Strip */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-lg p-3">
+                  <span className="text-[11px] font-semibold text-zinc-500 block">Security Verification</span>
+                  <div className="text-xs font-bold text-zinc-800 mt-0.5">6-Digit Temporary OTP</div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">10-minute expiry with rate-limiting</div>
+                </div>
+                <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-lg p-3">
+                  <span className="text-[11px] font-semibold text-zinc-500 block">Mandatory Flow</span>
+                  <div className="text-xs font-bold text-zinc-800 mt-0.5">Admins & Imported Students</div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">Zero unverified logins permitted</div>
+                </div>
+                <div className="bg-zinc-50/70 border border-zinc-200/80 rounded-lg p-3">
+                  <span className="text-[11px] font-semibold text-zinc-500 block">Zero-Budget Infrastructure</span>
+                  <div className="text-xs font-bold text-zinc-800 mt-0.5">Google Apps Script Relay</div>
+                  <div className="text-[10px] text-zinc-400 mt-0.5">100% Free • Direct Gmail Inbox Delivery</div>
                 </div>
               </div>
             </div>
@@ -2024,7 +2050,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div className="lg:col-span-7 bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700">
                       <Mail className="w-4 h-4" />
                     </div>
                     <div>
@@ -2059,12 +2085,16 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           onClick={() => setEmailSettings(prev => ({ ...prev, provider: p.id }))}
                           className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                             emailSettings.provider === p.id
-                              ? 'border-purple-600 bg-purple-50/60 ring-1 ring-purple-600 shadow-xs'
+                              ? 'border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900 shadow-xs'
                               : 'border-zinc-200 hover:border-zinc-300 bg-white'
                           }`}
                         >
                           <span className="block text-xs font-bold text-zinc-900">{p.name}</span>
-                          <span className="inline-block mt-1 text-[10px] font-semibold text-purple-700 bg-purple-100/70 px-1.5 py-0.5 rounded">
+                          <span className={`inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                            emailSettings.provider === p.id
+                              ? 'text-zinc-900 bg-zinc-200'
+                              : 'text-zinc-500 bg-zinc-100'
+                          }`}>
                             {p.badge}
                           </span>
                         </button>
@@ -2084,7 +2114,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           value={emailSettings.relayUrl}
                           onChange={e => setEmailSettings(prev => ({ ...prev, relayUrl: e.target.value }))}
                           placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
-                          className="w-full text-xs font-mono border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          className="w-full text-xs font-mono border border-zinc-200 rounded-lg px-3 py-2 text-zinc-900 bg-white placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-colors"
                         />
                         <p className="text-[11px] text-zinc-500 mt-1">
                           Sends directly from your Gmail account to any student/admin address with 100% inbox delivery and zero spam filtering.
@@ -2092,11 +2122,12 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       </div>
 
                       {/* Google Apps Script 1-Click Code Snippet */}
-                      <div className="bg-slate-900 text-slate-100 rounded-xl p-4 text-xs space-y-2 border border-slate-800">
+                      <div className="bg-zinc-50 text-zinc-800 rounded-xl p-4 text-xs space-y-2.5 border border-zinc-200">
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-purple-300 text-[11px] uppercase tracking-wider">
-                            30-Second Google Apps Script Setup
-                          </span>
+                          <div className="flex items-center gap-1.5 text-zinc-700 font-semibold text-[11px] uppercase tracking-wider">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Quick Google Apps Script Setup (30 Seconds)</span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => {
@@ -2119,16 +2150,16 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               setCopiedScript(true);
                               setTimeout(() => setCopiedScript(false), 2000);
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-white hover:bg-zinc-100 border border-zinc-200 text-zinc-700 text-[11px] font-semibold transition-colors cursor-pointer shadow-2xs"
                           >
-                            <Copy className="w-3 h-3" />
-                            <span>{copiedScript ? 'Copied!' : 'Copy Script'}</span>
+                            {copiedScript ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedScript ? 'Copied to Clipboard!' : 'Copy Script'}</span>
                           </button>
                         </div>
-                        <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11px] leading-relaxed">
-                          <li>Open <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-purple-400 underline font-semibold">script.google.com</a> and create a <strong>New Project</strong>.</li>
+                        <ol className="list-decimal list-inside space-y-1.5 text-zinc-600 text-[11px] leading-relaxed">
+                          <li>Open <a href="https://script.google.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-semibold">script.google.com</a> and click <strong>New Project</strong>.</li>
                           <li>Paste the copied script and click <strong>Deploy &gt; New deployment</strong>.</li>
-                          <li>Select <strong>Web app</strong>, set <em>Who has access</em> to <strong>Anyone</strong>, click Deploy, and paste the generated URL above!</li>
+                          <li>Select <strong>Web app</strong>, set <em>Who has access</em> to <strong>Anyone</strong>, click Deploy, and paste your Webhook URL above.</li>
                         </ol>
                       </div>
                     </div>
@@ -2145,7 +2176,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           value={emailSettings.apiKey}
                           onChange={e => setEmailSettings(prev => ({ ...prev, apiKey: e.target.value }))}
                           placeholder={emailSettings.provider === 'brevo' ? 'xkeysib-...' : emailSettings.provider === 'resend' ? 're_...' : 'sk_...'}
-                          className="w-full text-xs font-mono border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                          className="w-full text-xs font-mono border border-zinc-200 rounded-lg px-3 py-2 text-zinc-900 bg-white placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-colors"
                         />
                       </div>
 
@@ -2157,7 +2188,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             value={emailSettings.senderEmail}
                             onChange={e => setEmailSettings(prev => ({ ...prev, senderEmail: e.target.value }))}
                             placeholder="notifications@procollege.edu.np"
-                            className="w-full text-xs border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                            className="w-full text-xs border border-zinc-200 rounded-lg px-3 py-2 text-zinc-900 bg-white placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-colors"
                           />
                         </div>
                         <div>
@@ -2167,7 +2198,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             value={emailSettings.senderName}
                             onChange={e => setEmailSettings(prev => ({ ...prev, senderName: e.target.value }))}
                             placeholder="ProCollege Security"
-                            className="w-full text-xs border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                            className="w-full text-xs border border-zinc-200 rounded-lg px-3 py-2 text-zinc-900 bg-white placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-colors"
                           />
                         </div>
                       </div>
@@ -2177,7 +2208,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <button
                     type="submit"
                     disabled={isSavingEmailSettings}
-                    className="w-full py-2.5 px-4 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
                     {isSavingEmailSettings ? (
                       <>
@@ -2186,7 +2217,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       </>
                     ) : (
                       <>
-                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Save Email Gateway Settings</span>
                       </>
                     )}
@@ -2199,7 +2230,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 {/* Send Live Test Email Card */}
                 <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
                   <div className="flex items-center gap-2.5 pb-3 border-b border-zinc-100">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                    <div className="w-8 h-8 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-700">
                       <Send className="w-4 h-4" />
                     </div>
                     <div>
@@ -2217,14 +2248,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         value={testEmailTarget}
                         onChange={e => setTestEmailTarget(e.target.value)}
                         placeholder="gcsujan321@gmail.com"
-                        className="w-full text-xs border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600"
+                        className="w-full text-xs border border-zinc-200 rounded-lg px-3 py-2 text-zinc-900 bg-white placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-colors"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={isSendingTestEmail || !testEmailTarget.trim()}
-                      className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-2.5 px-4 rounded-lg bg-[#5b5fc7] hover:bg-[#4d51b8] disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
                     >
                       {isSendingTestEmail ? (
                         <>
@@ -2256,7 +2287,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           <p className="font-semibold">{testEmailResult.success ? 'Email Delivered Successfully!' : 'Email Dispatch Failed'}</p>
                           <p className="text-[11px] mt-0.5 leading-relaxed opacity-90">{testEmailResult.message}</p>
                           {testEmailResult.provider && (
-                            <span className="inline-block mt-1 text-[10px] font-mono font-bold bg-white/80 px-2 py-0.5 rounded border">
+                            <span className="inline-block mt-1 text-[10px] font-mono font-bold bg-white/80 px-2 py-0.5 rounded border border-zinc-200 text-zinc-700">
                               via {testEmailResult.provider}
                             </span>
                           )}
@@ -2267,20 +2298,23 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </div>
 
                 {/* Quick Architecture Guide Card */}
-                <div className="bg-zinc-50 rounded-xl border border-zinc-200 p-4 text-xs space-y-2">
-                  <span className="font-bold text-zinc-900 block">How ProCollege 2FA Operates</span>
-                  <ul className="space-y-1.5 text-zinc-600 text-[11px] leading-relaxed">
-                    <li className="flex items-start gap-1.5">
-                      <span className="text-purple-600 font-bold">•</span>
-                      <span><strong>Campus Admins:</strong> Upon creation or password reset, logging in sends a fresh 6-digit OTP code to their official email.</span>
+                <div className="bg-zinc-50 rounded-xl border border-zinc-200 p-4 text-xs space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-zinc-900 font-bold text-xs">
+                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>How ProCollege 2FA Operates</span>
+                  </div>
+                  <ul className="space-y-2 text-zinc-600 text-[11px] leading-relaxed">
+                    <li className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
+                      <span><strong>Campus Admins:</strong> Upon creation or password reset, logging in dispatches a fresh 6-digit OTP code to their official email.</span>
                     </li>
-                    <li className="flex items-start gap-1.5">
-                      <span className="text-purple-600 font-bold">•</span>
-                      <span><strong>Imported Students:</strong> Entering their temporary roster credentials triggers a 6-digit OTP sent to their Gmail, followed by mandatory permanent password creation.</span>
+                    <li className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
+                      <span><strong>Imported Students:</strong> Entering temporary roster credentials triggers a 6-digit OTP sent to their Gmail, followed by mandatory permanent password setup.</span>
                     </li>
-                    <li className="flex items-start gap-1.5">
-                      <span className="text-purple-600 font-bold">•</span>
-                      <span><strong>Multi-Campus Security:</strong> Zero demo accounts exist; all institutions operate strictly within their own encrypted database boundary.</span>
+                    <li className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 mt-1.5 shrink-0" />
+                      <span><strong>Multi-Campus Isolation:</strong> Zero demo accounts exist; all institutions operate strictly within their own encrypted database boundary.</span>
                     </li>
                   </ul>
                 </div>
@@ -2290,7 +2324,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             {/* Bottom Row: Live 2FA & Email Audit Logs Table */}
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-700">
                     <ClipboardList className="w-4 h-4" />
                   </div>
@@ -2332,15 +2366,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
                           <td className="py-2.5 px-3 font-semibold text-zinc-900">{log.recipient_email}</td>
                           <td className="py-2.5 px-3 font-sans text-zinc-600">{log.recipient_name || 'User'}</td>
-                          <td className="py-2.5 px-3 font-bold text-purple-700 tracking-wider bg-purple-50/50 rounded px-1.5">
-                            {log.otp_code || '••••••'}
-                          </td>
-                          <td className="py-2.5 px-3 uppercase text-zinc-500 font-bold">{log.provider || 'none'}</td>
                           <td className="py-2.5 px-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            <span className="font-bold text-zinc-800 tracking-wider bg-zinc-100 rounded px-2 py-0.5 border border-zinc-200/70">
+                              {log.otp_code || '••••••'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 uppercase text-zinc-500 font-semibold">{log.provider || 'none'}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                               log.status === 'delivered'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-800'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
                             }`}>
                               {log.status === 'delivered' ? '✓ Delivered' : '✗ Failed'}
                             </span>
