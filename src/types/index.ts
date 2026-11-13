@@ -147,6 +147,8 @@ export interface Conversation {
   lastMessage?: string;
   lastMessageTime?: string;
   unreadCount?: number;
+  institutionName?: string;
+  isDemo?: boolean;
 }
 
 export type SubmissionStatus =
@@ -227,6 +229,8 @@ export interface CalendarEvent {
   location: string;
   isVirtual: boolean;
   meetingLink?: string;
+  institutionName?: string;
+  isDemo?: boolean;
 }
 
 export interface CourseFile {
@@ -258,6 +262,7 @@ export interface ActivityNotification {
   institutionName?: string;
   isRead: boolean;
   author?: User;
+  isDemo?: boolean;
 }
 
 export type DialogType = 'success' | 'info' | 'warning' | 'error';

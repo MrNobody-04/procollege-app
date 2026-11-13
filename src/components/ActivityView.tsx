@@ -51,8 +51,11 @@ export const ActivityView: React.FC = () => {
   // Strictly scope notifications to current user's organization and enrollment
   const visibleNotifications = notifications.filter(n => {
     // 1. Institution boundary
-    if (currentUser.role !== 'developer' && n.institutionName && currentUser.institutionName) {
-      if (n.institutionName !== currentUser.institutionName) return false;
+    if (currentUser.role !== 'developer') {
+      if (currentUser.institutionName && currentUser.institutionName !== 'ProCollege University Network') {
+        if (n.isDemo || n.institutionName === 'ProCollege University Network') return false;
+        if (n.institutionName && n.institutionName !== currentUser.institutionName) return false;
+      }
     }
     // 2. Student enrollment boundary for assignment alerts
     if (currentUser.role === 'student' && n.type === 'assignment' && n.courseId) {

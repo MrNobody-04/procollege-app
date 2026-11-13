@@ -722,7 +722,9 @@ export const INITIAL_CONVERSATIONS: Conversation[] = [
     participants: [INITIAL_USERS[1], INITIAL_USERS[0]],
     lastMessage: 'Good morning Alex. Absolutely. Stop by my office at 11:30 AM...',
     lastMessageTime: '10:18 AM',
-    unreadCount: 0
+    unreadCount: 0,
+    institutionName: 'ProCollege University Network',
+    isDemo: true
   }
 ];
 
@@ -952,7 +954,7 @@ export const INITIAL_SCHEDULE: CalendarEvent[] = [
     location: 'Science Hall A',
     isVirtual: false
   }
-];
+].map((evt): CalendarEvent => ({ ...evt, day: evt.day as CalendarEvent['day'], institutionName: 'ProCollege University Network', isDemo: true }));
 
 export const INITIAL_FILES: CourseFile[] = [
   {
@@ -1085,9 +1087,12 @@ export const INITIAL_NOTIFICATIONS: ActivityNotification[] = [
     title: 'Announcement in CS 301',
     detail: 'Prof. Alan Turing posted course materials for review.',
     timestamp: '1 hour ago',
+    courseId: 'course_cs301',
     courseCode: 'CS 301',
+    institutionName: 'ProCollege University Network',
     isRead: false,
-    author: INITIAL_USERS[1]
+    author: INITIAL_USERS[1],
+    isDemo: true
   },
   {
     id: 'notif_2',
@@ -1095,9 +1100,12 @@ export const INITIAL_NOTIFICATIONS: ActivityNotification[] = [
     title: 'Assignment Posted: Problem Set 5',
     detail: 'Due on Nov 20, 2026, 11:59 PM.',
     timestamp: '2 hours ago',
+    courseId: 'course_cs301',
     courseCode: 'CS 301',
+    institutionName: 'ProCollege University Network',
     isRead: false,
-    author: INITIAL_USERS[1]
+    author: INITIAL_USERS[1],
+    isDemo: true
   }
 ];
 

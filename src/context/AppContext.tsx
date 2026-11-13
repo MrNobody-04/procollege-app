@@ -118,8 +118,8 @@ interface AppContextType {
   toggleReaction: (channelId: string, postId: string, emoji: string, replyId?: string) => void;
 
   conversations: Conversation[];
-  selectedConversation: Conversation;
-  setSelectedConversation: (conv: Conversation) => void;
+  selectedConversation: Conversation | null;
+  setSelectedConversation: (conv: Conversation | null) => void;
   directMessages: Record<string, DirectMessage[]>;
   sendDirectMessage: (convId: string, content: string) => void;
 
@@ -225,8 +225,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [channelTab, setChannelTab] = useState<ChannelTab>('posts');
 
   const [posts, setPosts] = useState<Record<string, ThreadPost[]>>(INITIAL_POSTS);
-  const [conversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation>(INITIAL_CONVERSATIONS[0]);
+  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(INITIAL_CONVERSATIONS[0]);
   const [directMessages, setDirectMessages] = useState<Record<string, DirectMessage[]>>(INITIAL_DIRECT_MESSAGES);
   const [assignments, setAssignments] = useState<Assignment[]>(INITIAL_ASSIGNMENTS);
   const [courseFiles, setCourseFiles] = useState<CourseFile[]>(INITIAL_FILES);
@@ -235,6 +235,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addCalendarEvent = (eventData: Omit<CalendarEvent, 'id'>) => {
     const newEvent: CalendarEvent = {
       ...eventData,
+      institutionName: eventData.institutionName || (currentUser.role === 'developer' ? selectedInstitution : currentUser.institutionName),
       id: `evt_${Date.now()}`
     };
     setCalendarEvents(prev => [...prev, newEvent]);
@@ -382,6 +383,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
         setPosts(newPosts);
+
+        // 6. Multi-Tenant Notification, Conversation & Calendar Isolation for Real Organizations
+        if (inst !== 'ProCollege University Network') {
+          setNotifications(prev => prev.filter(n => !n.isDemo && n.institutionName !== 'ProCollege University Network'));
+          setCalendarEvents(prev => prev.filter(e => !e.isDemo && e.institutionName !== 'ProCollege University Network'));
+          setConversations(prev => prev.filter(c => !c.isDemo && c.institutionName !== 'ProCollege University Network'));
+        }
       }
     } catch (err) {
       console.warn('Bootstrap fetch fallback to memory fixtures:', err);
@@ -1999,6 +2007,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [courseFiles, courses, currentUser, activeInstitution, selectedInstitution]);
 
+  const tenantConversations = useMemo(() => {
+    return conversations.filter(c => {
+      // 1. Never show demo conversations in developer console
+      if (currentUser.role === 'developer') {
+        if (c.isDemo || c.institutionName === 'ProCollege University Network') return false;
+        return true;
+      }
+      // 2. Real institution: strictly exclude demo conversations and cross-tenant messages
+      if (activeInstitution !== 'ProCollege University Network') {
+        if (c.isDemo || c.institutionName === 'ProCollege University Network') return false;
+        const isParticipant = c.participants?.some(p => p.id === currentUser.id || p.email === currentUser.email);
+        return isParticipant;
+      }
+      // 3. Demo workspace: show demo conversation
+      return true;
+    });
+  }, [conversations, currentUser.role, currentUser.id, currentUser.email, activeInstitution]);
+
+  const activeTenantConversation = useMemo(() => {
+    if (tenantConversations.length === 0) return null;
+    if (selectedConversation && tenantConversations.some(c => c.id === selectedConversation.id)) {
+      return selectedConversation;
+    }
+    return tenantConversations[0];
+  }, [tenantConversations, selectedConversation]);
+
+  const tenantCalendarEvents = useMemo(() => {
+    return calendarEvents.filter(evt => {
+      // 1. Developer mode: only show real campus events
+      if (currentUser.role === 'developer') {
+        if (evt.isDemo || evt.institutionName === 'ProCollege University Network') return false;
+        if (selectedInstitution === 'all') return true;
+        return evt.institutionName === activeInstitution;
+      }
+      // 2. Real institution: strictly isolate to user's institution and active courses
+      if (activeInstitution !== 'ProCollege University Network') {
+        if (evt.isDemo || evt.institutionName === 'ProCollege University Network') return false;
+        if (evt.institutionName && evt.institutionName !== activeInstitution) return false;
+        const matchesCourseId = evt.courseId && tenantCourses.some(c => c.id === evt.courseId);
+        const matchesCourseCode = evt.courseCode && tenantCourses.some(c => c.code === evt.courseCode);
+        const matchesInstitution = evt.institutionName === activeInstitution;
+        return Boolean(matchesCourseId || matchesCourseCode || matchesInstitution);
+      }
+      // 3. Demo workspace: show demo events
+      return true;
+    });
+  }, [calendarEvents, currentUser.role, selectedInstitution, activeInstitution, tenantCourses]);
+
+  const tenantNotifications = useMemo(() => {
+    return notifications.filter(n => {
+      // 1. Developer mode: only real platform notifications, never demo course alerts
+      if (currentUser.role === 'developer') {
+        if (n.isDemo || n.institutionName === 'ProCollege University Network') return false;
+        if (selectedInstitution === 'all') return true;
+        return n.institutionName === activeInstitution;
+      }
+      // 2. Real institution: strictly isolate to current tenant
+      if (activeInstitution !== 'ProCollege University Network') {
+        if (n.isDemo || n.institutionName === 'ProCollege University Network') return false;
+        if (n.institutionName && n.institutionName !== activeInstitution) return false;
+        const matchesCourse = n.courseId && tenantCourses.some(c => c.id === n.courseId);
+        const matchesInstitution = n.institutionName === activeInstitution;
+        if (!matchesCourse && !matchesInstitution) return false;
+        return true;
+      }
+      // 3. Demo workspace: show demo notifications
+      return true;
+    });
+  }, [notifications, currentUser.role, selectedInstitution, activeInstitution, tenantCourses]);
+
   // Keep selectedCourse in sync when switching institution or tenant
   useEffect(() => {
     if (tenantCourses.length > 0) {
@@ -2054,8 +2132,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addReply,
         toggleReaction,
 
-        conversations,
-        selectedConversation,
+        conversations: tenantConversations,
+        selectedConversation: activeTenantConversation,
         setSelectedConversation,
         directMessages,
         sendDirectMessage,
@@ -2070,13 +2148,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         returnAssignment,
         returnForRevision,
 
-        calendarEvents,
+        calendarEvents: tenantCalendarEvents,
         addCalendarEvent,
         courseFiles: tenantFiles,
         uploadCourseFile,
         deleteCourseFile,
 
-        notifications,
+        notifications: tenantNotifications,
         markNotificationsAsRead,
 
         meeting,

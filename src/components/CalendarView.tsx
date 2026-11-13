@@ -87,7 +87,17 @@ export const CalendarView: React.FC = () => {
   // Parse lecture event dates
   const eventsByDayMap = useMemo(() => {
     const map: Record<number, CalendarEvent[]> = {};
+    const validCourseCodes = new Set(courses.map(c => c.code));
+    const validCourseIds = new Set(courses.map(c => c.id));
+
     calendarEvents.forEach(evt => {
+      // If user is in a real campus, don't show any events for non-existent courses
+      if (currentUser.institutionName && currentUser.institutionName !== 'ProCollege University Network') {
+        const matchesCourse = (evt.courseId && validCourseIds.has(evt.courseId)) || (evt.courseCode && validCourseCodes.has(evt.courseCode));
+        const matchesInst = evt.institutionName === currentUser.institutionName;
+        if (!matchesCourse && !matchesInst) return;
+      }
+
       let dayNum: number | null = null;
       const match = evt.dateStr?.match(/Nov\s+(\d+)/i);
       if (match) {
@@ -104,7 +114,7 @@ export const CalendarView: React.FC = () => {
       }
     });
     return map;
-  }, [calendarEvents]);
+  }, [calendarEvents, courses, currentUser.institutionName]);
 
   // November 2026 starts on Sunday (day 0) and has 30 days
   const monthDaysCount = 30;
