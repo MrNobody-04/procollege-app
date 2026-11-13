@@ -72,7 +72,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   });
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>(
-    defaultCourseId || eligibleCourses[0]?.id || selectedCourse.id
+    defaultCourseId || eligibleCourses[0]?.id || selectedCourse?.id || ''
   );
   const [selectedChannelId, setSelectedChannelId] = useState<string>(defaultChannelId || '');
 

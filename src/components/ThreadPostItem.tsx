@@ -27,7 +27,7 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
 
   const handleSendReply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || !selectedChannel?.id) return;
     addReply(selectedChannel.id, post.id, replyText.trim());
     setReplyText('');
   };
@@ -106,7 +106,9 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
                   <button
                     key={emoji}
                     onClick={() => {
-                      toggleReaction(selectedChannel.id, post.id, emoji);
+                      if (selectedChannel?.id) {
+                        toggleReaction(selectedChannel.id, post.id, emoji);
+                      }
                       setShowEmojiPicker(false);
                     }}
                     className="hover:scale-125 transition-transform text-sm p-1"
@@ -159,7 +161,11 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
             {Object.entries(post.reactions).map(([emoji, users]) => (
               <button
                 key={emoji}
-                onClick={() => toggleReaction(selectedChannel.id, post.id, emoji)}
+                onClick={() => {
+                  if (selectedChannel?.id) {
+                    toggleReaction(selectedChannel.id, post.id, emoji);
+                  }
+                }}
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-xs text-zinc-700 transition-colors"
               >
                 <span>{emoji}</span>

@@ -909,8 +909,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         channels: c.channels.map(ch => (ch.id === channelId ? { ...ch, studentFilePermission: permission } : ch))
       }))
     );
-    if (selectedChannel.id === channelId) {
-      setSelectedChannel(prev => ({ ...prev, studentFilePermission: permission }));
+    if (selectedChannel?.id === channelId) {
+      setSelectedChannel(prev => prev ? ({ ...prev, studentFilePermission: permission }) : prev);
     }
   };
 
@@ -960,7 +960,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         title: notifTitle,
         detail: title ? `"${title}": ${content.substring(0, 90)}` : content.substring(0, 100),
         timestamp: 'Just now',
-        courseCode: selectedCourse?.code || '',
+        courseCode: code,
         channelId,
         isRead: false,
         author: currentUser
@@ -1087,9 +1087,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }) => {
     const asgnId = `asgn_${Date.now()}`;
     const targetCourse = courses.find(c => c.id === newAsgn.courseId) || selectedCourse;
-    const channelId = newAsgn.channelId || newAsgn.targetChannelId || targetCourse.channels[0].id;
+    if (!targetCourse) {
+      showDialog('No active class found to publish assignment.', { type: 'warning' });
+      return;
+    }
+    const channelId = newAsgn.channelId || newAsgn.targetChannelId || targetCourse.channels[0]?.id;
     const channelObj = targetCourse.channels.find(ch => ch.id === channelId) || targetCourse.channels[0];
-    const subjectName = newAsgn.subjectName || channelObj.name;
+    const subjectName = newAsgn.subjectName || channelObj?.name || 'Subject';
     const institutionName = newAsgn.institutionName || targetCourse.institutionName || currentUser.institutionName || 'ProCollege University Network';
     const facultyId = newAsgn.facultyId || targetCourse.facultyId || 'fac_cs';
     const createdByEmail = newAsgn.createdByEmail || currentUser.email;

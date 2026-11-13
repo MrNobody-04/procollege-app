@@ -670,8 +670,8 @@ export const ChannelView: React.FC = () => {
       <CreateAssignmentModal
         isOpen={showCreateAsgnModal}
         onClose={() => setShowCreateAsgnModal(false)}
-        defaultCourseId={selectedCourse.id}
-        defaultChannelId={selectedChannel.id}
+        defaultCourseId={selectedCourse?.id}
+        defaultChannelId={selectedChannel?.id}
       />
 
       {/* SPEEDGRADER REVIEW MODAL (Lecturer) */}
