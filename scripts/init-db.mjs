@@ -167,12 +167,34 @@ async function init() {
         description TEXT,
         subject TEXT,
         due_date TEXT,
+        due_at TEXT,
         max_points INTEGER DEFAULT 100,
         created_by TEXT,
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
+    try {
+      await db.execute(`ALTER TABLE assignments ADD COLUMN due_at TEXT;`);
+    } catch {
+      // Column may already exist
+    }
     console.log('   ✔ Table `assignments` created / verified');
+
+    // 8b. assignment_submissions
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS assignment_submissions (
+        id TEXT PRIMARY KEY,
+        assignment_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        student_name TEXT,
+        status TEXT DEFAULT 'turned-in',
+        submission_text TEXT,
+        file_name TEXT,
+        file_size TEXT,
+        submitted_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    console.log('   ✔ Table `assignment_submissions` created / verified');
 
     // 9. college_requests (Request Campus Access inquiries)
     await db.execute(`

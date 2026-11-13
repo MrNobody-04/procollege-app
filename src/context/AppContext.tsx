@@ -783,6 +783,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         author: currentUser
       };
       setNotifications(prev => [newNotif, ...prev]);
+
+      // Sync announcement to live Turso notices table & Ably broadcast
+      if (isAnnouncement || currentUser.role === 'admin' || currentUser.role === 'professor') {
+        fetch('/api/notices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            college_id: 'padmashree-demo',
+            title: title || `${selectedCourse.code} Announcement`,
+            content: content,
+            priority: isAnnouncement ? 'important' : 'normal',
+            author_id: currentUser.id,
+            author_name: currentUser.name,
+          }),
+        }).catch(() => {});
+      }
     }
   };
 
@@ -902,6 +918,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setAssignments(prev => [fullAssignment, ...prev]);
+
+    // Sync to live Turso assignments table
+    fetch('/api/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: asgnId,
+        college_id: 'padmashree-demo',
+        section_id: 'sec-sem5-a',
+        title: newAsgn.title,
+        description: newAsgn.instructions,
+        due_at: newAsgn.dueAt,
+        max_points: newAsgn.points,
+        created_by: currentUser.name,
+      }),
+    }).catch(() => {});
 
     // Channel Notification Routing: Post automated assignment card in target channel
     addPost(
@@ -1071,6 +1103,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
+
+    // Sync submission with live Turso database
+    fetch(`/api/assignments/${encodeURIComponent(asgnId)}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: studentId,
+        student_name: currentUser.name,
+        submission_text: `Turned in by ${currentUser.name}`,
+        file_name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
+        file_size: '1.8 MB',
+      }),
+    }).catch(() => {});
 
     return { success: true, message: `Submission recorded: ${serverTimestamp}` };
   };

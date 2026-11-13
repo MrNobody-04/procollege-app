@@ -25,7 +25,11 @@ export const AssignmentsView: React.FC = () => {
   const [activeSpeedGraderAsgn, setActiveSpeedGraderAsgn] = useState<Assignment | null>(null);
   const [activeStudentAsgn, setActiveStudentAsgn] = useState<Assignment | null>(null);
 
-  const isOwner = currentUser.role === 'professor' || currentUser.role === 'lecturer';
+  const isOwner =
+    currentUser.role === 'professor' ||
+    currentUser.role === 'lecturer' ||
+    currentUser.role === 'admin' ||
+    (currentUser as unknown as { role: string }).role === 'teacher';
 
   const [currentTime] = useState(() => Date.now());
 

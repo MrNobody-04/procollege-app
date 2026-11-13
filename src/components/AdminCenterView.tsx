@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Layers,
@@ -59,10 +59,49 @@ export const AdminCenterView: React.FC = () => {
   } = useApp();
 
   const isDeveloper = currentUser.role === 'developer';
+  const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin';
 
   // Primary Tab - Classes, Faculties, Users, Developer Requests, and Roles
   const [activeAdminTab, setActiveAdminTab] = useState<'classes' | 'faculties' | 'users' | 'requests' | 'roles'>('classes');
   const [searchClassQuery, setSearchClassQuery] = useState('');
+  const [dbRequests, setDbRequests] = useState<InstitutionalRequest[]>([]);
+
+  useEffect(() => {
+    fetch('/api/colleges/requests')
+      .then(res => res.json())
+      .then(data => {
+        if (data.requests && Array.isArray(data.requests)) {
+          const mapped: InstitutionalRequest[] = data.requests.map((r: {
+            id: string;
+            institution_name: string;
+            contact_name: string;
+            email: string;
+            phone?: string;
+            student_count?: number;
+            deployment_type?: string;
+            status?: string;
+            created_at?: string;
+          }) => ({
+            id: r.id,
+            institutionName: r.institution_name,
+            contactName: r.contact_name,
+            email: r.email,
+            phone: r.phone || '',
+            studentCount: Number(r.student_count) || 1000,
+            deploymentType: (r.deployment_type as DeploymentModel) || 'campus-pro',
+            status: (r.status as 'pending' | 'provisioned') || 'pending',
+            createdAt: r.created_at || new Date().toISOString(),
+          }));
+          setDbRequests(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [activeAdminTab]);
+
+  const allRequests = useMemo(() => {
+    const ids = new Set(dbRequests.map(r => r.id));
+    return [...dbRequests, ...institutionalRequests.filter(r => !ids.has(r.id))];
+  }, [dbRequests, institutionalRequests]);
 
   // Modals
   const [showNewClassModal, setShowNewClassModal] = useState(false);
@@ -680,7 +719,7 @@ export const AdminCenterView: React.FC = () => {
             <Users className="w-4 h-4" />
             Students & Lecturers ({availableUsers.length})
           </button>
-          {isDeveloper && (
+          {isDeveloperOrAdmin && (
             <button
               onClick={() => setActiveAdminTab('requests')}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
@@ -690,8 +729,8 @@ export const AdminCenterView: React.FC = () => {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              Institutional Requests ({institutionalRequests.length})
-              {institutionalRequests.some(r => r.status === 'pending') && (
+              Campus Access Requests ({allRequests.length})
+              {allRequests.some(r => r.status === 'pending') && (
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               )}
             </button>
@@ -1269,20 +1308,20 @@ export const AdminCenterView: React.FC = () => {
         )}
 
         {/* ========================================================= */}
-        {/* TAB 4: INSTITUTIONAL REQUESTS (DEVELOPER CREATOR ONLY)    */}
+        {/* TAB 4: INSTITUTIONAL REQUESTS (DEVELOPER & DEAN ADMIN)    */}
         {/* ========================================================= */}
-        {isDeveloper && activeAdminTab === 'requests' && (
+        {isDeveloperOrAdmin && activeAdminTab === 'requests' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-zinc-900">University & Organization Access Requests</h2>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                    Developer Mode Only
+                    {isDeveloper ? 'Developer Root' : 'Academic Administration'}
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Review and approve college access inquiries submitted through the portal, or directly issue an Institutional Admin login.
+                  Review incoming campus access leads stored in live Turso database, or provision administrative credentials.
                 </p>
               </div>
 
@@ -1296,7 +1335,7 @@ export const AdminCenterView: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {institutionalRequests.map(req => (
+              {allRequests.map(req => (
                 <div key={req.id} className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-3">
                   <div className="flex items-start justify-between">
                     <div>

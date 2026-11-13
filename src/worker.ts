@@ -398,6 +398,222 @@ app.post('/api/colleges/request-access', async (c) => {
   }
 });
 
+// 5. Create / Post Announcement to Notices table & broadcast via Ably
+app.post('/api/notices', async (c) => {
+  try {
+    const body = await c.req.json();
+    const id = body.id || `not_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const collegeId = body.college_id || body.collegeId || 'padmashree-demo';
+    const title = (body.title || '').trim();
+    const content = (body.content || '').trim();
+    const priority = body.priority || 'normal';
+    const authorId = body.author_id || body.authorId || 'usr_anonymous';
+    const authorName = body.author_name || body.authorName || 'Faculty Member';
+    const createdAt = new Date().toISOString();
+
+    if (!title || !content) {
+      return c.json({ error: 'Title and content are required' }, 400);
+    }
+
+    const db = getDb(c);
+    await db.execute({
+      sql: `INSERT INTO notices (id, college_id, title, content, priority, author_id, author_name, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, title, content, priority, authorId, authorName, createdAt],
+    });
+
+    const savedNotice = {
+      id,
+      college_id: collegeId,
+      title,
+      content,
+      priority,
+      author_id: authorId,
+      author_name: authorName,
+      created_at: createdAt,
+    };
+
+    // Broadcast notice via Ably REST API
+    const ablyApiKey = c.env?.ABLY_API_KEY || DEFAULT_ABLY_KEY;
+    if (ablyApiKey) {
+      try {
+        const authHeader = 'Basic ' + btoa(ablyApiKey);
+        await fetch(`https://rest.ably.io/channels/notices/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'notice-broadcast',
+            data: savedNotice,
+          }),
+        });
+      } catch (ablyErr) {
+        console.error('Failed to broadcast notice to Ably:', ablyErr);
+      }
+    }
+
+    return c.json({ success: true, notice: savedNotice }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 6. Get assignments for a college
+app.get('/api/assignments/:collegeId', async (c) => {
+  const collegeId = c.req.param('collegeId');
+  try {
+    const db = getDb(c);
+    const result = await db.execute({
+      sql: `SELECT id, college_id, section_id, title, description, due_at, max_points, created_by, created_at
+            FROM assignments
+            WHERE college_id = ?
+            ORDER BY created_at DESC;`,
+      args: [collegeId],
+    });
+    return c.json({ assignments: result.rows });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 7. Create assignment in Turso
+app.post('/api/assignments', async (c) => {
+  try {
+    const body = await c.req.json();
+    const id = body.id || `asgn_${Date.now()}`;
+    const collegeId = body.college_id || body.collegeId || 'padmashree-demo';
+    const sectionId = body.section_id || body.sectionId || 'sec-sem5-a';
+    const title = (body.title || '').trim();
+    const description = (body.description || body.instructions || '').trim();
+    const dueAt = body.due_at || body.dueAt || '2026-11-20';
+    const maxPoints = Number(body.max_points || body.points || 100);
+    let createdBy = body.created_by || body.createdBy || null;
+    if (createdBy === 'Er. Ramesh Sharma' || createdBy === 'Faculty Member') {
+      createdBy = 'usr-teacher-01';
+    } else if (createdBy === 'Academic Dean') {
+      createdBy = 'usr-admin-01';
+    } else if (createdBy && !createdBy.startsWith('usr')) {
+      createdBy = null;
+    }
+    const createdAt = new Date().toISOString();
+
+    if (!title) {
+      return c.json({ error: 'Assignment title is required' }, 400);
+    }
+
+    const db = getDb(c);
+    await db.execute({
+      sql: `INSERT INTO assignments (id, college_id, section_id, title, description, due_at, max_points, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, sectionId, title, description, dueAt, maxPoints, createdBy, createdAt],
+    });
+
+    return c.json({
+      success: true,
+      assignment: {
+        id,
+        college_id: collegeId,
+        section_id: sectionId,
+        title,
+        description,
+        due_at: dueAt,
+        max_points: maxPoints,
+        created_by: createdBy,
+        created_at: createdAt,
+      },
+    }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 8. Submit assignment
+app.post('/api/assignments/:id/submit', async (c) => {
+  const assignmentId = c.req.param('id');
+  try {
+    const body = await c.req.json();
+    const id = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const studentId = body.student_id || body.studentId || 'usr_anonymous';
+    const studentName = body.student_name || body.studentName || 'Student';
+    const submissionText = body.submission_text || body.notes || '';
+    const fileName = body.file_name || body.fileName || 'Submission.pdf';
+    const fileSize = body.file_size || body.fileSize || '1.2 MB';
+    const submittedAt = new Date().toISOString();
+
+    const db = getDb(c);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS assignment_submissions (
+        id TEXT PRIMARY KEY,
+        assignment_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        student_name TEXT,
+        status TEXT DEFAULT 'turned-in',
+        submission_text TEXT,
+        file_name TEXT,
+        file_size TEXT,
+        submitted_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO assignment_submissions (id, assignment_id, student_id, student_name, status, submission_text, file_name, file_size, submitted_at)
+            VALUES (?, ?, ?, ?, 'turned-in', ?, ?, ?, ?);`,
+      args: [id, assignmentId, studentId, studentName, submissionText, fileName, fileSize, submittedAt],
+    });
+
+    return c.json({
+      success: true,
+      submission: {
+        id,
+        assignment_id: assignmentId,
+        student_id: studentId,
+        student_name: studentName,
+        status: 'turned-in',
+        submitted_at: submittedAt,
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 9. Get live campus access requests for Admin Center
+app.get('/api/colleges/requests', async (c) => {
+  try {
+    const db = getDb(c);
+    const result = await db.execute('SELECT * FROM college_requests ORDER BY created_at DESC;');
+    return c.json({ requests: result.rows });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 10. Get users for a college
+app.get('/api/colleges/users/:collegeId', async (c) => {
+  const collegeId = c.req.param('collegeId');
+  try {
+    const db = getDb(c);
+    const result = await db.execute({
+      sql: `SELECT id, college_id, section_id, name, email, role, avatar_url, created_at
+            FROM users
+            WHERE college_id = ?
+            ORDER BY name ASC;`,
+      args: [collegeId],
+    });
+    return c.json({ users: result.rows });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
 // Fallback: Serve static assets (React SPA) for all non-API routes
 app.all('*', (c) => {
   return c.env.ASSETS.fetch(c.req.raw);
