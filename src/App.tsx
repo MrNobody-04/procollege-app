@@ -16,6 +16,7 @@ import { GlobalDialogModal } from './components/GlobalDialogModal';
 
 const MainWorkspace: React.FC = () => {
   const { activeTab, currentUser } = useApp();
+  const isPlatformDev = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#242424] text-zinc-900 select-none">
@@ -29,32 +30,38 @@ const MainWorkspace: React.FC = () => {
 
         {/* Dynamic Center Work Area */}
         <main className="flex-1 flex overflow-hidden">
-          {activeTab === 'teams' && (
+          {isPlatformDev ? (
+            <AdminCenterView />
+          ) : (
             <>
-              <TeamsSidebar />
-              <ChannelView />
+              {activeTab === 'teams' && (
+                <>
+                  <TeamsSidebar />
+                  <ChannelView />
+                </>
+              )}
+
+              {activeTab === 'chat' && <ChatView />}
+
+              {activeTab === 'assignments' && <AssignmentsView />}
+
+              {activeTab === 'calendar' && <CalendarView />}
+
+              {activeTab === 'files' && <FilesView />}
+
+              {activeTab === 'activity' && <ActivityView />}
+
+              {activeTab === 'admin' && (
+                currentUser.role === 'admin' ? (
+                  <AdminCenterView />
+                ) : (
+                  <>
+                    <TeamsSidebar />
+                    <ChannelView />
+                  </>
+                )
+              )}
             </>
-          )}
-
-          {activeTab === 'chat' && <ChatView />}
-
-          {activeTab === 'assignments' && <AssignmentsView />}
-
-          {activeTab === 'calendar' && <CalendarView />}
-
-          {activeTab === 'files' && <FilesView />}
-
-          {activeTab === 'activity' && <ActivityView />}
-
-          {activeTab === 'admin' && (
-            (currentUser.role === 'admin' || currentUser.role === 'developer') ? (
-              <AdminCenterView />
-            ) : (
-              <>
-                <TeamsSidebar />
-                <ChannelView />
-              </>
-            )
           )}
         </main>
       </div>

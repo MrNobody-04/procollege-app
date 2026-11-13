@@ -36,7 +36,19 @@ import {
   INITIAL_FACULTIES
 } from '../data/initialData';
 
-export type ActiveTab = 'activity' | 'chat' | 'teams' | 'assignments' | 'calendar' | 'calls' | 'files' | 'admin';
+export type ActiveTab =
+  | 'activity'
+  | 'chat'
+  | 'teams'
+  | 'assignments'
+  | 'calendar'
+  | 'calls'
+  | 'files'
+  | 'admin'
+  | 'dev-overview'
+  | 'dev-organizations'
+  | 'dev-billing'
+  | 'dev-system';
 export type ChannelTab = 'posts' | 'files' | 'assignments' | 'grades';
 export type ViewMode = 'app' | 'portal';
 

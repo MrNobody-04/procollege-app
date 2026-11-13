@@ -1,4 +1,4 @@
-export type UserRole = 'developer' | 'admin' | 'professor' | 'lecturer' | 'student' | 'ta' | 'dean';
+export type UserRole = 'developer' | 'platform_admin' | 'admin' | 'professor' | 'lecturer' | 'student' | 'ta' | 'dean';
 export type PresenceStatus = 'available' | 'busy' | 'away' | 'dnd' | 'in-call' | 'offline';
 export type LicenseSku =
   | 'ProCollege Verified for Faculty'

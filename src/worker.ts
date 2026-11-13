@@ -47,6 +47,105 @@ function getDb(c: { env: Env }) {
   return createClient({ url, authToken });
 }
 
+// Helper to securely hash passwords using Web Crypto (Edge-compatible SHA-256)
+async function hashPassword(password: string): Promise<string> {
+  const enc = new TextEncoder();
+  const salt = 'procollege_edge_salt_2026';
+  const data = enc.encode(password + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Generate secure readable temporary 8-character password
+function generateTemporaryPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => chars[b % chars.length]).join('');
+}
+
+// Helper to decode token or read authenticated user headers
+function extractUserFromHeader(c: any): { id?: string; email?: string; role?: string; institution_id?: string; college_id?: string; institution_name?: string } | null {
+  const roleHeader = c.req.header('x-user-role');
+  const authHeader = c.req.header('Authorization') || '';
+  if (roleHeader) {
+    return {
+      role: roleHeader,
+      email: c.req.header('x-user-email') || '',
+      institution_id: c.req.header('x-institution-id') || c.req.header('x-college-id') || '',
+      institution_name: c.req.header('x-institution-name') || '',
+    };
+  }
+  if (authHeader.startsWith('Bearer ')) {
+    try {
+      const rawToken = authHeader.slice(7).replace(/^tok_/, '');
+      const decoded = JSON.parse(atob(rawToken));
+      return decoded;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Global API Workflow Enforcement Middleware: Checks if an organization workflow is paused
+app.use('/api/*', async (c, next) => {
+  const path = c.req.path;
+  if (
+    path === '/api/health' ||
+    path === '/api/auth/login' ||
+    path === '/api/auth/verify-otp' ||
+    path === '/api/auth/change-password' ||
+    path.startsWith('/api/platform/') ||
+    path.startsWith('/api/colleges/request-access')
+  ) {
+    return next();
+  }
+
+  const caller = extractUserFromHeader(c);
+  if (caller && (caller.role === 'developer' || caller.role === 'platform_admin')) {
+    return next();
+  }
+
+  const institutionId =
+    c.req.header('x-institution-id') ||
+    c.req.header('x-college-id') ||
+    caller?.institution_id ||
+    caller?.college_id ||
+    '';
+
+  const institutionName =
+    c.req.header('x-institution-name') ||
+    c.req.query('institution') ||
+    caller?.institution_name ||
+    '';
+
+  if (institutionId || institutionName) {
+    try {
+      const db = getDb(c);
+      const res = await db.execute({
+        sql: `SELECT status FROM institutions WHERE id = ? OR LOWER(name) = LOWER(?)
+              UNION
+              SELECT status FROM colleges WHERE id = ? OR LOWER(name) = LOWER(?)
+              LIMIT 1;`,
+        args: [institutionId || '', institutionName || '', institutionId || '', institutionName || ''],
+      });
+      if (res.rows.length > 0 && res.rows[0].status === 'paused') {
+        return c.json({
+          error: 'Organization workflow paused due to pending billing / payment. Please contact platform support.',
+          paused: true,
+          status: 'paused',
+        }, 403);
+      }
+    } catch (err) {
+      console.warn('[MIDDLEWARE-PAUSED-CHECK] error checking institution status:', err);
+    }
+  }
+
+  return next();
+});
+
 // 1. Health check & DB verification (Turso + D1 procollege_vault + Cloudinary)
 app.get('/api/health', async (c) => {
   try {
@@ -212,24 +311,6 @@ app.post('/api/messages', async (c) => {
   }
 });
 
-// Helper to securely hash passwords using Web Crypto (Edge-compatible SHA-256)
-async function hashPassword(password: string): Promise<string> {
-  const enc = new TextEncoder();
-  const salt = 'procollege_edge_salt_2026';
-  const data = enc.encode(password + salt);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Generate secure readable temporary 8-character password
-function generateTemporaryPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-  const arr = new Uint8Array(8);
-  crypto.getRandomValues(arr);
-  return Array.from(arr).map(b => chars[b % chars.length]).join('');
-}
-
 // --- Authentication & Session Endpoints ---
 
 // 1. Login with email & password against live Turso database or secure environment
@@ -256,6 +337,8 @@ app.post('/api/auth/login', async (c) => {
         id: 'user_dev_root',
         email: devEnvEmail,
         role: 'developer',
+        institution_id: 'col_platform_root',
+        institution_name: 'ProCollege Global Core Engine',
         ts: Date.now(),
       };
       const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
@@ -267,6 +350,8 @@ app.post('/api/auth/login', async (c) => {
         name: 'Platform Creator',
         role: 'developer',
         college_id: 'col_platform_root',
+        institution_id: 'col_platform_root',
+        institution_name: 'ProCollege Global Core Engine',
         section_id: null,
         avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
       };
@@ -275,6 +360,7 @@ app.post('/api/auth/login', async (c) => {
         id: 'col_platform_root',
         name: 'ProCollege Global Core Engine',
         code: 'PRO',
+        status: 'active',
       };
 
       return c.json({
@@ -288,10 +374,11 @@ app.post('/api/auth/login', async (c) => {
     // B. Check against live Turso database users table
     const db = getDb(c);
     const result = await db.execute({
-      sql: `SELECT u.id, u.college_id, u.section_id, u.name, u.email, u.role, u.avatar_url, u.password, u.password_hash,
-                   c.name as college_name, c.code as college_code
+      sql: `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
+                   u.password, u.password_hash, u.institution_name, u.department, u.must_change_password,
+                   c.name as college_name, c.code as college_code, c.status as college_status
             FROM users u
-            LEFT JOIN colleges c ON u.college_id = c.id
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
             WHERE LOWER(u.email) = LOWER(?);`,
       args: [email],
     });
@@ -306,7 +393,10 @@ app.post('/api/auth/login', async (c) => {
     const userRole = String(userRow.role || '');
 
     const inputHash = await hashPassword(password);
-    const isPrivileged = userRole === 'developer' || userRole === 'admin';
+    const isDeveloper = userRole === 'developer' || userRole === 'platform_admin';
+    const isAdmin = userRole === 'admin';
+    const isPrivileged = isDeveloper || isAdmin;
+
     const isValid =
       (storedHash && storedHash === inputHash) ||
       (storedPass && storedPass === password) ||
@@ -314,6 +404,16 @@ app.post('/api/auth/login', async (c) => {
 
     if (!isValid) {
       return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
+    }
+
+    // Check organization workflow status
+    const collegeStatus = String(userRow.college_status || 'active');
+    if (collegeStatus === 'paused' && !isDeveloper) {
+      return c.json({
+        error: 'Organization workflow paused due to pending billing / payment. Please contact platform support.',
+        paused: true,
+        status: 'paused',
+      }, 403);
     }
 
     // Zero-Cost OTP Verification Step for student accounts:
@@ -337,11 +437,16 @@ app.post('/api/auth/login', async (c) => {
       });
     }
 
-    // Generate lightweight edge token
+    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || 'padmashree-demo');
+    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || 'Padmashree College');
+
+    // Generate lightweight edge token embedding institution_id and role
     const tokenPayload = {
       id: userRow.id,
       email: userRow.email,
       role: userRow.role,
+      institution_id: resolvedInstitutionId,
+      institution_name: resolvedInstitutionName,
       ts: Date.now(),
     };
     const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
@@ -352,15 +457,19 @@ app.post('/api/auth/login', async (c) => {
       full_name: String(userRow.name),
       name: String(userRow.name),
       role: String(userRow.role),
-      college_id: String(userRow.college_id || 'padmashree-demo'),
+      college_id: resolvedInstitutionId,
+      institution_id: resolvedInstitutionId,
+      institution_name: resolvedInstitutionName,
+      department: String(userRow.department || 'Administration'),
       section_id: userRow.section_id ? String(userRow.section_id) : null,
       avatar_url: String(userRow.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
     };
 
     const college = {
-      id: String(userRow.college_id || 'padmashree-demo'),
-      name: String(userRow.college_name || 'Padmashree College'),
+      id: resolvedInstitutionId,
+      name: resolvedInstitutionName,
       code: String(userRow.college_code || 'PDC'),
+      status: collegeStatus,
     };
 
     return c.json({
@@ -388,11 +497,11 @@ app.post('/api/auth/verify-otp', async (c) => {
 
     const db = getDb(c);
     const result = await db.execute({
-      sql: `SELECT u.id, u.college_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
-                   u.otp_code, u.otp_expires_at, u.must_change_password,
-                   c.name as college_name, c.code as college_code
+      sql: `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
+                   u.otp_code, u.otp_expires_at, u.must_change_password, u.institution_name, u.department,
+                   c.name as college_name, c.code as college_code, c.status as college_status
             FROM users u
-            LEFT JOIN colleges c ON u.college_id = c.id
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
             WHERE LOWER(u.email) = LOWER(?);`,
       args: [email],
     });
@@ -420,11 +529,16 @@ app.post('/api/auth/verify-otp', async (c) => {
       args: [userRow.id],
     });
 
+    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || 'padmashree-demo');
+    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || 'Padmashree College');
+
     // Generate authenticated JWT edge token
     const tokenPayload = {
       id: userRow.id,
       email: userRow.email,
       role: userRow.role,
+      institution_id: resolvedInstitutionId,
+      institution_name: resolvedInstitutionName,
       ts: Date.now(),
     };
     const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
@@ -435,15 +549,19 @@ app.post('/api/auth/verify-otp', async (c) => {
       full_name: String(userRow.name),
       name: String(userRow.name),
       role: String(userRow.role),
-      college_id: String(userRow.college_id || 'padmashree-demo'),
+      college_id: resolvedInstitutionId,
+      institution_id: resolvedInstitutionId,
+      institution_name: resolvedInstitutionName,
+      department: String(userRow.department || 'Academic Department'),
       section_id: userRow.section_id ? String(userRow.section_id) : null,
       avatar_url: String(userRow.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
     };
 
     const college = {
-      id: String(userRow.college_id || 'padmashree-demo'),
-      name: String(userRow.college_name || 'Padmashree College'),
+      id: resolvedInstitutionId,
+      name: resolvedInstitutionName,
       code: String(userRow.college_code || 'PDC'),
+      status: String(userRow.college_status || 'active'),
     };
 
     return c.json({
@@ -458,25 +576,6 @@ app.post('/api/auth/verify-otp', async (c) => {
     return c.json({ error: message }, 500);
   }
 });
-
-// Helper to decode token or read authenticated user headers
-function extractUserFromHeader(c: any): { id?: string; email?: string; role?: string } | null {
-  const roleHeader = c.req.header('x-user-role');
-  const authHeader = c.req.header('Authorization') || '';
-  if (roleHeader) {
-    return { role: roleHeader, email: c.req.header('x-user-email') || '' };
-  }
-  if (authHeader.startsWith('Bearer ')) {
-    try {
-      const rawToken = authHeader.slice(7).replace(/^tok_/, '');
-      const decoded = JSON.parse(atob(rawToken));
-      return decoded;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
 
 // 1.2 Change temporary password
 app.post('/api/auth/change-password', async (c) => {
@@ -499,6 +598,231 @@ app.post('/api/auth/change-password', async (c) => {
     });
 
     return c.json({ success: true, message: 'Password updated successfully' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// --- Platform Creator & Developer Console Endpoints ---
+
+// 1.3 List all registered organizations with active student counts and billing status
+app.get('/api/platform/institutions', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const db = getDb(c);
+    const instRes = await db.execute(`
+      SELECT 
+        COALESCE(i.id, c.id) as id,
+        COALESCE(i.name, c.name) as name,
+        COALESCE(i.code, c.code) as code,
+        COALESCE(i.status, c.status, 'active') as status,
+        COALESCE(i.billing_plan, c.billing_plan, 'campus-pro') as billing_plan,
+        COALESCE(i.contact_email, '') as contact_email,
+        COALESCE(i.created_at, c.created_at, datetime('now')) as created_at
+      FROM colleges c
+      LEFT JOIN institutions i ON c.id = i.id
+      UNION
+      SELECT 
+        i.id, i.name, i.code, i.status, i.billing_plan, i.contact_email, i.created_at
+      FROM institutions i
+      LEFT JOIN colleges c ON i.id = c.id
+      WHERE c.id IS NULL;
+    `);
+
+    // Student counts per institution
+    const stuRes = await db.execute(`
+      SELECT COALESCE(college_id, institution_id) as inst_id, count(*) as count
+      FROM users
+      WHERE role = 'student'
+      GROUP BY COALESCE(college_id, institution_id);
+    `);
+    const studentCountMap = new Map<string, number>();
+    for (const row of stuRes.rows) {
+      if (row.inst_id) studentCountMap.set(String(row.inst_id), Number(row.count || 0));
+    }
+
+    // Faculty counts per institution
+    const facRes = await db.execute(`
+      SELECT college_id as inst_id, count(*) as count
+      FROM faculties
+      GROUP BY college_id;
+    `);
+    const facultyCountMap = new Map<string, number>();
+    for (const row of facRes.rows) {
+      if (row.inst_id) facultyCountMap.set(String(row.inst_id), Number(row.count || 0));
+    }
+
+    // Org admins
+    const admRes = await db.execute(`
+      SELECT COALESCE(college_id, institution_id) as inst_id, name, email
+      FROM users
+      WHERE role = 'admin';
+    `);
+    const adminMap = new Map<string, { name: string; email: string }>();
+    for (const row of admRes.rows) {
+      if (row.inst_id) adminMap.set(String(row.inst_id), { name: String(row.name), email: String(row.email) });
+    }
+
+    const organizations = instRes.rows.map(row => {
+      const id = String(row.id);
+      const adm = adminMap.get(id);
+      return {
+        id,
+        name: String(row.name),
+        code: String(row.code || ''),
+        status: String(row.status || 'active'),
+        billingPlan: String(row.billing_plan || 'campus-pro'),
+        studentCount: studentCountMap.get(id) || 0,
+        facultyCount: facultyCountMap.get(id) || 0,
+        contactEmail: adm?.email || String(row.contact_email || ''),
+        adminName: adm?.name || 'Academic Administrator',
+        createdAt: String(row.created_at || ''),
+      };
+    });
+
+    return c.json({ success: true, organizations });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.4 Toggle an organization's status (active <-> paused)
+app.post('/api/platform/institutions/:id/toggle-status', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const id = c.req.param('id');
+    const db = getDb(c);
+
+    // Get current status
+    const curRes = await db.execute({
+      sql: 'SELECT status FROM colleges WHERE id = ? UNION SELECT status FROM institutions WHERE id = ? LIMIT 1;',
+      args: [id, id],
+    });
+
+    let newStatus = 'paused';
+    if (curRes.rows.length > 0 && curRes.rows[0].status === 'paused') {
+      newStatus = 'active';
+    }
+
+    // Update both tables
+    await db.execute({
+      sql: 'UPDATE colleges SET status = ? WHERE id = ?;',
+      args: [newStatus, id],
+    });
+    await db.execute({
+      sql: 'UPDATE institutions SET status = ? WHERE id = ?;',
+      args: [newStatus, id],
+    });
+
+    return c.json({
+      success: true,
+      id,
+      status: newStatus,
+      message: `Organization workflow is now ${newStatus}. ${newStatus === 'paused' ? 'Workflows paused. Non-platform logins & API requests blocked with HTTP 403.' : 'Workflows active. Campus logins and APIs restored.'}`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.5 Provision a new university/organization with its administrative tenant
+app.post('/api/platform/institutions/provision', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const body = await c.req.json();
+    const name = (body.name || body.institutionName || '').trim();
+    const contactName = (body.contactName || body.name || '').trim();
+    const email = (body.email || '').trim().toLowerCase();
+    const department = (body.department || 'Chief Academic Operations').trim();
+    const plan = body.plan || 'campus-pro';
+
+    if (!name || !email || !contactName) {
+      return c.json({ error: 'Institution Name, Admin Name, and Official Email are required.' }, 400);
+    }
+
+    const db = getDb(c);
+    const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 30);
+    const institutionId = `col_${slug}_${Math.random().toString(36).slice(2, 6)}`;
+    const code = body.code || name.split(/\s+/).map((w: string) => w[0]).join('').toUpperCase().slice(0, 5) || 'COL';
+
+    const tempPassword = body.temporaryPassword || generateTemporaryPassword();
+    const passHash = await hashPassword(tempPassword);
+    const adminId = `usr_admin_${Date.now()}`;
+    const loginId = `ORG-ADMIN-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // 1. Insert into colleges & institutions
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan) VALUES (?, ?, ?, 'active', ?);`,
+      args: [institutionId, name, code, plan],
+    });
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email) VALUES (?, ?, ?, 'active', ?, ?);`,
+      args: [institutionId, name, code, plan, email],
+    });
+
+    // 2. Insert Admin into users
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO users (
+              id, college_id, institution_id, institution_name, name, email,
+              role, password, password_hash, must_change_password, department, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 0, ?, datetime('now'));`,
+      args: [adminId, institutionId, institutionId, name, contactName, email, tempPassword, passHash, department],
+    });
+
+    // 3. Seed initial Faculty
+    const facId = `fac_${Date.now()}`;
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO faculties (
+              id, college_id, institution_name, name, code, dean_id, dean_name, description, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));`,
+      args: [
+        facId,
+        institutionId,
+        name,
+        department.includes('Faculty') ? department : `Faculty of ${department}`,
+        code.slice(0, 4) + 'F',
+        adminId,
+        contactName,
+        `Official Academic Faculty for ${name}`
+      ],
+    });
+
+    return c.json({
+      success: true,
+      institution: {
+        id: institutionId,
+        name,
+        code,
+        status: 'active',
+        billingPlan: plan,
+      },
+      admin: {
+        id: adminId,
+        loginId,
+        name: contactName,
+        email,
+        temporaryPassword: tempPassword,
+        role: 'admin',
+        institutionId,
+        institutionName: name,
+      },
+      message: `Organization ${name} provisioned successfully with Admin ${contactName}.`,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
@@ -899,12 +1223,19 @@ app.post('/api/notices', async (c) => {
 // 6. Bootstrap workspace data for a logged-in user's institution
 app.get('/api/workspace/bootstrap', async (c) => {
   try {
-    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || 'Padmashree College';
-    const roleParam = c.req.query('role') || c.req.header('x-user-role') || '';
-    const isDeveloper = roleParam === 'developer';
+    const caller = extractUserFromHeader(c);
+    const callerInstId = caller?.institution_id || caller?.college_id;
+    const callerInstName = caller?.institution_name;
+
+    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || callerInstName || 'Padmashree College';
+    const roleParam = c.req.query('role') || c.req.header('x-user-role') || caller?.role || '';
+    const isDeveloper = roleParam === 'developer' || roleParam === 'platform_admin';
 
     const db = getDb(c);
-    const collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
+    let collegeId = c.req.query('collegeId') || c.req.header('x-college-id') || callerInstId || '';
+    if (!collegeId) {
+      collegeId = institutionParam === 'Padmashree College' ? 'padmashree-demo' : 'col_procollege_network';
+    }
 
     let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes, filesRes;
 

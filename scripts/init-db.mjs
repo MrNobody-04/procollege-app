@@ -67,10 +67,35 @@ async function init() {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         code TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        billing_plan TEXT DEFAULT 'campus-pro',
         created_at TEXT DEFAULT (datetime('now'))
       );
     `);
+    await ensureColumn('colleges', 'status', "TEXT NOT NULL DEFAULT 'active'");
+    await ensureColumn('colleges', 'billing_plan', "TEXT DEFAULT 'campus-pro'");
     console.log('   ✔ Table `colleges` created / verified');
+
+    // 1b. institutions (Multi-tenant organizations & workflow pausing)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS institutions (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        code TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        billing_plan TEXT DEFAULT 'campus-pro',
+        student_count INTEGER DEFAULT 0,
+        contact_email TEXT,
+        contact_phone TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    await ensureColumn('institutions', 'status', "TEXT NOT NULL DEFAULT 'active'");
+    await ensureColumn('institutions', 'billing_plan', "TEXT DEFAULT 'campus-pro'");
+    await ensureColumn('institutions', 'student_count', "INTEGER DEFAULT 0");
+    await ensureColumn('institutions', 'contact_email', "TEXT");
+    await ensureColumn('institutions', 'contact_phone', "TEXT");
+    console.log('   ✔ Table `institutions` created / verified');
 
     // 2. departments
     await db.execute(`
@@ -361,7 +386,12 @@ async function init() {
     const instPadmashree = 'Padmashree College';
 
     await db.execute({
-      sql: `INSERT OR REPLACE INTO colleges (id, name, code) VALUES (?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan) VALUES (?, ?, ?, 'active', 'enterprise');`,
+      args: [collegeId, instPadmashree, 'PDC'],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email) VALUES (?, ?, ?, 'active', 'enterprise', 'dean@padmashree.edu.np');`,
       args: [collegeId, instPadmashree, 'PDC'],
     });
 
@@ -767,7 +797,12 @@ async function init() {
     const colProId = 'col_procollege_network';
 
     await db.execute({
-      sql: `INSERT OR REPLACE INTO colleges (id, name, code) VALUES (?, ?, ?);`,
+      sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan) VALUES (?, ?, ?, 'active', 'campus-pro');`,
+      args: [colProId, instPro, 'PCN'],
+    });
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email) VALUES (?, ?, ?, 'active', 'campus-pro', 'admin@procollege.edu');`,
       args: [colProId, instPro, 'PCN'],
     });
 

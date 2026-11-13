@@ -6,7 +6,11 @@ import {
   FileCheck,
   Calendar,
   FolderOpen,
-  Shield
+  Shield,
+  Globe,
+  Building2,
+  CreditCard,
+  Database
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -20,27 +24,40 @@ export const NavigationRail: React.FC = () => {
     currentUser
   } = useApp();
 
+  const isPlatformDev = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
+
   const unreadNotifications = notifications.filter(n => !n.isRead).length;
   const unreadChats = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }[] = [
+  // Dedicated Developer Sidebar (strictly isolates platform tools and hides student/teacher items)
+  const devNavItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }[] = [
+    { id: 'dev-overview', label: 'Overview', icon: <Globe className="w-5 h-5" /> },
+    { id: 'dev-organizations', label: 'Campuses', icon: <Building2 className="w-5 h-5" /> },
+    { id: 'dev-billing', label: 'Billing & Flow', icon: <CreditCard className="w-5 h-5" /> },
+    { id: 'dev-system', label: 'Logs & Vault', icon: <Database className="w-5 h-5" /> },
+  ];
+
+  // Standard Academic Sidebar for Students, Lecturers, Deans, Campus Admins
+  const standardNavItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'activity', label: 'Activity', icon: <Bell className="w-5 h-5" />, badge: unreadNotifications },
     { id: 'chat', label: 'Chat', icon: <MessageSquare className="w-5 h-5" />, badge: unreadChats },
     { id: 'teams', label: 'Class', icon: <GraduationCap className="w-5 h-5" /> },
     { id: 'assignments', label: 'Assignments', icon: <FileCheck className="w-5 h-5" /> },
     { id: 'calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" /> },
     { id: 'files', label: 'Files', icon: <FolderOpen className="w-5 h-5" /> },
-    ...(currentUser.role === 'admin' || currentUser.role === 'developer'
-      ? [{ id: 'admin' as ActiveTab, label: currentUser.role === 'developer' ? 'Dev Admin' : 'Admin', icon: <Shield className="w-5 h-5" /> }]
+    ...(currentUser.role === 'admin'
+      ? [{ id: 'admin' as ActiveTab, label: 'Admin', icon: <Shield className="w-5 h-5" /> }]
       : [])
   ];
+
+  const navItems = isPlatformDev ? devNavItems : standardNavItems;
 
   return (
     <aside className="w-14 sm:w-16 md:w-18 bg-[#201f1e] text-zinc-300 flex flex-col items-center py-2 sm:py-2.5 select-none z-20 shrink-0 border-r border-zinc-800">
       {/* College Logo */}
       <div
         className="mb-2 sm:mb-3 flex flex-col items-center cursor-pointer group"
-        onClick={() => setActiveTab('teams')}
+        onClick={() => setActiveTab(isPlatformDev ? 'dev-overview' : 'teams')}
         title="ProCollege"
       >
         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-zinc-700/50 group-hover:ring-2 group-hover:ring-[#5b5fc7] transition-all">
