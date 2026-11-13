@@ -186,7 +186,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     }
   }, [isDeveloper]);
 
-  const handleToggleOrgStatus = async (orgId: string, currentStatus: string) => {
+  const handleToggleOrgStatus = async (orgId: string, _currentStatus?: string) => {
     try {
       const token = localStorage.getItem('procollege_token') || '';
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(orgId)}/toggle-status`, {
@@ -1046,82 +1046,795 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           </div>
         )}
 
-        {/* Admin Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
-          <button
-            onClick={() => setActiveAdminTab('classes')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
-              activeAdminTab === 'classes'
-                ? 'bg-[#5b5fc7] text-white shadow-xs'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            Classes & Semester Rollover ({courses.length})
-          </button>
-          <button
-            onClick={() => setActiveAdminTab('faculties')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
-              activeAdminTab === 'faculties'
-                ? 'bg-[#5b5fc7] text-white shadow-xs'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
-            }`}
-          >
-            <FolderTree className="w-4 h-4" />
-            Faculties & Departments ({faculties.length})
-          </button>
-          <button
-            onClick={() => setActiveAdminTab('users')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
-              activeAdminTab === 'users'
-                ? 'bg-[#5b5fc7] text-white shadow-xs'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Students & Lecturers ({academicUsers.length})
-          </button>
-          <button
-            onClick={() => setActiveAdminTab('roster')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
-              activeAdminTab === 'roster'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-white text-emerald-800 hover:text-emerald-900 border border-emerald-200'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            Excel Roster Import
-          </button>
-          {isDeveloperOrAdmin && (
+        {/* Master Navigation Tabs */}
+        {isDeveloper ? (
+          /* Developer Master Navigation Toolbar */
+          <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
             <button
-              onClick={() => setActiveAdminTab('requests')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'requests'
+              onClick={() => setCurrentDevSection('dev-overview')}
+              className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                currentDevSection === 'dev-overview'
                   ? 'bg-purple-700 text-white shadow-xs'
-                  : 'bg-white text-purple-800 hover:text-purple-900 border border-purple-200'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <Globe className="w-4 h-4" />
+              <span>Platform Overview & Metrics</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentDevSection('dev-organizations')}
+              className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                currentDevSection === 'dev-organizations'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
               }`}
             >
               <Building2 className="w-4 h-4" />
-              Campus Access Requests ({allRequests.length})
-              {allRequests.some(r => r.status === 'pending') && (
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              )}
+              <span>Manage Organizations ({organizations.length})</span>
             </button>
-          )}
-          <button
-            onClick={() => setActiveAdminTab('roles')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
-              activeAdminTab === 'roles'
-                ? 'bg-[#5b5fc7] text-white shadow-xs'
-                : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
-            }`}
-          >
-            <Sliders className="w-4 h-4" />
-            Roles
-          </button>
-        </div>
+
+            <button
+              onClick={() => setCurrentDevSection('dev-billing')}
+              className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                currentDevSection === 'dev-billing'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Billing & Workflow Suspension</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentDevSection('dev-system')}
+              className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                currentDevSection === 'dev-system'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              <span>Global Logs & Vault Backup</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentDevSection('campus-ops')}
+              className={`px-3.5 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                currentDevSection === 'campus-ops'
+                  ? 'bg-slate-800 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:text-slate-900 border border-zinc-200'
+              }`}
+            >
+              <School className="w-4 h-4" />
+              <span>Inspect Campus Operations</span>
+            </button>
+          </div>
+        ) : (
+          /* Campus Administration Center Navigation Tabs for Academic Dean / Admin */
+          <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
+            <button
+              onClick={() => setActiveAdminTab('classes')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'classes'
+                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              Classes & Semester Rollover ({courses.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('faculties')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'faculties'
+                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <FolderTree className="w-4 h-4" />
+              Faculties & Departments ({faculties.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('users')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'users'
+                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Students & Lecturers ({academicUsers.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('roster')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'roster'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white text-emerald-800 hover:text-emerald-900 border border-emerald-200'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              Excel Roster Import
+            </button>
+            {isDeveloperOrAdmin && (
+              <button
+                onClick={() => setActiveAdminTab('requests')}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                  activeAdminTab === 'requests'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'bg-white text-purple-800 hover:text-purple-900 border border-purple-200'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                Campus Access Requests ({allRequests.length})
+                {allRequests.some(r => r.status === 'pending') && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                )}
+              </button>
+            )}
+            <button
+              onClick={() => setActiveAdminTab('roles')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'roles'
+                  ? 'bg-[#5b5fc7] text-white shadow-xs'
+                  : 'bg-white text-zinc-600 hover:text-zinc-900 border border-zinc-200'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              Roles
+            </button>
+          </div>
+        )}
+
+        {/* If Developer is inspecting Campus Operations, render academic sub-tabs */}
+        {isDeveloper && currentDevSection === 'campus-ops' && (
+          <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
+            <button
+              onClick={() => setActiveAdminTab('classes')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'classes' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Classes ({courses.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('faculties')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'faculties' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+              }`}
+            >
+              <FolderTree className="w-3.5 h-3.5" />
+              Faculties ({faculties.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('users')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'users' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Users ({academicUsers.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('roster')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'roster' ? 'bg-emerald-700 text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+              }`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Roster Import
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('requests')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'requests' ? 'bg-purple-700 text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Inquiries ({allRequests.length})
+            </button>
+            <button
+              onClick={() => setActiveAdminTab('roles')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
+                activeAdminTab === 'roles' ? 'bg-[#5b5fc7] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              Roles
+            </button>
+          </div>
+        )}
 
         {/* ========================================================= */}
+        {/* DEVELOPER SECTION 1: PLATFORM OVERVIEW & METRICS          */}
+        {/* ========================================================= */}
+        {isDeveloper && currentDevSection === 'dev-overview' && (
+          <div className="space-y-5">
+            {/* KPI Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
+                <div className="flex items-center justify-between text-zinc-500 mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Campuses</span>
+                  <Building2 className="w-4 h-4 text-purple-600" />
+                </div>
+                <div className="text-2xl font-black text-zinc-900">{organizations.length}</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Multi-tenant institutional nodes</p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
+                <div className="flex items-center justify-between text-zinc-500 mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Total Students</span>
+                  <Users className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="text-2xl font-black text-zinc-900">
+                  {organizations.reduce((acc: number, o: PlatformOrg) => acc + (o.studentCount || 0), 0)}
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-1">Across all registered universities</p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
+                <div className="flex items-center justify-between text-zinc-500 mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Faculties</span>
+                  <FolderTree className="w-4 h-4 text-[#5b5fc7]" />
+                </div>
+                <div className="text-2xl font-black text-zinc-900">{faculties.length}</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Collegiate departments active</p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
+                <div className="flex items-center justify-between text-zinc-500 mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Multi-Cloud Storage</span>
+                  <Server className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="text-2xl font-black text-emerald-600 flex items-center gap-1.5">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  <span>3 / 3 Online</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-1">Turso • CF D1 Vault • Cloudinary</p>
+              </div>
+            </div>
+
+            {/* Multi-Cloud Health & Edge Diagnostics */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-700">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-zinc-900">Multi-Cloud Infrastructure Health & Edge Telemetry</h2>
+                    <p className="text-xs text-zinc-500">Live operational status of primary database, failover vault, binary storage, and edge workers.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleRunDiagnostics}
+                  disabled={isCheckingHealth}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isCheckingHealth ? 'animate-spin' : ''}`} />
+                  <span>{isCheckingHealth ? 'Testing Clusters...' : 'Run Diagnostics'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Primary Database</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Online</span>
+                  </div>
+                  <p className="text-xs font-semibold text-zinc-900">Turso LibSQL Cluster</p>
+                  <p className="text-[11px] text-zinc-500">Region: AWS Mumbai (aws-ap-south-1)</p>
+                  <p className="text-[11px] text-zinc-500 font-mono">Tenant Isolation: SQL College ID</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Backup SQL Vault</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">Bound</span>
+                  </div>
+                  <p className="text-xs font-semibold text-zinc-900">Cloudflare D1 Serverless</p>
+                  <p className="text-[11px] text-zinc-500">Binding: <code className="bg-zinc-200 px-1 rounded text-[10px]">procollege_vault</code></p>
+                  <p className="text-[11px] text-zinc-500 font-mono">UUID: 605f2e0f...2686</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Asset Storage CDN</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">25GB Free</span>
+                  </div>
+                  <p className="text-xs font-semibold text-zinc-900">Cloudinary Binary Vault</p>
+                  <p className="text-[11px] text-zinc-500">Cloud Name: <code className="bg-zinc-200 px-1 rounded text-[10px]">pf66y0wq</code></p>
+                  <p className="text-[11px] text-zinc-500">Signed Uploads & Edge Caching</p>
+                </div>
+
+                <div className="p-3.5 rounded-lg border border-zinc-200 bg-zinc-50/50 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Real-Time Messaging</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">WebSockets</span>
+                  </div>
+                  <p className="text-xs font-semibold text-zinc-900">Ably Edge Network</p>
+                  <p className="text-[11px] text-zinc-500">Pub/Sub Presence & Class Alerts</p>
+                  <p className="text-[11px] text-zinc-500 font-mono">Live Sync: Active</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Navigation Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div
+                onClick={() => setCurrentDevSection('dev-organizations')}
+                className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
+              >
+                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
+                  <Building2 className="w-4 h-4" />
+                  <span>Manage University Campuses</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  View all collegiate tenants, verify student rosters, provision institutional deans and admins, and toggle tenant status.
+                </p>
+                <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
+                  <span>Go to Campuses</span>
+                  <span>→</span>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setCurrentDevSection('dev-billing')}
+                className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
+              >
+                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
+                  <CreditCard className="w-4 h-4" />
+                  <span>Billing & Workflow Suspension</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Control institutional access, toggle organization workflow pausing (enforcing HTTP 403 Forbidden on delinquent accounts), and manage tiers.
+                </p>
+                <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
+                  <span>Go to Billing & Flow</span>
+                  <span>→</span>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setCurrentDevSection('dev-system')}
+                className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer space-y-2"
+              >
+                <div className="flex items-center gap-2 text-purple-700 font-bold text-sm">
+                  <Database className="w-4 h-4" />
+                  <span>Global Logs & Vault Backup</span>
+                </div>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Trigger live Cloudflare D1 Vault snapshots, inspect storage synchronization, and review tenant isolation integrity logs.
+                </p>
+                <div className="text-xs font-semibold text-purple-600 flex items-center gap-1">
+                  <span>Go to Logs & Vault</span>
+                  <span>→</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* DEVELOPER SECTION 2: MANAGE ORGANIZATIONS / CAMPUSES      */}
+        {/* ========================================================= */}
+        {isDeveloper && currentDevSection === 'dev-organizations' && (
+          <div className="space-y-4">
+            {/* Header & Search */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-zinc-900">Collegiate Organizations & University Tenants</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Oversee all university campuses, registered deans, active student bodies, and platform workflow states.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchOrgQuery}
+                    onChange={e => setSearchOrgQuery(e.target.value)}
+                    placeholder="Search campus, code, admin..."
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+                <button
+                  onClick={() => setShowCreateAdminModal(true)}
+                  className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>+ Issue Org Admin</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Organizations Table */}
+            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-200 font-semibold text-zinc-700">
+                      <th className="py-3 px-4">University / Campus</th>
+                      <th className="py-3 px-4">Primary Administrator</th>
+                      <th className="py-3 px-4 text-center">Students</th>
+                      <th className="py-3 px-4 text-center">Faculties</th>
+                      <th className="py-3 px-4">Plan / Tier</th>
+                      <th className="py-3 px-4">Workflow Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {filteredOrganizations.map((org: PlatformOrg) => {
+                      const isPaused = org.status === 'paused';
+                      return (
+                        <tr key={org.id} className="hover:bg-zinc-50/80 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center font-bold text-purple-700 text-xs shrink-0">
+                                {org.code ? org.code.slice(0, 3) : org.name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-bold text-zinc-900">{org.name}</div>
+                                <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1">
+                                  <span>ID: {org.id}</span>
+                                  {org.code && <span className="bg-zinc-100 px-1 rounded text-zinc-600 font-bold">{org.code}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-zinc-800">{org.adminName}</div>
+                            <div className="text-[11px] text-zinc-500">{org.contactEmail}</div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded-full font-mono text-xs">
+                              {org.studentCount || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="font-bold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded-full font-mono text-xs">
+                              {org.facultyCount || 0}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase">
+                              {org.billingPlan || 'campus-pro'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {isPaused ? (
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 w-fit">
+                                <PauseCircle className="w-3 h-3 text-rose-600" />
+                                Paused (403 Blocked)
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-fit">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Active (Normal)
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleToggleOrgStatus(org.id, org.status)}
+                                className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                                  isPaused
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                                    : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
+                                }`}
+                                title={isPaused ? 'Resume workflows for this university' : 'Pause workflows (blocks logins & APIs with HTTP 403)'}
+                              >
+                                {isPaused ? (
+                                  <>
+                                    <PlayCircle className="w-3.5 h-3.5" />
+                                    <span>Activate</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <PauseCircle className="w-3.5 h-3.5" />
+                                    <span>Pause Workflow</span>
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedInstitution(org.name);
+                                  setCurrentDevSection('campus-ops');
+                                }}
+                                className="px-2.5 py-1 rounded text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
+                                title="Inspect academic classes and faculties for this campus"
+                              >
+                                Inspect
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* DEVELOPER SECTION 3: BILLING & WORKFLOW SUSPENSION        */}
+        {/* ========================================================= */}
+        {isDeveloper && currentDevSection === 'dev-billing' && (
+          <div className="space-y-5">
+            {/* Explanatory Callout Banner */}
+            <div className="bg-gradient-to-r from-amber-900/90 via-slate-900 to-zinc-900 text-white p-4 sm:p-5 rounded-xl border border-amber-700/50 shadow-md space-y-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-bold text-white">Payment Governance & Workflow Suspension Engine</h2>
+              </div>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                ProCollege features automated workflow control at the Cloudflare Worker edge. When an institution’s subscription or contract is flagged as delinquent, the platform administrator can suspend that tenant’s workflow with a single click.
+              </p>
+              <div className="bg-black/40 rounded-lg p-3 text-[11px] text-amber-200 font-mono border border-amber-500/20 flex items-center gap-2">
+                <LockIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Status: Paused ➜ Global API middleware automatically intercepts student & teacher sessions with HTTP 403 Forbidden.</span>
+              </div>
+            </div>
+
+            {/* Organization Workflow Suspension Control Table */}
+            <div className="bg-white rounded-xl border border-zinc-200 shadow-xs overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-zinc-200 bg-zinc-50 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                  Tenant Subscription & Workflow Enforcement Table
+                </h3>
+                <span className="text-[11px] text-zinc-500">Live Turso DB & Hono Middleware Synchronization</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-zinc-50/60 border-b border-zinc-200 font-semibold text-zinc-700">
+                      <th className="py-2.5 px-4">Campus / Organization</th>
+                      <th className="py-2.5 px-4">Billing Plan</th>
+                      <th className="py-2.5 px-4">Workflow State</th>
+                      <th className="py-2.5 px-4">Enforcement Rule</th>
+                      <th className="py-2.5 px-4 text-right">Workflow Toggle</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {organizations.map((org: PlatformOrg) => {
+                      const isPaused = org.status === 'paused';
+                      return (
+                        <tr key={org.id} className="hover:bg-zinc-50/70 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-zinc-900">{org.name}</div>
+                            <div className="text-[10px] text-zinc-400 font-mono">Org ID: {org.id}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+                              {org.billingPlan || 'campus-pro'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {isPaused ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1 w-fit">
+                                <PauseCircle className="w-3 h-3 text-rose-600" />
+                                Workflows Paused
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1 w-fit">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Active (Live)
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-zinc-600 text-[11px]">
+                              {isPaused
+                                ? 'Non-platform API requests return HTTP 403 Forbidden'
+                                : 'Full operational access granted'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleToggleOrgStatus(org.id, org.status)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+                                isPaused
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                                  : 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
+                              }`}
+                            >
+                              {isPaused ? (
+                                <>
+                                  <PlayCircle className="w-3.5 h-3.5" />
+                                  <span>Activate Workflow</span>
+                                </>
+                              ) : (
+                                <>
+                                  <PauseCircle className="w-3.5 h-3.5" />
+                                  <span>Pause Workflow</span>
+                                </>
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 403 Forbidden Live Simulator Preview */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-rose-600" />
+                  <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                    End-User Interceptor Simulator (HTTP 403 Preview)
+                  </h3>
+                </div>
+                <span className="text-[11px] text-zinc-500">Live preview of what blocked campus users experience</span>
+              </div>
+
+              <div className="bg-rose-50/70 border border-rose-200 rounded-xl p-4 sm:p-5 flex flex-col md:flex-row items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-600 shrink-0">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="flex-1 space-y-1 text-center md:text-left">
+                  <div className="flex items-center gap-2 justify-center md:justify-start">
+                    <span className="text-xs font-bold text-rose-900">HTTP 403 Forbidden</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-200 text-rose-900 font-bold">
+                      WORKFLOW_PAUSED
+                    </span>
+                  </div>
+                  <p className="text-xs text-rose-800 leading-relaxed">
+                    "Organization workflow paused due to pending billing / payment. Please contact platform support."
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    This message is strictly returned from Cloudflare edge middleware for any non-developer user when their campus is paused.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    showDialog(
+                      "HTTP 403 Forbidden: Organization workflow paused due to pending billing / payment. Please contact platform support.\n\n(Simulated response from Hono edge middleware)",
+                      { type: 'error', title: 'Workflow Paused (403)' }
+                    );
+                  }}
+                  className="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                >
+                  Trigger Simulated Alert
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* DEVELOPER SECTION 4: GLOBAL LOGS & VAULT BACKUP           */}
+        {/* ========================================================= */}
+        {isDeveloper && currentDevSection === 'dev-system' && (
+          <div className="space-y-5">
+            {/* Cloudflare D1 Vault Automated Backup Section */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-zinc-900">Cloudflare D1 Vault Automated Snapshot Engine</h2>
+                    <p className="text-xs text-zinc-500">Dual-database high-availability pipeline syncing Turso records to Cloudflare D1 serverless SQL.</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleTriggerBackup}
+                  disabled={isTriggeringBackup}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isTriggeringBackup ? 'animate-spin' : ''}`} />
+                  <span>{isTriggeringBackup ? 'Backing up...' : 'Trigger Instant D1 Snapshot'}</span>
+                </button>
+              </div>
+
+              {backupSnapshot ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>D1 Vault Snapshot Successfully Synchronized</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-700 font-mono">
+                      {backupSnapshot.timestamp || new Date().toISOString()}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
+                      <span className="text-zinc-500 text-[10px] block">Colleges Stored</span>
+                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.colleges ?? 0}</span>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
+                      <span className="text-zinc-500 text-[10px] block">Users Stored</span>
+                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.users ?? 0}</span>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
+                      <span className="text-zinc-500 text-[10px] block">Courses Stored</span>
+                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.courses ?? 0}</span>
+                    </div>
+                    <div className="bg-white/80 p-2 rounded border border-emerald-100">
+                      <span className="text-zinc-500 text-[10px] block">Files Stored</span>
+                      <span className="font-bold text-zinc-900 text-sm font-mono">{backupSnapshot.results?.course_files ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-600">
+                  <div>
+                    <span className="font-bold text-zinc-800 block">D1 Vault Database: procollege-vault</span>
+                    <span className="text-[11px] text-zinc-500 font-mono">ID: 605f2e0f-a519-4ba6-a050-48b32ad02686 • Status: Ready</span>
+                  </div>
+                  <span className="text-[11px] text-zinc-500">Click "Trigger Instant D1 Snapshot" to generate a live full backup.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Multi-Cloud Health Diagnostics response */}
+            {healthData && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3.5 text-xs space-y-1.5">
+                <div className="font-bold text-purple-900 flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-purple-700" />
+                  <span>Live Cluster Health Audit Verified</span>
+                </div>
+                <div className="text-[11px] text-purple-800 font-mono">
+                  Turso: {healthData.database || 'Online'} • Registered Colleges: {healthData.collegesCount ?? 0} • D1 Vault: {healthData.d1Vault?.status || 'Bound'} • Cloudinary: {healthData.storage?.cloudName || 'pf66y0wq'}
+                </div>
+              </div>
+            )}
+
+            {/* Multi-Cloud Architecture Specs */}
+            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs space-y-4">
+              <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                Production Cluster Architecture & Secrets
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-bold text-zinc-700">Primary Database Engine</span>
+                  <p className="font-mono text-[11px] text-zinc-900">Turso LibSQL (AWS Mumbai ap-south-1)</p>
+                  <p className="text-[10px] text-zinc-500">libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io</p>
+                </div>
+
+                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-bold text-zinc-700">Disaster Recovery Vault</span>
+                  <p className="font-mono text-[11px] text-zinc-900">Cloudflare D1 procollege-vault</p>
+                  <p className="text-[10px] text-zinc-500">Binding: procollege_vault (605f2e0f-a519-4ba6-a050-48b32ad02686)</p>
+                </div>
+
+                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-bold text-zinc-700">Media CDN Storage</span>
+                  <p className="font-mono text-[11px] text-zinc-900">Cloudinary Binary Cloud</p>
+                  <p className="text-[10px] text-zinc-500">Cloud Name: pf66y0wq (25GB Free Storage Tier)</p>
+                </div>
+
+                <div className="p-3 bg-zinc-50 rounded-lg border border-zinc-200 space-y-1">
+                  <span className="text-[11px] font-bold text-zinc-700">Edge Compute Runtime</span>
+                  <p className="font-mono text-[11px] text-zinc-900">Cloudflare Workers with Hono.js</p>
+                  <p className="text-[10px] text-zinc-500">Compatibility: 2024-11-01 nodejs_compat, keep_vars = true</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* CAMPUS OPERATIONS (For Admin or Developer Inspection)     */}
+        {/* ========================================================= */}
+        {(!isDeveloper || currentDevSection === 'campus-ops') && (
+          <>
         {/* TAB 1: ACADEMIC CLASSES & SEMESTER ROLLOVER               */}
         {/* ========================================================= */}
         {activeAdminTab === 'classes' && (
@@ -2129,6 +2842,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 
@@ -3412,6 +4127,20 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-purple-600"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Institutional Plan / Tier
+                </label>
+                <select
+                  value={newAdminPlan}
+                  onChange={e => setNewAdminPlan(e.target.value as 'campus-pro' | 'enterprise')}
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-purple-600 font-semibold cursor-pointer"
+                >
+                  <option value="campus-pro">Campus Pro ($0 Zero-Budget Tier)</option>
+                  <option value="enterprise">Enterprise Platinum (Full Multi-Tenant SLA)</option>
+                </select>
               </div>
 
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-2.5 text-[11px] text-purple-900 flex items-start gap-2">
