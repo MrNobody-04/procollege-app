@@ -259,15 +259,18 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   } | null>(null);
   const [isTriggeringBackup, setIsTriggeringBackup] = useState(false);
 
-  // Platform Admin Credential Reset State
-  const [resetCredsModal, setResetCredsModal] = useState<{
+  // Platform Admin Issued Credentials & Reset Confirmation State
+  const [issuedCredsModal, setIssuedCredsModal] = useState<{
+    title: string;
     institutionName: string;
     adminEmail: string;
     adminName: string;
+    loginId?: string;
     temporaryPassword: string;
-    otpCode: string;
   } | null>(null);
-  const [_isResettingPassword, setIsResettingPassword] = useState(false);
+  const [confirmResetOrg, setConfirmResetOrg] = useState<PlatformOrg | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Primary Tab for Campus Admin (Classes, Faculties, Users, Roster, Requests, Roles)
   const [activeAdminTab, setActiveAdminTab] = useState<'classes' | 'faculties' | 'users' | 'roster' | 'requests' | 'roles'>('classes');
@@ -402,12 +405,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     }
   };
 
-  const handleResetOrgAdminPassword = async (org: PlatformOrg) => {
-    const confirmReset = window.confirm(
-      `Reset administrator credentials for "${org.name}"?\n\nA new temporary password and 2FA verification OTP will be generated. The administrator will be required to verify the 2FA OTP and set their permanent password upon their next login.`
-    );
-    if (!confirmReset) return;
-
+  const executeResetAdminPassword = async (org: PlatformOrg) => {
     setIsResettingPassword(true);
     try {
       const token = localStorage.getItem('procollege_token') || '';
@@ -422,12 +420,13 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         throw new Error(data.error || 'Failed to reset administrator credentials');
       }
 
-      setResetCredsModal({
+      setConfirmResetOrg(null);
+      setIssuedCredsModal({
+        title: 'Administrator Password Reset',
         institutionName: data.institutionName || org.name,
         adminEmail: data.adminEmail,
         adminName: data.adminName,
         temporaryPassword: data.temporaryPassword,
-        otpCode: data.otpCode,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -928,33 +927,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       setNewAdminContact('');
       setNewAdminEmail('');
 
-      if (data.admin?.otpCode) {
-        setResetCredsModal({
-          institutionName: data.institution.name,
-          adminEmail: data.admin.email,
-          adminName: data.admin.name,
-          temporaryPassword: data.admin.temporaryPassword,
-          otpCode: data.admin.otpCode,
-        });
-      }
-
-      showDialog(
-        `Institutional Admin successfully provisioned!\nInstitution: ${data.institution.name}\nAdmin Name: ${data.admin.name}\nAdmin Login ID: ${data.admin.loginId}\nOfficial Email: ${data.admin.email}\nTemporary Password: ${data.admin.temporaryPassword}\n2FA OTP Code: ${data.admin.otpCode || 'Auto-generated'}\n\nCredentials are saved in the live Turso database. The admin will verify this 2FA OTP and set a permanent password upon first login.`,
-        { type: 'success', title: 'Institutional Admin Created' }
-      );
-    } catch {
-      // Fallback
-      const adminUser = createInstitutionalAdmin({
-        name: newAdminContact.trim(),
-        email: newAdminEmail.trim().toLowerCase(),
-        institutionName: newAdminInstitution.trim(),
-        department: newAdminDept.trim()
+      setIssuedCredsModal({
+        title: 'Institutional Administrator Created',
+        institutionName: data.institution.name,
+        adminEmail: data.admin.email,
+        adminName: data.admin.name,
+        loginId: data.admin.loginId,
+        temporaryPassword: data.admin.temporaryPassword,
       });
-      setShowCreateAdminModal(false);
-      showDialog(
-        `Institutional Admin provisioned in local state.\nInstitution: ${adminUser.institutionName}\nAdmin: ${adminUser.name}\nEmail: ${adminUser.email}`,
-        { type: 'info', title: 'Admin Created (Local)' }
-      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showDialog(`Provisioning failed: ${msg}`, { type: 'error' });
     }
   };
 
@@ -1763,7 +1746,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 Inspect
                               </button>
                               <button
-                                onClick={() => handleResetOrgAdminPassword(org)}
+                                onClick={() => setConfirmResetOrg(org)}
                                 className="px-2 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
                                 title={`Reset administrator password for ${org.name}`}
                               >
@@ -1881,7 +1864,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
                               {/* Reset Admin Password & OTP Button */}
                               <button
-                                onClick={() => handleResetOrgAdminPassword(org)}
+                                onClick={() => setConfirmResetOrg(org)}
                                 className="px-2 py-1 rounded text-xs font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer"
                                 title={`Reset administrator password for ${org.name}`}
                               >
@@ -5074,13 +5057,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <option value="enterprise">Enterprise Platinum (Full Multi-Tenant SLA)</option>
                 </select>
               </div>
-
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2.5 text-[11px] text-purple-900 flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
-                <p>
-                  Provisioning will automatically issue an official <strong>Organization Admin Login ID (ORG-ADMIN-XX)</strong> and temporary credentials. The college admin can then manage their faculties and classes.
-                </p>
-              </div>
             </div>
 
             <div className="p-3 sm:p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-end gap-2 shrink-0">
@@ -5102,102 +5078,158 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         </div>
       )}
 
-      {/* Platform Developer: Reset Admin Credentials & 2FA OTP Modal */}
-      {resetCredsModal && (
+      {/* Platform Developer: Reset Confirmation Dialog Modal */}
+      {confirmResetOrg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 p-5 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-zinc-100">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900">Reset Administrator Password</h3>
+                <p className="text-[11px] text-zinc-500">{confirmResetOrg.name}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Are you sure you want to reset credentials for <strong>{confirmResetOrg.name}</strong>?
+            </p>
+
+            <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-600 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-zinc-400">Target Administrator:</span>
+                <span className="font-semibold text-zinc-800">{confirmResetOrg.contactEmail || confirmResetOrg.adminName}</span>
+              </div>
+              <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                A new secure temporary password will be issued. Upon their next sign-in, a fresh 6-digit 2FA code will be sent to their email, and they will be prompted to create a permanent password.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => setConfirmResetOrg(null)}
+                disabled={isResettingPassword}
+                className="px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeResetAdminPassword(confirmResetOrg)}
+                disabled={isResettingPassword}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg cursor-pointer shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                {isResettingPassword ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Resetting Credentials...</span>
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-3.5 h-3.5" />
+                    <span>Confirm Password Reset</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Formatted Admin Credentials Modal (For both Provisioning and Password Reset) */}
+      {issuedCredsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#173bff] flex items-center justify-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
                   <Key className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-900">Admin Credentials Reset</h3>
-                  <p className="text-[11px] text-zinc-500">{resetCredsModal.institutionName}</p>
+                  <h3 className="text-sm font-bold text-zinc-900">{issuedCredsModal.title}</h3>
+                  <p className="text-[11px] text-zinc-500">{issuedCredsModal.institutionName}</p>
                 </div>
               </div>
               <button
-                onClick={() => setResetCredsModal(null)}
+                onClick={() => setIssuedCredsModal(null)}
                 className="text-zinc-400 hover:text-zinc-600 text-sm font-bold p-1 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
-              <p className="font-semibold mb-1 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-amber-700" />
-                <span>2FA OTP & Mandatory Password Reset Enforced</span>
+            {/* Email 2FA Notice (NO OTP code displayed here!) */}
+            <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 text-xs text-zinc-700 leading-relaxed">
+              <p className="font-semibold text-zinc-900 mb-0.5 flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Automatic 2FA Email Verification</span>
               </p>
-              The administrator will be prompted to verify this 6-digit 2FA OTP on login, and must create their permanent password before accessing the dashboard.
+              When the administrator signs in with these credentials, a fresh 6-digit OTP code will be sent directly to their email ({issuedCredsModal.adminEmail}).
             </div>
 
+            {/* Formatted Credentials Cards */}
             <div className="space-y-2.5">
+              {/* Institution & Admin Name */}
               <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200">
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Administrator Account</p>
-                <p className="text-xs font-semibold text-zinc-800">{resetCredsModal.adminName}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-zinc-600 font-mono select-all">{resetCredsModal.adminEmail}</span>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Institution & Administrator</p>
+                <p className="text-xs font-bold text-zinc-900">{issuedCredsModal.institutionName}</p>
+                <p className="text-[11px] text-zinc-600 mt-0.5">{issuedCredsModal.adminName}</p>
+              </div>
+
+              {/* Login Email */}
+              <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Official Login Email</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-zinc-900 font-mono font-semibold select-all">{issuedCredsModal.adminEmail}</span>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(resetCredsModal.adminEmail);
-                      showDialog('Admin email copied to clipboard!', { type: 'success' });
+                      navigator.clipboard.writeText(issuedCredsModal.adminEmail);
+                      setCopiedField('email');
+                      setTimeout(() => setCopiedField(null), 2000);
                     }}
                     className="text-[11px] text-[#173bff] hover:underline font-semibold cursor-pointer"
                   >
-                    Copy
+                    {copiedField === 'email' ? 'Copied!' : 'Copy Email'}
                   </button>
                 </div>
               </div>
 
+              {/* Temporary Password */}
               <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Temporary Password</p>
                 <div className="flex items-center justify-between">
                   <code className="text-xs font-mono font-bold text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200 select-all">
-                    {resetCredsModal.temporaryPassword}
+                    {issuedCredsModal.temporaryPassword}
                   </code>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(resetCredsModal.temporaryPassword);
-                      showDialog('Temporary password copied!', { type: 'success' });
+                      navigator.clipboard.writeText(issuedCredsModal.temporaryPassword);
+                      setCopiedField('password');
+                      setTimeout(() => setCopiedField(null), 2000);
                     }}
                     className="text-[11px] text-[#173bff] hover:underline font-semibold cursor-pointer"
                   >
-                    Copy Password
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 p-3 rounded-xl border border-blue-200">
-                <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">2FA Verification OTP Code</p>
-                <div className="flex items-center justify-between">
-                  <code className="text-sm font-mono font-bold text-[#173bff] tracking-widest bg-white px-2.5 py-1 rounded border border-blue-200 select-all">
-                    {resetCredsModal.otpCode}
-                  </code>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(resetCredsModal.otpCode);
-                      showDialog('2FA OTP code copied!', { type: 'success' });
-                    }}
-                    className="text-[11px] text-[#173bff] hover:underline font-semibold cursor-pointer"
-                  >
-                    Copy OTP
+                    {copiedField === 'password' ? 'Copied!' : 'Copy Password'}
                   </button>
                 </div>
               </div>
             </div>
 
+            {/* Copy Full Package Button */}
             <div className="pt-2">
               <button
                 onClick={() => {
-                  const summary = `ProCollege Admin Credentials for ${resetCredsModal.institutionName}:\nAdmin Email: ${resetCredsModal.adminEmail}\nTemporary Password: ${resetCredsModal.temporaryPassword}\n2FA OTP Code: ${resetCredsModal.otpCode}`;
+                  const summary = `🏛️ ProCollege Official Administrator Credentials\nInstitution: ${issuedCredsModal.institutionName}\nAdministrator: ${issuedCredsModal.adminName}\nLogin Email: ${issuedCredsModal.adminEmail}\nTemporary Password: ${issuedCredsModal.temporaryPassword}\nLogin Portal: ${window.location.origin}\n\n*Note: A 6-digit security OTP will be dispatched directly to your email upon sign in.`;
                   navigator.clipboard.writeText(summary);
-                  showDialog('Full credentials & OTP package copied to clipboard!', { type: 'success' });
+                  setCopiedField('all');
+                  setTimeout(() => setCopiedField(null), 2000);
                 }}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs font-bold shadow-[0_4px_18px_rgba(23,59,255,0.3)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.45)] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Key className="w-3.5 h-3.5" />
-                <span>Copy Full Credentials & OTP Package</span>
+                <span>{copiedField === 'all' ? 'Copied Full Credentials Package!' : 'Copy Full Credentials Package'}</span>
               </button>
             </div>
           </div>

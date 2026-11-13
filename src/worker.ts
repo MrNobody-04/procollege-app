@@ -1299,18 +1299,15 @@ app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
     const newTempPassword = `Admin#${randomSuffix}`;
     const newHash = await hashPassword(newTempPassword);
 
-    const newOtpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const newOtpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h validity
-
-    // Update in Turso: reset password, set must_change_password = 1, set new OTP
+    // Update in Turso: reset password, set must_change_password = 1
     await db.execute({
       sql: `UPDATE users
-            SET password = ?, password_hash = ?, must_change_password = 1, otp_code = ?, otp_expires_at = ?
+            SET password = ?, password_hash = ?, must_change_password = 1
             WHERE id = ?;`,
-      args: [newTempPassword, newHash, newOtpCode, newOtpExpires, admin.id],
+      args: [newTempPassword, newHash, admin.id],
     });
 
-    console.log(`[DEV-RESET] Admin credentials reset for ${admin.email} (Org: ${orgName}): TempPass: ${newTempPassword}, OTP: ${newOtpCode}`);
+    console.log(`[DEV-RESET] Admin credentials reset for ${admin.email} (Org: ${orgName}): TempPass: ${newTempPassword}`);
 
     return c.json({
       success: true,
@@ -1320,7 +1317,6 @@ app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
       adminName: String(admin.name),
       adminEmail: String(admin.email),
       temporaryPassword: newTempPassword,
-      otpCode: newOtpCode,
       message: `Administrator credentials for "${orgName}" have been reset. On next login, 2FA OTP verification and password reset will be required.`,
     });
   } catch (err: unknown) {
