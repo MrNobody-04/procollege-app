@@ -800,20 +800,58 @@ export const PortalLanding: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-            {/* Left Column: 100% Authentic Clone of Image 2 Left Side */}
+            {/* Left Column: Real Native Web Typography & Real Glass Turntable Pedestal */}
             <div className="lg:col-span-6 space-y-6 text-left">
-              {/* 3D Chrome Beveled Title with Undulating Liquid Ribbon */}
+              {/* Native 3D Gradient Typography & Elegant Vector Chrome Ribbon Underline */}
               <div
                 data-reveal
                 style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-                className="relative select-none max-w-lg"
+                className="space-y-1 select-none"
               >
-                <h1 className="sr-only">Designed for Modern Education</h1>
-                <img
-                  src="/hero-title-modern-education.png"
-                  alt="Designed for Modern Education"
-                  className="w-full max-w-[440px] sm:max-w-[490px] h-auto object-contain filter drop-shadow-[0_4px_14px_rgba(79,70,229,0.14)]"
-                />
+                <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-black tracking-tight leading-[1.08]">
+                  <span className="block bg-gradient-to-r from-[#2A1654] via-[#482387] to-[#5B21B6] bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(42,22,84,0.18)]">
+                    Designed for
+                  </span>
+                  <span className="block bg-gradient-to-r from-[#312E81] via-[#4F46E5] to-[#2563EB] bg-clip-text text-transparent drop-shadow-[0_3px_10px_rgba(79,70,229,0.22)]">
+                    Modern Education
+                  </span>
+                </h1>
+
+                {/* Elegant Undulating Liquid Chrome Ribbon Underline (Pure Sharp Vector SVG) */}
+                <div className="w-full max-w-[430px] pt-1">
+                  <svg
+                    viewBox="0 0 450 36"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-full h-auto filter drop-shadow-[0_4px_8px_rgba(79,70,229,0.18)]"
+                  >
+                    <defs>
+                      <linearGradient id="chromeRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#CBD5E1" stopOpacity="0.4" />
+                        <stop offset="25%" stopColor="#FFFFFF" stopOpacity="0.95" />
+                        <stop offset="50%" stopColor="#818CF8" stopOpacity="0.85" />
+                        <stop offset="75%" stopColor="#38BDF8" stopOpacity="0.9" />
+                        <stop offset="100%" stopColor="#E2E8F0" stopOpacity="0.3" />
+                      </linearGradient>
+                      <linearGradient id="chromeShine" x1="0%" y1="50%" x2="100%" y2="50%">
+                        <stop offset="0%" stopColor="#94A3B8" />
+                        <stop offset="30%" stopColor="#FFFFFF" />
+                        <stop offset="60%" stopColor="#818CF8" />
+                        <stop offset="100%" stopColor="#CBD5E1" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M 5,20 C 80,22 130,4 210,11 C 290,18 330,32 445,14 C 380,36 290,24 210,16 C 130,8 70,28 5,20 Z"
+                      fill="url(#chromeRibbon)"
+                    />
+                    <path
+                      d="M 15,20 C 85,21 135,5 210,12 C 285,19 330,31 440,15"
+                      stroke="url(#chromeShine)"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
               </div>
 
               {/* Subheading Exactly Matched to Image 2 */}
@@ -859,18 +897,69 @@ export const PortalLanding: React.FC = () => {
                 </button>
               </div>
 
-              {/* 3D Glass Pedestal Social Proof Turntable (Matches Image 2) */}
+              {/* Real Native Glass Turntable Pedestal (Real HTML/CSS, Avatars & Glowing Orb) */}
               <div
                 data-reveal
                 style={{ '--reveal-delay': '550ms' } as React.CSSProperties}
                 className="pt-2 select-none"
               >
-                <div className="relative inline-block w-full max-w-[380px] sm:max-w-[430px] transition-transform duration-300 hover:scale-[1.02]">
-                  <img
-                    src="/hero-social-pedestal.png"
-                    alt="Trusted by 500+ Schools & Colleges across Nepal & South Asia"
-                    className="w-full h-auto object-contain filter drop-shadow-[0_12px_28px_rgba(0,0,0,0.12)]"
-                  />
+                <div className="relative w-full max-w-[420px] rounded-[32px] p-4 sm:p-5 bg-gradient-to-b from-white/80 via-white/50 to-indigo-50/40 backdrop-blur-xl border border-white/90 shadow-[0_15px_35px_rgba(79,70,229,0.08),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_6px_rgba(99,102,241,0.08)] transition-transform duration-300 hover:scale-[1.02]">
+                  {/* Floating Avatars & Glowing Center Orb Row */}
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2.5">
+                    {/* Avatar 1 */}
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform -translate-y-1">
+                      <img
+                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80"
+                        alt="Student"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* Avatar 2 */}
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform translate-y-1">
+                      <img
+                        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80"
+                        alt="Lecturer"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* Central 3D Glowing Violet ProSchool Orb */}
+                    <div className="relative mx-1">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-[#2A1660] via-[#4F2FA5] to-[#7C3AED] flex items-center justify-center text-white shadow-[0_0_20px_rgba(124,58,237,0.5),inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.5)] transform -translate-y-2 ring-2 ring-purple-300/40">
+                        <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white filter drop-shadow-sm" />
+                      </div>
+                      <div className="absolute inset-0 rounded-full bg-purple-500/30 blur-md -z-10 animate-pulse" />
+                    </div>
+
+                    {/* Avatar 3 */}
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform translate-y-1">
+                      <img
+                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80"
+                        alt="Student"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    {/* Avatar 4 */}
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform -translate-y-1">
+                      <img
+                        src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80"
+                        alt="Dean"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Real Crisp Vector Text */}
+                  <div className="text-center space-y-0.5">
+                    <p className="font-extrabold text-zinc-900 text-xs sm:text-[13px] tracking-tight">
+                      Trusted by 500+ Schools &amp; Colleges
+                    </p>
+                    <p className="text-[11px] text-zinc-500 font-medium">
+                      across Nepal &amp; South Asia
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
