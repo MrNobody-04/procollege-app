@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   Video,
@@ -30,10 +30,30 @@ export const CalendarView: React.FC = () => {
     currentUser
   } = useApp();
 
-  // Calendar State
-  const [selectedMonth, setSelectedMonth] = useState<number>(10); // 0-indexed: 10 = November
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [selectedDay, setSelectedDay] = useState<number>(16); // Day of month (Nov 16, 2026)
+  // Dynamic Live System Date with Auto-Update Check
+  const [currentRealDate, setCurrentRealDate] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentRealDate(prev => {
+        if (
+          now.getDate() !== prev.getDate() ||
+          now.getMonth() !== prev.getMonth() ||
+          now.getFullYear() !== prev.getFullYear()
+        ) {
+          return now;
+        }
+        return prev;
+      });
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Calendar State initialized dynamically to current real date
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [selectedDay, setSelectedDay] = useState<number>(() => new Date().getDate());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'deadlines'>('month');
   const [courseFilter, setCourseFilter] = useState<string>('all');
 
@@ -42,49 +62,91 @@ export const CalendarView: React.FC = () => {
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventCourseCode, setNewEventCourseCode] = useState('CS 301');
   const [newEventInstructor, setNewEventInstructor] = useState('Prof. Alan Turing');
-  const [newEventDayNum, setNewEventDayNum] = useState<number>(16);
+  const [newEventDayNum, setNewEventDayNum] = useState<number>(() => new Date().getDate());
   const [newEventStartTime, setNewEventStartTime] = useState('10:00 AM');
   const [newEventEndTime, setNewEventEndTime] = useState('11:30 AM');
   const [newEventLocation, setNewEventLocation] = useState('Turing Hall 101');
   const [newEventIsVirtual, setNewEventIsVirtual] = useState(true);
 
-  // Parse assignment release and due dates
+  // Month metadata computed dynamically for the selected month and year
+  const monthDaysCount = useMemo(() => {
+    return new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  }, [selectedYear, selectedMonth]);
+
+  const startDayOfWeek = useMemo(() => {
+    return new Date(selectedYear, selectedMonth, 1).getDay();
+  }, [selectedYear, selectedMonth]);
+
+  const monthNames = useMemo(() => [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ], []);
+
+  const currentTermName = useMemo(() => {
+    const term = selectedMonth >= 7 && selectedMonth <= 11 ? 'Fall' : selectedMonth >= 4 ? 'Summer' : 'Spring';
+    return `${term} Term ${selectedYear}`;
+  }, [selectedMonth, selectedYear]);
+
+  // Parse assignment release and due dates dynamically
   const assignmentDatesMap = useMemo(() => {
     const dueMap: Record<number, Assignment[]> = {};
     const releaseMap: Record<number, Assignment[]> = {};
 
     assignments.forEach(asg => {
-      // Due Date parse: match "Nov (\d+)"
-      const dueMatch = asg.dueAt.match(/Nov\s+(\d+)/i);
-      if (dueMatch) {
-        const dayNum = parseInt(dueMatch[1], 10);
-        if (!dueMap[dayNum]) dueMap[dayNum] = [];
-        dueMap[dayNum].push(asg);
+      // Due Date parse
+      let dueDay: number | null = null;
+      if (asg.dueAt) {
+        const parsed = new Date(asg.dueAt);
+        if (!isNaN(parsed.getTime())) {
+          if (parsed.getMonth() === selectedMonth && parsed.getFullYear() === selectedYear) {
+            dueDay = parsed.getDate();
+          }
+        }
+        if (dueDay === null) {
+          const match = asg.dueAt.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d+)/i);
+          if (match) {
+            dueDay = parseInt(match[1], 10);
+          }
+        }
       }
 
-      // Released Date:
-      let relDayNum: number | null = null;
-      if (asg.id === 'asg_1') relDayNum = 13;
-      else if (asg.id === 'asg_2') relDayNum = 10;
-      else if (asg.id === 'asg_3') relDayNum = 5;
-      else if (asg.id === 'asg_4') relDayNum = 14;
-      else if (asg.scheduleDate) {
-        const relMatch = asg.scheduleDate.match(/Nov\s+(\d+)/i);
-        if (relMatch) relDayNum = parseInt(relMatch[1], 10);
+      if (dueDay !== null && dueDay >= 1 && dueDay <= monthDaysCount) {
+        if (!dueMap[dueDay]) dueMap[dueDay] = [];
+        dueMap[dueDay].push(asg);
+      }
+
+      // Released Date parse
+      let relDay: number | null = null;
+      if (asg.scheduleDate) {
+        const parsedRel = new Date(asg.scheduleDate);
+        if (!isNaN(parsedRel.getTime())) {
+          if (parsedRel.getMonth() === selectedMonth && parsedRel.getFullYear() === selectedYear) {
+            relDay = parsedRel.getDate();
+          }
+        }
+        if (relDay === null) {
+          const relMatch = asg.scheduleDate.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d+)/i);
+          if (relMatch) relDay = parseInt(relMatch[1], 10);
+        }
       } else {
-        relDayNum = 12;
+        if (asg.id === 'asg_1') relDay = 13;
+        else if (asg.id === 'asg_2') relDay = 10;
+        else if (asg.id === 'asg_3') relDay = 5;
+        else if (asg.id === 'asg_4') relDay = 14;
+        else if (dueDay) relDay = Math.max(1, dueDay - 7);
+        else relDay = 12;
       }
 
-      if (relDayNum) {
-        if (!releaseMap[relDayNum]) releaseMap[relDayNum] = [];
-        releaseMap[relDayNum].push(asg);
+      if (relDay !== null && relDay >= 1 && relDay <= monthDaysCount) {
+        if (!releaseMap[relDay]) releaseMap[relDay] = [];
+        releaseMap[relDay].push(asg);
       }
     });
 
     return { dueMap, releaseMap };
-  }, [assignments]);
+  }, [assignments, selectedMonth, selectedYear, monthDaysCount]);
 
-  // Parse lecture event dates
+  // Parse lecture event dates dynamically (supporting recurring timetable and explicit dates)
   const eventsByDayMap = useMemo(() => {
     const map: Record<number, CalendarEvent[]> = {};
     const validCourseCodes = new Set(courses.map(c => c.code));
@@ -98,32 +160,41 @@ export const CalendarView: React.FC = () => {
         if (!matchesCourse && !matchesInst) return;
       }
 
-      let dayNum: number | null = null;
-      const match = evt.dateStr?.match(/Nov\s+(\d+)/i);
-      if (match) {
-        dayNum = parseInt(match[1], 10);
-      } else if (evt.day === 'Mon') dayNum = 16;
-      else if (evt.day === 'Tue') dayNum = 17;
-      else if (evt.day === 'Wed') dayNum = 18;
-      else if (evt.day === 'Thu') dayNum = 19;
-      else if (evt.day === 'Fri') dayNum = 20;
+      // 1. Explicit date match
+      let explicitDay: number | null = null;
+      if (evt.dateStr) {
+        const match = evt.dateStr.match(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d+)/i);
+        if (match) {
+          explicitDay = parseInt(match[1], 10);
+        }
+      }
 
-      if (dayNum) {
-        if (!map[dayNum]) map[dayNum] = [];
-        map[dayNum].push(evt);
+      if (explicitDay !== null && explicitDay >= 1 && explicitDay <= monthDaysCount) {
+        if (!map[explicitDay]) map[explicitDay] = [];
+        map[explicitDay].push(evt);
+        return;
+      }
+
+      // 2. Recurring day of week timetable
+      if (evt.day) {
+        const dayShort = evt.day.toLowerCase().slice(0, 3);
+        const dayNamesShort = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const targetWeekdayIdx = dayNamesShort.indexOf(dayShort);
+
+        if (targetWeekdayIdx !== -1) {
+          for (let d = 1; d <= monthDaysCount; d++) {
+            const dateObj = new Date(selectedYear, selectedMonth, d);
+            if (dateObj.getDay() === targetWeekdayIdx) {
+              if (!map[d]) map[d] = [];
+              map[d].push(evt);
+            }
+          }
+        }
       }
     });
+
     return map;
-  }, [calendarEvents, courses, currentUser.institutionName]);
-
-  // November 2026 starts on Sunday (day 0) and has 30 days
-  const monthDaysCount = 30;
-  const startDayOfWeek = 0; // Sunday
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  }, [calendarEvents, courses, currentUser.institutionName, selectedMonth, selectedYear, monthDaysCount]);
 
   const handlePrevMonth = () => {
     if (selectedMonth === 0) {
@@ -144,9 +215,10 @@ export const CalendarView: React.FC = () => {
   };
 
   const handleToday = () => {
-    setSelectedMonth(10);
-    setSelectedYear(2026);
-    setSelectedDay(16);
+    const now = new Date();
+    setSelectedMonth(now.getMonth());
+    setSelectedYear(now.getFullYear());
+    setSelectedDay(now.getDate());
   };
 
   // Filtered lists for the selected day
@@ -165,25 +237,47 @@ export const CalendarView: React.FC = () => {
     return list.filter(e => courseFilter === 'all' || e.courseCode === courseFilter);
   }, [eventsByDayMap, selectedDay, courseFilter]);
 
-  // Week schedule days (Monday Nov 16 to Friday Nov 20)
-  const weekDays = [
-    { dayName: 'Monday', short: 'Mon', dayNum: 16 },
-    { dayName: 'Tuesday', short: 'Tue', dayNum: 17 },
-    { dayName: 'Wednesday', short: 'Wed', dayNum: 18 },
-    { dayName: 'Thursday', short: 'Thu', dayNum: 19 },
-    { dayName: 'Friday', short: 'Fri', dayNum: 20 }
-  ];
+  // Week schedule days (Monday to Friday dynamically computed for current or selected week)
+  const weekDays = useMemo(() => {
+    const refDate = new Date(selectedYear, selectedMonth, selectedDay);
+    const dayOfWeek = refDate.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(refDate);
+    monday.setDate(refDate.getDate() + diffToMonday);
+
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const shortNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const days = [];
+
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push({
+        dayName: dayNames[i],
+        short: shortNames[i],
+        dayNum: d.getDate(),
+        month: d.getMonth(),
+        year: d.getFullYear(),
+        dateStr: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      });
+    }
+    return days;
+  }, [selectedYear, selectedMonth, selectedDay]);
 
   const handleCreateEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle.trim()) return;
 
+    const sessionDate = new Date(selectedYear, selectedMonth, newEventDayNum);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+    const dayShort = dayNames[sessionDate.getDay()];
+
     addCalendarEvent({
       courseCode: newEventCourseCode,
       title: newEventTitle.trim(),
       instructorName: newEventInstructor,
-      day: 'Mon',
-      dateStr: `Nov ${newEventDayNum}`,
+      day: dayShort,
+      dateStr: `${monthNames[selectedMonth].slice(0, 3)} ${newEventDayNum}`,
       startTime: newEventStartTime,
       endTime: newEventEndTime,
       location: newEventLocation,
@@ -197,10 +291,13 @@ export const CalendarView: React.FC = () => {
 
   // Get day of week name for selected day
   const getSelectedDayLabel = () => {
-    // Nov 1, 2026 was Sunday.
-    const dayOfWeekIdx = (startDayOfWeek + (selectedDay - 1)) % 7;
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return `${days[dayOfWeekIdx]}, November ${selectedDay}, 2026`;
+    const d = new Date(selectedYear, selectedMonth, selectedDay);
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
   return (
@@ -218,7 +315,7 @@ export const CalendarView: React.FC = () => {
                   Academic Calendar
                 </h1>
                 <span className="text-[11px] font-bold text-zinc-500 bg-zinc-100 px-2.5 py-0.5 rounded-full">
-                  Fall Term 2026
+                  {currentTermName}
                 </span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -367,11 +464,14 @@ export const CalendarView: React.FC = () => {
                   <div key={`empty-${idx}`} className="bg-zinc-50/40 min-h-[100px] p-2 opacity-30" />
                 ))}
 
-                {/* Days of November (1 - 30) */}
+                {/* Days of Selected Month */}
                 {Array.from({ length: monthDaysCount }).map((_, idx) => {
                   const dayNum = idx + 1;
                   const isSelected = selectedDay === dayNum;
-                  const isToday = dayNum === 16;
+                  const isToday =
+                    dayNum === currentRealDate.getDate() &&
+                    selectedMonth === currentRealDate.getMonth() &&
+                    selectedYear === currentRealDate.getFullYear();
                   const isWeekend = (startDayOfWeek + idx) % 7 === 0 || (startDayOfWeek + idx) % 7 === 6;
 
                   const dues = (assignmentDatesMap.dueMap[dayNum] || []).filter(
@@ -627,7 +727,7 @@ export const CalendarView: React.FC = () => {
                   Weekly Academic Schedule & Timetable
                 </h2>
                 <p className="text-xs text-zinc-500">
-                  Daily recurring lecture timetable and room assignments for Week 11 (Nov 16 – 20, 2026).
+                  Daily recurring lecture timetable and room assignments for Week of {weekDays[0].dateStr} – {weekDays[4].dateStr}, {selectedYear}.
                 </p>
               </div>
             </div>
@@ -638,7 +738,10 @@ export const CalendarView: React.FC = () => {
                   e => courseFilter === 'all' || e.courseCode === courseFilter
                 );
                 const isSelected = selectedDay === col.dayNum;
-                const isToday = col.dayNum === 16;
+                const isToday =
+                  col.dayNum === currentRealDate.getDate() &&
+                  col.month === currentRealDate.getMonth() &&
+                  col.year === currentRealDate.getFullYear();
 
                 return (
                   <div
@@ -656,7 +759,7 @@ export const CalendarView: React.FC = () => {
                           {col.short}
                         </span>
                         <span className="text-sm font-black text-zinc-900">
-                          Nov {col.dayNum}
+                          {monthNames[col.month].slice(0, 3)} {col.dayNum}
                         </span>
                       </div>
                       {isToday && (
@@ -851,16 +954,16 @@ export const CalendarView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Date in November
+                    Date in {monthNames[selectedMonth]}
                   </label>
                   <select
                     value={newEventDayNum}
                     onChange={e => setNewEventDayNum(Number(e.target.value))}
                     className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
-                    {Array.from({ length: 30 }).map((_, i) => (
+                    {Array.from({ length: monthDaysCount }).map((_, i) => (
                       <option key={i + 1} value={i + 1}>
-                        Nov {i + 1}, 2026
+                        {monthNames[selectedMonth].slice(0, 3)} {i + 1}, {selectedYear}
                       </option>
                     ))}
                   </select>

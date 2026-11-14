@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Video,
@@ -63,6 +63,40 @@ export const PortalLanding: React.FC = () => {
     const cleanup = initHeroAnimations();
     return cleanup;
   }, []);
+
+  // Dynamic Live System Date & Auto-Update Daily
+  const [liveDate, setLiveDate] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setLiveDate(prev => {
+        if (
+          now.getDate() !== prev.getDate() ||
+          now.getMonth() !== prev.getMonth() ||
+          now.getFullYear() !== prev.getFullYear() ||
+          now.getHours() !== prev.getHours()
+        ) {
+          return now;
+        }
+        return prev;
+      });
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Compute exact coordinates of current day on the 3D isometric workspace calendar plate
+  const liveDayCoords = useMemo(() => {
+    const d = Math.max(1, Math.min(31, liveDate.getDate()));
+    const row = Math.floor((d - 1) / 7);
+    const col = (d - 1) % 7;
+    const x = 1115 - 12.5 * row + 52 * col + (row > 0 ? 3.2 * col : 0);
+    const y = 755 + 70.0 * row + 15 * col + (2.2 * col * row);
+    return {
+      left: Number((x / 1752 * 100).toFixed(2)),
+      top: Number((y / 1716 * 100).toFixed(2))
+    };
+  }, [liveDate]);
 
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
   const [showRequestModal, setShowRequestModal] = useState<boolean>(false);
@@ -1559,6 +1593,27 @@ export const PortalLanding: React.FC = () => {
                   alt="ProSchool 3D Glassmorphism Workspace"
                   className="w-full h-auto object-contain drop-shadow-[0_25px_50px_rgba(79,70,229,0.22)] select-none"
                 />
+
+                {/* Dynamic Live Calendar Date Highlight Lens (Auto-updated daily without altering design/animation) */}
+                <motion.div
+                  style={{
+                    left: `${liveDayCoords.left}%`,
+                    top: `${liveDayCoords.top}%`,
+                    transform: 'translate(-50%, -50%) rotate(16deg) skewX(-10deg)'
+                  }}
+                  animate={{
+                    scale: [0.96, 1.05, 0.96],
+                    boxShadow: [
+                      '0 0 10px rgba(124,58,237,0.7), inset 0 1px 2px rgba(255,255,255,0.85)',
+                      '0 0 20px rgba(147,51,234,0.95), inset 0 1.5px 3px rgba(255,255,255,1)',
+                      '0 0 10px rgba(124,58,237,0.7), inset 0 1px 2px rgba(255,255,255,0.85)'
+                    ]
+                  }}
+                  transition={{ repeat: Infinity, duration: 3.2, ease: 'easeInOut' }}
+                  className="absolute pointer-events-none z-20 w-[4.6%] aspect-[48/44] rounded-[10px] bg-gradient-to-tr from-[#3B0764] via-[#581C87] to-[#7C3AED] border-[2px] border-white text-white flex items-center justify-center font-black text-[9px] sm:text-[11px] select-none"
+                >
+                  <span>{liveDate.getDate()}</span>
+                </motion.div>
               </motion.div>
             </motion.div>
 
