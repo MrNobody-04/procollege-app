@@ -17,8 +17,6 @@ import {
   KeyRound,
   RotateCcw,
   Play,
-  Folder,
-  BarChart2,
   ChevronDown,
   ChevronUp,
   ChevronRight,
@@ -31,6 +29,7 @@ import { motion } from 'framer-motion';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { CampusEcosystemGraphic } from './CampusEcosystemGraphic';
+import { PlatformCapabilitiesCarousel } from './PlatformCapabilitiesCarousel';
 import { INITIAL_USERS } from '../data/initialData';
 import type { User, UserRole } from '../types';
 import {
@@ -966,168 +965,27 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 3. CORE PLATFORM CAPABILITIES (6 Cards Matched to Image 2)     */}
+      {/* 3. CORE PLATFORM CAPABILITIES (Continuous Sliding Animation)   */}
       {/* ============================================================== */}
-      <section className="py-14 sm:py-20 bg-white" id="features">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
-            {/* Card 1: Live & Recorded Classes */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
-                  <Video className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
-                  Live &amp; Recorded Classes
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
-                  Teach and share knowledge anywhere, anytime.
-                </p>
-              </div>
-              <button
-                onClick={() => launchDemoMode('professor')}
-                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
-              >
-                <span>Learn More</span>
-                <span>→</span>
-              </button>
+      <section className="py-14 sm:py-20 bg-white overflow-hidden" id="features">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <p className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-[#4F46E5] mb-1.5">
+                Unified Ecosystem
+              </p>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-zinc-950 tracking-tight">
+                Core Platform Capabilities
+              </h2>
             </div>
-
-            {/* Card 2: Assignments & Exams */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
-              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-full bg-[#10B981] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(16,185,129,0.35)] mb-6">
-                  <Check className="w-6 h-6 stroke-[3] text-white" />
-                </div>
-                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
-                  Assignments &amp; Exams
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
-                  Create, distribute, and track assignments easily.
-                </p>
-              </div>
-              <button
-                onClick={() => launchDemoMode('student')}
-                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
-              >
-                <span>Learn More</span>
-                <span>→</span>
-              </button>
-            </div>
-
-            {/* Card 3: Student Management */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
-              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
-                  Student Management
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
-                  Manage students, classes, and progress.
-                </p>
-              </div>
-              <button
-                onClick={() => launchDemoMode('admin')}
-                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
-              >
-                <span>Learn More</span>
-                <span>→</span>
-              </button>
-            </div>
-
-            {/* Card 4: Real-Time Collaboration */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
-              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
-                  <MessageSquare className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
-                  Real-Time Collaboration
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
-                  Chat, discuss, and work together effortlessly.
-                </p>
-              </div>
-              <button
-                onClick={() => launchDemoMode('student')}
-                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
-              >
-                <span>Learn More</span>
-                <span>→</span>
-              </button>
-            </div>
-
-            {/* Card 5: Resource Library */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '500ms' } as React.CSSProperties}
-              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#3B82F6] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(59,130,246,0.35)] mb-6">
-                  <Folder className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
-                  Resource Library
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
-                  Share files, notes, and study materials.
-                </p>
-              </div>
-              <button
-                onClick={() => launchDemoMode('professor')}
-                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
-              >
-                <span>Learn More</span>
-                <span>→</span>
-              </button>
-            </div>
-
-            {/* Card 6: Progress Analytics */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '600ms' } as React.CSSProperties}
-              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
-                  <BarChart2 className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
-                  Progress Analytics
-                </h3>
-                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
-                  Track performance with detailed insights.
-                </p>
-              </div>
-              <button
-                onClick={() => launchDemoMode('admin')}
-                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
-              >
-                <span>Learn More</span>
-                <span>→</span>
-              </button>
-            </div>
+            <p className="text-xs sm:text-sm text-zinc-500 font-medium max-w-md">
+              Everything educators, faculty, and students need—designed with continuous live synchronization.
+            </p>
           </div>
         </div>
+
+        {/* Continuous Right-to-Left Infinite Sliding Track */}
+        <PlatformCapabilitiesCarousel onLaunchDemo={launchDemoMode} />
       </section>
 
       {/* ============================================================== */}

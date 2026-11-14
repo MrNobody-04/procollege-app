@@ -302,3 +302,13 @@
     transform: translate(-50%, -50%) rotate(335deg);
   }
 }
+
+/* Continuous Infinite Sliding Animation from Right to Left */
+@keyframes slideTrackRightToLeft {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
