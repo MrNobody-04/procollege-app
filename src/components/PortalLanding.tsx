@@ -762,9 +762,10 @@ export const PortalLanding: React.FC = () => {
             {/* Left Column: Real Native Web Typography & Real Glass Turntable Pedestal */}
             <div className="lg:col-span-6 space-y-6 text-left">
               {/* Native 3D Gradient Typography & Elegant Vector Chrome Ribbon Underline */}
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
+              <motion.div
+                initial={{ opacity: 0, y: 25 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                 className="space-y-1 select-none"
               >
                 <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-black tracking-tight leading-[1.08]">
@@ -811,12 +812,13 @@ export const PortalLanding: React.FC = () => {
                     />
                   </svg>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Subheading Exactly Matched to Image 2 */}
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
                 className="space-y-1.5 pt-0.5"
               >
                 <p className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight">
@@ -825,89 +827,124 @@ export const PortalLanding: React.FC = () => {
                 <p className="text-sm sm:text-base text-zinc-600 max-w-xl leading-relaxed">
                   ProSchool is your all-in-one platform to manage, teach, and grow—seamlessly connecting students, faculty, and curriculum.
                 </p>
-              </div>
+              </motion.div>
 
               {/* Action Buttons: Cosmic Violet Glowing Trial + Brushed Metallic Glass Demo */}
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
                 className="flex flex-wrap items-center gap-4 pt-1"
               >
                 {/* Start Free Trial with Glowing Cosmic Aura & Amber Starburst */}
-                <div className="relative group">
-                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-400/50 via-purple-500/40 to-amber-400/50 blur-md opacity-80 group-hover:opacity-100 transition-opacity" />
+                <motion.div
+                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="relative group cursor-pointer"
+                >
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-400/60 via-purple-500/50 to-amber-400/60 blur-md opacity-85 group-hover:opacity-100 transition-opacity animate-pulse" />
                   <button
                     onClick={() => setShowRequestModal(true)}
-                    className="relative hero-button px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-[#170C3B] via-[#241355] to-[#170C3B] hover:from-[#241355] hover:to-[#2D186B] text-white rounded-xl text-sm sm:text-base font-bold ring-1 ring-amber-400/50 shadow-[0_0_22px_rgba(251,191,36,0.38),0_10px_25px_rgba(23,12,59,0.5)] flex items-center gap-2.5 cursor-pointer transition-all"
+                    className="relative hero-button px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-[#170C3B] via-[#241355] to-[#170C3B] hover:from-[#241355] hover:to-[#2D186B] text-white rounded-xl text-sm sm:text-base font-bold ring-1 ring-amber-400/60 shadow-[0_0_24px_rgba(251,191,36,0.42),0_10px_25px_rgba(23,12,59,0.5)] flex items-center gap-2.5 cursor-pointer transition-all"
                   >
                     <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
                     <span>Start Free Trial</span>
                     <span className="text-amber-200 text-lg leading-none">→</span>
                   </button>
-                </div>
+                </motion.div>
 
                 {/* Watch Demo with Brushed Silver / Frosted Glass Pill Styling */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => launchDemoMode('student')}
                   className="hero-button px-5 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-b from-white via-[#F1F4F9] to-[#DCE3EC] hover:from-white hover:to-[#CFD9E6] text-zinc-800 border border-white/90 rounded-xl text-sm sm:text-base font-bold shadow-[0_4px_14px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center gap-2 cursor-pointer transition-all"
                 >
                   <Play className="w-4 h-4 text-[#4F46E5] fill-[#4F46E5] shrink-0" />
                   <span>Watch Demo</span>
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
 
-              {/* Real Native Glass Turntable Pedestal (Real HTML/CSS, Avatars & Glowing Orb) */}
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '550ms' } as React.CSSProperties}
+              {/* Real Native 3D Glass Turntable Pedestal (Interactive Avatars & Glowing Center Orb) */}
+              <motion.div
+                initial={{ opacity: 0, y: 25 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 className="pt-2 select-none"
               >
-                <div className="relative w-full max-w-[420px] rounded-[32px] p-4 sm:p-5 bg-gradient-to-b from-white/80 via-white/50 to-indigo-50/40 backdrop-blur-xl border border-white/90 shadow-[0_15px_35px_rgba(79,70,229,0.08),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_6px_rgba(99,102,241,0.08)] transition-transform duration-300 hover:scale-[1.02]">
+                <div className="relative w-full max-w-[420px] rounded-[32px] p-4 sm:p-5 bg-gradient-to-b from-white/85 via-white/55 to-indigo-50/40 backdrop-blur-xl border border-white/90 shadow-[0_15px_35px_rgba(79,70,229,0.08),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_6px_rgba(99,102,241,0.08)] transition-all duration-300 hover:shadow-[0_20px_45px_rgba(79,70,229,0.14)]">
                   {/* Floating Avatars & Glowing Center Orb Row */}
-                  <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2.5">
+                  <div className="flex items-center justify-center gap-2.5 sm:gap-3 mb-2.5">
                     {/* Avatar 1 */}
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform -translate-y-1">
+                    <motion.div
+                      whileHover={{ scale: 1.25, y: -6 }}
+                      className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/95 shadow-md overflow-hidden cursor-pointer transform -translate-y-1"
+                    >
                       <img
                         src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80"
-                        alt="Student"
+                        alt="Sneha KC - Student Council"
                         className="w-full h-full object-cover"
                       />
-                    </div>
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-950 text-white text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-lg pointer-events-none z-30">
+                        Sneha • Council
+                      </div>
+                    </motion.div>
 
                     {/* Avatar 2 */}
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform translate-y-1">
+                    <motion.div
+                      whileHover={{ scale: 1.25, y: -6 }}
+                      className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/95 shadow-md overflow-hidden cursor-pointer transform translate-y-1"
+                    >
                       <img
                         src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80"
-                        alt="Lecturer"
+                        alt="Dr. Ram Bista - Principal"
                         className="w-full h-full object-cover"
                       />
-                    </div>
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-950 text-white text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-lg pointer-events-none z-30">
+                        Dr. Ram • Principal
+                      </div>
+                    </motion.div>
 
                     {/* Central 3D Glowing Violet ProSchool Orb */}
-                    <div className="relative mx-1">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-[#2A1660] via-[#4F2FA5] to-[#7C3AED] flex items-center justify-center text-white shadow-[0_0_20px_rgba(124,58,237,0.5),inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.5)] transform -translate-y-2 ring-2 ring-purple-300/40">
+                    <motion.div
+                      whileHover={{ scale: 1.15, rotate: 10 }}
+                      className="relative mx-1 cursor-pointer"
+                    >
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-[#2A1660] via-[#4F2FA5] to-[#7C3AED] flex items-center justify-center text-white shadow-[0_0_22px_rgba(124,58,237,0.55),inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.5)] transform -translate-y-2 ring-2 ring-purple-300/50">
                         <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white filter drop-shadow-sm" />
                       </div>
-                      <div className="absolute inset-0 rounded-full bg-purple-500/30 blur-md -z-10 animate-pulse" />
-                    </div>
+                      <div className="absolute inset-0 rounded-full bg-purple-500/35 blur-md -z-10 animate-pulse" />
+                    </motion.div>
 
                     {/* Avatar 3 */}
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform translate-y-1">
+                    <motion.div
+                      whileHover={{ scale: 1.25, y: -6 }}
+                      className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/95 shadow-md overflow-hidden cursor-pointer transform translate-y-1"
+                    >
                       <img
                         src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80"
-                        alt="Student"
+                        alt="Pooja Sharma - HOD"
                         className="w-full h-full object-cover"
                       />
-                    </div>
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-950 text-white text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-lg pointer-events-none z-30">
+                        Pooja • HOD Computing
+                      </div>
+                    </motion.div>
 
                     {/* Avatar 4 */}
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/90 shadow-md overflow-hidden transform -translate-y-1">
+                    <motion.div
+                      whileHover={{ scale: 1.25, y: -6 }}
+                      className="group relative w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/95 shadow-md overflow-hidden cursor-pointer transform -translate-y-1"
+                    >
                       <img
                         src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80"
-                        alt="Dean"
+                        alt="Aarav Shrestha - Dean"
                         className="w-full h-full object-cover"
                       />
-                    </div>
+                      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-950 text-white text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap shadow-lg pointer-events-none z-30">
+                        Aarav • Faculty Lead
+                      </div>
+                    </motion.div>
                   </div>
 
                   {/* Real Crisp Vector Text */}
@@ -920,7 +957,7 @@ export const PortalLanding: React.FC = () => {
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Right Column: 3D Campus Ecosystem Infrastructure Animation */}
