@@ -1333,8 +1333,15 @@ export const PortalLanding: React.FC = () => {
       {/* 6. EVERYTHING YOU NEED IN ONE PLACE (Matches Image 2 & Motion) */}
       {/* ============================================================== */}
       <section className="py-16 sm:py-24 bg-gradient-to-b from-white via-[#FAF5FF]/30 to-white border-t border-zinc-100 overflow-hidden relative">
-        {/* Subtle ambient blur light on top-right */}
-        <div className="absolute top-0 right-0 w-[550px] h-[550px] bg-gradient-to-bl from-purple-200/25 via-indigo-100/15 to-transparent rounded-full blur-3xl pointer-events-none -z-0" />
+        {/* Continuous ambient blur light on top-right */}
+        <motion.div
+          animate={{
+            scale: [1, 1.15, 1],
+            opacity: [0.35, 0.65, 0.35]
+          }}
+          transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+          className="absolute top-0 right-0 w-[550px] h-[550px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -z-0"
+        />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
@@ -1363,16 +1370,27 @@ export const PortalLanding: React.FC = () => {
 
               {/* 4 Connected Glassmorphism Badges (2x2 Grid) with Organic Fluid Backdrop */}
               <div className="relative pt-2">
-                {/* Organic Fluid Glow Connector linking badges to the CTA button */}
-                <div className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-indigo-100/40 via-purple-50/50 to-blue-50/30 blur-xl pointer-events-none" />
-
-                {/* Playful Curved Pointer Arrow pointing up & right towards the 3D workspace */}
+                {/* Organic Fluid Glow Connector linking badges to the CTA button with continuous breathing */}
                 <motion.div
-                  animate={{ x: [0, 4, 0], y: [0, -4, 0] }}
-                  transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+                  animate={{
+                    scale: [0.98, 1.05, 0.98],
+                    opacity: [0.4, 0.7, 0.4]
+                  }}
+                  transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+                  className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-indigo-100/50 via-purple-50/60 to-blue-50/40 blur-xl pointer-events-none"
+                />
+
+                {/* Playful Curved Pointer Arrow pointing up & right towards the 3D workspace with continuous pointing pulse */}
+                <motion.div
+                  animate={{
+                    x: [0, 5, 0],
+                    y: [0, -5, 0],
+                    rotate: [0, 2, 0]
+                  }}
+                  transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
                   className="absolute -top-10 right-2 hidden sm:block pointer-events-none select-none z-20"
                 >
-                  <svg width="60" height="50" viewBox="0 0 60 50" fill="none" className="text-purple-500/80 filter drop-shadow-[0_2px_4px_rgba(124,58,237,0.15)]">
+                  <svg width="60" height="50" viewBox="0 0 60 50" fill="none" className="text-purple-500/85 filter drop-shadow-[0_2px_6px_rgba(124,58,237,0.2)]">
                     <path
                       d="M 10 44 C 18 20, 32 10, 50 14"
                       stroke="currentColor"
@@ -1391,26 +1409,41 @@ export const PortalLanding: React.FC = () => {
                   </svg>
                 </motion.div>
 
-                {/* 2x2 Grid of Badges */}
+                {/* 2x2 Grid of Badges with continuous subtle organic floating wave */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Badge 1: Top-Left (Deep Indigo Gradient) */}
+                  {/* Badge 1: Top-Left (Deep Indigo Gradient with continuous pulse & shimmer) */}
                   <motion.div
-                    whileHover={{ scale: 1.03, y: -2 }}
+                    animate={{
+                      y: [0, -4, 0],
+                      boxShadow: [
+                        "0 8px 20px rgba(30,27,75,0.25)",
+                        "0 12px 28px rgba(79,70,229,0.38)",
+                        "0 8px 20px rgba(30,27,75,0.25)"
+                      ]
+                    }}
+                    transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -3 }}
                     whileTap={{ scale: 0.98 }}
-                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white shadow-[0_8px_20px_rgba(30,27,75,0.25)] border border-indigo-500/20 cursor-pointer group transition-all"
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white border border-indigo-500/20 cursor-pointer group transition-all"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 text-white shadow-inner group-hover:scale-105 transition-transform">
+                    <motion.div
+                      animate={{ scale: [1, 1.08, 1] }}
+                      transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+                      className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 text-white shadow-inner group-hover:scale-105 transition-transform"
+                    >
                       <Video className="w-4 h-4 stroke-[2.2]" />
-                    </div>
+                    </motion.div>
                     <div className="text-left leading-tight">
                       <span className="block text-xs sm:text-[13px] font-semibold text-white tracking-tight">Conduct live &amp;</span>
                       <span className="block text-xs sm:text-[13px] font-semibold text-white/90 tracking-tight">recorded classes</span>
                     </div>
                   </motion.div>
 
-                  {/* Badge 2: Top-Right (Frosted Glass with Megaphone) */}
+                  {/* Badge 2: Top-Right (Frosted Glass with Megaphone & continuous gentle bobbing) */}
                   <motion.div
-                    whileHover={{ scale: 1.03, y: -2 }}
+                    animate={{ y: [0, 4, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.8, delay: 0.5, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
                   >
@@ -1423,9 +1456,11 @@ export const PortalLanding: React.FC = () => {
                     </div>
                   </motion.div>
 
-                  {/* Badge 3: Bottom-Left (Frosted Glass with Clipboard) */}
+                  {/* Badge 3: Bottom-Left (Frosted Glass with Clipboard & continuous gentle bobbing) */}
                   <motion.div
-                    whileHover={{ scale: 1.03, y: -2 }}
+                    animate={{ y: [0, -3.5, 0] }}
+                    transition={{ repeat: Infinity, duration: 5.2, delay: 1, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
                   >
@@ -1438,9 +1473,11 @@ export const PortalLanding: React.FC = () => {
                     </div>
                   </motion.div>
 
-                  {/* Badge 4: Bottom-Right (Frosted Glass with Chat) */}
+                  {/* Badge 4: Bottom-Right (Frosted Glass with Chat & continuous gentle bobbing) */}
                   <motion.div
-                    whileHover={{ scale: 1.03, y: -2 }}
+                    animate={{ y: [0, 3.5, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.6, delay: 1.5, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
                   >
@@ -1455,16 +1492,30 @@ export const PortalLanding: React.FC = () => {
                 </div>
               </div>
 
-              {/* Glowing CTA Button */}
+              {/* Glowing CTA Button with continuous subtle pulsing glow */}
               <div className="pt-2">
                 <motion.button
-                  whileHover={{ scale: 1.05, boxShadow: "0 15px 30px rgba(99,102,241,0.4)" }}
+                  animate={{
+                    boxShadow: [
+                      "0 10px 25px rgba(99,102,241,0.35)",
+                      "0 16px 36px rgba(124,58,237,0.55)",
+                      "0 10px 25px rgba(99,102,241,0.35)"
+                    ]
+                  }}
+                  transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+                  whileHover={{ scale: 1.06 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => setShowRequestModal(true)}
-                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] hover:from-[#2563EB] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold shadow-[0_10px_25px_rgba(99,102,241,0.35)] cursor-pointer transition-all duration-300"
+                  className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] hover:from-[#2563EB] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold cursor-pointer transition-transform duration-300 group"
                 >
                   <span>Explore All Features</span>
-                  <span className="text-base leading-none">→</span>
+                  <motion.span
+                    animate={{ x: [0, 4, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                    className="text-base leading-none inline-block"
+                  >
+                    →
+                  </motion.span>
                 </motion.button>
               </div>
             </motion.div>
@@ -1477,37 +1528,74 @@ export const PortalLanding: React.FC = () => {
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
               className="lg:col-span-7 relative flex items-center justify-center"
             >
-              {/* Atmospheric Background Nebula Glow */}
-              <div className="absolute -inset-6 bg-gradient-to-br from-indigo-500/20 via-purple-500/15 to-transparent blur-3xl rounded-full pointer-events-none" />
-
-              {/* Floating Animated Stars / Sparkles matching Image 2 */}
+              {/* Atmospheric Background Nebula Glow with continuous breathing */}
               <motion.div
-                animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0.9, 0.4], rotate: [0, 60, 0] }}
-                transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }}
+                animate={{
+                  scale: [0.94, 1.12, 0.94],
+                  opacity: [0.45, 0.85, 0.45]
+                }}
+                transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut" }}
+                className="absolute -inset-6 bg-gradient-to-br from-indigo-500/22 via-purple-500/18 to-transparent blur-3xl rounded-full pointer-events-none"
+              />
+
+              {/* Floating Animated Stars / Sparkles with continuous twinkle & drift */}
+              <motion.div
+                animate={{
+                  scale: [0.8, 1.4, 0.8],
+                  opacity: [0.35, 1, 0.35],
+                  rotate: [0, 90, 180],
+                  y: [0, -6, 0]
+                }}
+                transition={{ repeat: Infinity, duration: 3.6, ease: "easeInOut" }}
                 className="absolute top-2 right-8 text-purple-400 text-lg pointer-events-none select-none z-20"
               >
                 ✦
               </motion.div>
               <motion.div
-                animate={{ scale: [1, 1.45, 1], opacity: [0.35, 0.85, 0.35], rotate: [0, -60, 0] }}
-                transition={{ repeat: Infinity, duration: 3.5, delay: 0.8, ease: "easeInOut" }}
+                animate={{
+                  scale: [0.9, 1.5, 0.9],
+                  opacity: [0.3, 0.95, 0.3],
+                  rotate: [0, -120, -240],
+                  y: [0, 6, 0]
+                }}
+                transition={{ repeat: Infinity, duration: 4.2, delay: 0.7, ease: "easeInOut" }}
                 className="absolute bottom-6 right-16 text-indigo-400 text-base pointer-events-none select-none z-20"
               >
                 ✦
               </motion.div>
               <motion.div
-                animate={{ scale: [0.8, 1.3, 0.8], opacity: [0.3, 0.75, 0.3] }}
-                transition={{ repeat: Infinity, duration: 4.8, delay: 1.5, ease: "easeInOut" }}
+                animate={{
+                  scale: [0.7, 1.3, 0.7],
+                  opacity: [0.25, 0.9, 0.25],
+                  rotate: [0, 180, 360],
+                  x: [0, 4, 0]
+                }}
+                transition={{ repeat: Infinity, duration: 4.8, delay: 1.4, ease: "easeInOut" }}
                 className="absolute top-1/2 right-3 text-purple-300 text-sm pointer-events-none select-none z-20"
               >
                 ✦
               </motion.div>
-
-              {/* Main 3D Floating Isometric Canvas */}
               <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut" }}
-                whileHover={{ scale: 1.02 }}
+                animate={{
+                  scale: [0.85, 1.35, 0.85],
+                  opacity: [0.3, 0.85, 0.3],
+                  rotate: [0, 45, 0],
+                  y: [-4, 4, -4]
+                }}
+                transition={{ repeat: Infinity, duration: 3.2, delay: 0.3, ease: "easeInOut" }}
+                className="absolute top-6 left-12 text-indigo-300 text-sm pointer-events-none select-none z-20"
+              >
+                ✦
+              </motion.div>
+
+              {/* Main 3D Floating Isometric Canvas with continuous gentle floating & tilt */}
+              <motion.div
+                animate={{
+                  y: [-7, 7, -7],
+                  rotateZ: [-0.6, 0.6, -0.6]
+                }}
+                transition={{ repeat: Infinity, duration: 5.8, ease: "easeInOut" }}
+                whileHover={{ scale: 1.03 }}
                 className="relative w-full max-w-[620px] transition-transform duration-500 cursor-pointer group"
                 onClick={() => launchDemoMode('professor')}
                 title="Click to launch interactive teacher demo"
@@ -1517,18 +1605,6 @@ export const PortalLanding: React.FC = () => {
                   alt="ProSchool 3D Glassmorphism Workspace"
                   className="w-full h-auto object-contain drop-shadow-[0_25px_50px_rgba(79,70,229,0.22)] select-none"
                 />
-
-                {/* Interactive Floating Pill Badge on the 3D board */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 }}
-                  className="absolute bottom-3 right-6 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-white/90 shadow-md text-[11px] font-semibold text-indigo-950 group-hover:bg-white group-hover:shadow-lg transition-all"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Click to Launch Live Demo</span>
-                  <span className="text-indigo-600 font-bold">→</span>
-                </motion.div>
               </motion.div>
             </motion.div>
 
