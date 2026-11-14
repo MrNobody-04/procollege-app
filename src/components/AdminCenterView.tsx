@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
+  ExternalLink,
   Layers,
   CheckCircle2,
   Plus,
@@ -30,9 +31,7 @@ import {
   Mail,
   Send,
   AlertTriangle,
-  Copy,
-  Pencil,
-  ChevronDown
+  Copy
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
@@ -65,6 +64,9 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     courses,
     createCourse,
     deleteCourse,
+    setSelectedCourse,
+    setSelectedChannel,
+    deleteChannel,
     institutionalRequests,
     provisionInstitutionalRequest,
     registerUserByAdmin,
@@ -371,6 +373,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   // Primary Tab for Campus Admin (Classes, Faculties, Users, Roster, Requests, Roles)
   const [activeAdminTab, setActiveAdminTab] = useState<'classes' | 'faculties' | 'users' | 'roster' | 'requests' | 'roles'>('classes');
   const [dbRequests, setDbRequests] = useState<InstitutionalRequest[]>([]);
+  const [searchClassQuery, setSearchClassQuery] = useState('');
+  const [addSubjectModalCourse, setAddSubjectModalCourse] = useState<CourseTeam | null>(null);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectCode, setNewSubjectCode] = useState('');
+  const [newSubjectDesc, setNewSubjectDesc] = useState('');
+  const [newSubjectLecturerId, setNewSubjectLecturerId] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'lecturer' | 'student'>('all');
+  const [searchUserQuery, setSearchUserQuery] = useState('');
 
   const fetchOrganizations = async () => {
     try {
@@ -599,8 +609,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     channel?: Channel;
   } | null>(null);
   const [modalTargetChannelId, setModalTargetChannelId] = useState<string>('all');
-  const [expandedDepartments, setExpandedDepartments] = useState<Record<string, boolean>>({});
-  const [topDepartmentDropdownOpen, setTopDepartmentDropdownOpen] = useState(false);
 
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
@@ -620,6 +628,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminPhone, setNewAdminPhone] = useState('+1 (555) 234-5678');
   const [newAdminDept, setNewAdminDept] = useState('Academic Operations & Engineering');
+  const [extraOrgAdmins, setExtraOrgAdmins] = useState<Array<{ name: string; email: string; department: string }>>([]);
 
   // New User Registration Form State
   const [newUserName, setNewUserName] = useState('');
@@ -1005,7 +1014,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           contactName: newAdminContact.trim(),
           email: newAdminEmail.trim().toLowerCase(),
           department: newAdminDept.trim(),
-          plan: newAdminPlan
+          plan: newAdminPlan,
+          additionalAdmins: extraOrgAdmins.filter(a => a.name.trim() && a.email.trim())
         })
       });
 
@@ -1029,6 +1039,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       setNewAdminInstitution('');
       setNewAdminContact('');
       setNewAdminEmail('');
+      setExtraOrgAdmins([]);
 
       setIssuedCredsModal({
         title: 'Institutional Administrator Created',
@@ -1083,11 +1094,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       const matchInclude = c.department && fac.name && fac.name.toLowerCase().includes(c.department.toLowerCase());
       return matchId || matchName || matchCode || matchInclude;
     });
-  };
-
-  // Count classes belonging to a faculty
-  const getFacultyClassCount = (fac: FacultyDepartment) => {
-    return getFacultyCourses(fac).length;
   };
 
   // Count members (teachers/professors/staff) belonging to a faculty
@@ -1170,6 +1176,37 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     setShowFacultyMembersModal(true);
   };
 
+
+  const handleAddSubjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addSubjectModalCourse || !newSubjectName.trim()) return;
+
+    const lect = facultyMembers.find(f => f.id === newSubjectLecturerId) ||
+      (newSubjectLecturerId === addSubjectModalCourse.instructor?.id ? addSubjectModalCourse.instructor : null);
+
+    const fullName = newSubjectCode.trim()
+      ? `${newSubjectName.trim()} [${newSubjectCode.trim().toUpperCase()}]`
+      : newSubjectName.trim();
+
+    addChannel(addSubjectModalCourse.id, {
+      name: fullName,
+      description: newSubjectDesc.trim() || `Subject Module: ${newSubjectName.trim()}`,
+      subjectLecturerName: lect ? lect.name : undefined,
+      subjectLecturerId: lect ? lect.id : undefined
+    });
+
+    showDialog(`Subject "${fullName}" added to ${addSubjectModalCourse.name}.`, {
+      type: 'success',
+      title: 'Subject Added'
+    });
+
+    setAddSubjectModalCourse(null);
+    setNewSubjectName('');
+    setNewSubjectCode('');
+    setNewSubjectDesc('');
+    setNewSubjectLecturerId('');
+  };
+
   // Save Faculty Members
   const handleSaveFacultyMembers = () => {
     if (!selectedFacultyForMembers) return;
@@ -1183,11 +1220,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
   // Filtered courses based on selected faculty filter and search query
   const filteredCourses = courses.filter(c => {
-    // 1. Filter by faculty if selected
+    // 1. Filter by department if selected
     if (selectedFacultyFilter !== 'all') {
       const fac = faculties.find(f => f.id === selectedFacultyFilter);
       if (fac) {
-        const matchId = c.facultyId && c.facultyId === fac.id;
+        const matchId = (c.departmentId && c.departmentId === fac.id) || (c.facultyId && c.facultyId === fac.id);
         const matchName = c.department && c.department.toLowerCase() === fac.name.toLowerCase();
         const matchCode = c.department && fac.code && c.department.toLowerCase().includes(fac.code.toLowerCase());
         const matchInclude = c.department && fac.name && fac.name.toLowerCase().includes(c.department.toLowerCase());
@@ -1196,10 +1233,22 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         }
       }
     }
+
+    // 2. Filter by search query
+    if (searchClassQuery.trim()) {
+      const q = searchClassQuery.toLowerCase().trim();
+      const matchName = c.name.toLowerCase().includes(q);
+      const matchCode = c.code.toLowerCase().includes(q);
+      const matchDept = c.department.toLowerCase().includes(q);
+      const matchLecturer = c.instructor?.name?.toLowerCase().includes(q);
+      if (!matchName && !matchCode && !matchDept && !matchLecturer) {
+        return false;
+      }
+    }
+
     return true;
   });
 
-  // Academic campus users only (Students, Lecturers, Deans, Campus Admins) - NEVER developer!
   const academicUsers = useMemo(() => {
     return availableUsers.filter(u => u.role !== 'developer');
   }, [availableUsers]);
@@ -1226,36 +1275,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       org.adminName.toLowerCase().includes(q)
     );
   }, [organizations, searchOrgQuery]);
-
-  // Dedicated Institution Short Code & Header Helpers
-  const institutionShortCode = useMemo(() => {
-    const name = currentUser.institutionName || 'PEBS';
-    const pebsFac = faculties.find(f => f.code === 'PEBS');
-    if (pebsFac) return pebsFac.code;
-    const initials = name
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(w => w[0].toUpperCase())
-      .join('');
-    if (initials.length >= 3 && initials.length <= 5) return initials;
-    return name.slice(0, 4).toUpperCase();
-  }, [currentUser.institutionName, faculties]);
-
-  const activeDepartmentHeaderTitle = useMemo(() => {
-    if (selectedFacultyFilter !== 'all') {
-      const fac = faculties.find(f => f.id === selectedFacultyFilter);
-      if (fac) return fac.name;
-    }
-    return `${institutionShortCode} Departments`;
-  }, [selectedFacultyFilter, faculties, institutionShortCode]);
-
-  const totalDepartmentMembersCount = useMemo(() => {
-    if (selectedFacultyFilter !== 'all') {
-      const fac = faculties.find(f => f.id === selectedFacultyFilter);
-      if (fac) return getFacultyMemberCount(fac);
-    }
-    return academicUsers.length || 25;
-  }, [selectedFacultyFilter, faculties, academicUsers, getFacultyMemberCount]);
 
   const handleAssignLecturerConfirm = (lecturer: User) => {
     if (!assignLecturerModal) return;
@@ -1290,78 +1309,65 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     setAssignLecturerModal(null);
   };
 
-  const handleResetSubjectLecturer = (course: CourseTeam, channel: Channel) => {
-    updateChannelLecturer(course.id, channel.id, '', '');
-    showDialog(`Removed dedicated lecturer assignment from ${channel.name}.`, {
-      type: 'info',
-      title: 'Assignment Cleared'
-    });
-  };
-
-  // Other departments for collapsible accordions
-  const otherFacultiesForAccordions = useMemo(() => {
-    const list = faculties.filter(f => selectedFacultyFilter === 'all' || f.id !== selectedFacultyFilter);
-    if (list.length > 0) return list;
-    return [
-      { id: 'dept_sci', name: 'Science & Research Department', code: 'SRD', classCount: 3, memberCount: 15 },
-      { id: 'dept_hum', name: 'Humanities Department', code: 'HUM', classCount: 2, memberCount: 12 }
-    ];
-  }, [faculties, selectedFacultyFilter]);
-
-  const renderExactClassCard = (course: CourseTeam, isRightColumn: boolean) => {
+  const renderExactClassCard = (course: CourseTeam, _isRightColumn?: boolean) => {
     const enrolled = course.enrolledStudents && course.enrolledStudents.length > 0
       ? course.enrolledStudents
       : (academicUsers.filter(u => u.role === 'student').length > 0
           ? academicUsers.filter(u => u.role === 'student').slice(0, 3)
-          : [
-              { id: 's1', name: 'Aarav Sharma', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80' },
-              { id: 's2', name: 'Bikash Adhikari', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80' },
-              { id: 's3', name: 'Pooja Thapa', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=256&q=80' }
-            ]);
+          : []);
 
-    const subjectChannels = course.channels.filter(ch => !ch.isGeneral && ch.name.toLowerCase() !== 'announcements');
-    const displayChannels = subjectChannels.length > 0 ? subjectChannels : course.channels;
+    // Show Announcements + all subject modules
+    const allChannels: Channel[] = course.channels && course.channels.length > 0
+      ? course.channels
+      : [{
+          id: `ch_${course.id}_gen`,
+          name: 'Announcements',
+          isGeneral: true,
+          courseId: course.id,
+          description: `${course.name} Announcements Noticeboard`,
+          unreadCount: 0,
+          studentFilePermission: 'read-only',
+          subjectLecturerName: course.instructor?.name,
+          subjectLecturerId: course.instructor?.id
+        }];
 
     return (
-      <div key={course.id} className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs p-5 space-y-4">
+      <div key={course.id} className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs p-4 sm:p-5 space-y-4 hover:border-zinc-300 transition-all min-w-0">
         {/* Card Header */}
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-bold text-zinc-900 leading-tight">
-              {course.name || course.code}
-            </h3>
-            <p className="text-xs text-zinc-500 font-medium mt-0.5">
-              Lead Lecturer: <span className="text-zinc-800 font-semibold">{course.instructor?.name || 'RAM BISTA'}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-bold text-zinc-900 leading-tight">
+                {course.name || course.code}
+              </h3>
+              {course.department && (
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-[#26394D] border border-indigo-100">
+                  {course.department}
+                </span>
+              )}
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Active
+              </span>
+            </div>
+            <p className="text-xs text-zinc-500 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
+              <span>Lead Lecturer:</span>
+              <span className="text-zinc-800 font-semibold">{course.instructor?.name || 'Lead Instructor'}</span>
+              {course.term && <span className="text-zinc-400">• {course.term}</span>}
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            {isRightColumn && (
-              <span className="text-xs text-zinc-500 font-medium hidden sm:inline">Subjects & Lecturers</span>
-            )}
-            <button
-              onClick={() => {
-                setSelectedCourseForAction(course);
-                setAssignLecturerModal({
-                  isOpen: true,
-                  course
-                });
-              }}
-              className="bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-2xs transition-colors cursor-pointer"
-            >
-              Assign Lecturers
-            </button>
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => openRolloverForCourse(course)}
-              className="p-1.5 text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors cursor-pointer"
+              className="p-1.5 text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
               title="Rollover class to next semester"
             >
               <Repeat className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => handleDeleteCourse(course)}
-              className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-              title="Delete class"
+              className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+              title="Delete class and all its channels"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -1369,9 +1375,9 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         </div>
 
         {/* Enrolled Students Section */}
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 bg-zinc-50/70 p-3 rounded-lg border border-zinc-100">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-800">
+            <span className="text-xs font-bold text-zinc-700">
               Enrolled Students ({enrolled.length})
             </span>
             <button
@@ -1381,7 +1387,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }}
               className="text-[11px] text-[#26394D] hover:underline font-semibold cursor-pointer"
             >
-              Manage
+              Manage Students
             </button>
           </div>
 
@@ -1389,7 +1395,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             {enrolled.map((student: any) => (
               <span
                 key={student.id || student.name}
-                className="inline-flex items-center gap-1.5 bg-zinc-50 border border-zinc-200/90 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs"
+                className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs"
               >
                 <img
                   src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
@@ -1406,73 +1412,145 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         </div>
 
         {/* Subjects & Dedicated Teachers List */}
-        <div className="divide-y divide-zinc-100 pt-1">
-          {displayChannels.map((ch, chIdx) => {
-            const lecturerName = ch.subjectLecturerName || course.instructor?.name || 'Assign Lecturer';
-            const isUnassigned = !ch.subjectLecturerName && !course.instructor?.name;
-            const isFirstRow = chIdx === 0;
-            const isChipStyle = isRightColumn && (ch.name.includes('Science & Technology') || ch.name.includes('SCI-10') || ch.name.includes('Science'));
+        <div className="space-y-1">
+          <div className="flex items-center justify-between pb-1 border-b border-zinc-100 text-xs font-bold text-zinc-800">
+            <span className="flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-[#26394D]" />
+              <span>Subjects & Dedicated Teachers ({allChannels.length})</span>
+            </span>
+            <button
+              onClick={() => {
+                setSelectedCourseForAction(course);
+                setAddSubjectModalCourse(course);
+              }}
+              className="text-[11px] text-[#26394D] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add Subject</span>
+            </button>
+          </div>
 
-            return (
-              <div key={ch.id} className="py-2.5 flex items-center justify-between text-xs gap-3">
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-semibold text-zinc-900 text-xs truncate">
-                    {ch.name.replace(/\[(.*?)\]/g, '($1)')}
-                  </h4>
-                  {ch.description && (
-                    <p className="text-[11px] text-zinc-400 truncate mt-0.5">{ch.description}</p>
-                  )}
-                </div>
+          <div className="divide-y divide-zinc-100">
+            {allChannels.map(ch => {
+              const isAnnouncement = ch.isGeneral || ch.name.toLowerCase() === 'announcements' || ch.name.toLowerCase() === 'general';
+              const currentLecturer = ch.subjectLecturerName || (isAnnouncement ? course.instructor?.name : '');
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {isChipStyle ? (
-                    <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-200/80 rounded-full px-2.5 py-0.5 text-[11px] text-[#26394D] font-medium">
-                      <img
-                        src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80"
-                        className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
-                        alt=""
-                      />
-                      <span>{ch.subjectLecturerName || 'Bikash Adhikari'}</span>
-                      <button
-                        onClick={() => handleResetSubjectLecturer(course, ch)}
-                        className="text-zinc-400 hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
-                        title="Remove assigned lecturer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ) : (
+              return (
+                <div key={ch.id} className="py-2 flex items-center justify-between text-xs gap-2 flex-wrap sm:flex-nowrap">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <div className="text-right">
-                        {isFirstRow && (
-                          <span className="block text-[10px] text-zinc-400 font-medium leading-none mb-0.5">
-                            Assign Lecturer
-                          </span>
-                        )}
-                        <span className={`text-xs ${isUnassigned ? 'text-zinc-400 italic' : 'text-zinc-800 font-semibold'}`}>
-                          {lecturerName}
+                      <span className="font-semibold text-zinc-900 text-xs truncate">
+                        {ch.name.replace(/\[(.*?)\]/g, '($1)')}
+                      </span>
+                      {isAnnouncement && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-[#26394D] border border-indigo-200 shrink-0">
+                          Noticeboard
                         </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedCourseForAction(course);
-                          setAssignLecturerModal({
-                            isOpen: true,
-                            course,
-                            channel: ch
-                          });
-                        }}
-                        className="p-1 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 rounded transition-colors cursor-pointer"
-                        title="Edit / Assign Lecturer"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      )}
                     </div>
-                  )}
+                    {ch.description && !isAnnouncement && (
+                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">{ch.description}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isAnnouncement ? (
+                      <span className="text-[11px] text-zinc-600 font-medium px-2 py-0.5 rounded bg-zinc-100">
+                        Broadcaster: {course.instructor?.name || 'Class Owner'}
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <GraduationCap className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                        <select
+                          value={ch.subjectLecturerId || (facultyMembers.find(f => f.name.toLowerCase() === (currentLecturer || '').toLowerCase())?.id || '')}
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            const selectedUser = facultyMembers.find(f => f.id === selectedId) ||
+                              (selectedId === course.instructor?.id ? course.instructor : null);
+                            if (selectedUser) {
+                              updateChannelLecturer(course.id, ch.id, selectedUser.id, selectedUser.name);
+                              showDialog(`Assigned ${selectedUser.name} to ${ch.name}.`, { type: 'success', title: 'Lecturer Assigned' });
+                            } else {
+                              updateChannelLecturer(course.id, ch.id, '', '');
+                              showDialog(`Cleared assigned lecturer for ${ch.name}.`, { type: 'info', title: 'Assignment Cleared' });
+                            }
+                          }}
+                          className="bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-zinc-300 rounded-lg px-2 py-1 text-xs text-zinc-800 font-medium focus:outline-none focus:ring-1 focus:ring-[#26394D] cursor-pointer max-w-[170px] truncate transition-colors"
+                          title="Instant 1-click lecturer assignment"
+                        >
+                          <option value="">+ Assign Lecturer</option>
+                          {course.instructor && (
+                            <option value={course.instructor.id}>{course.instructor.name} (Lead)</option>
+                          )}
+                          {facultyMembers.filter(f => f.id !== course.instructor?.id).map(f => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => {
+                            showDialog(`Delete subject module "${ch.name}" from ${course.name}?`, {
+                              type: 'warning',
+                              title: 'Delete Subject',
+                              confirmText: 'Delete Subject',
+                              cancelText: 'Cancel',
+                              onConfirm: () => {
+                                deleteChannel(course.id, ch.id);
+                                showDialog(`Subject "${ch.name}" removed from ${course.name}.`, { type: 'success' });
+                              }
+                            });
+                          }}
+                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                          title="Delete subject module"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Card Footer Actions */}
+        <div className="pt-3 border-t border-zinc-100 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSelectedCourseForAction(course);
+                setAddSubjectModalCourse(course);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-zinc-600" />
+              <span>+ Add Subject</span>
+            </button>
+            <button
+              onClick={() => {
+                setSelectedCourse(course);
+                if (course.channels && course.channels.length > 0) {
+                  setSelectedChannel(course.channels[0]);
+                }
+                setActiveTab('teams');
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-[#26394D] border border-indigo-200 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open in Class</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => openRolloverForCourse(course)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition-colors cursor-pointer"
+              title="Rollover class to next academic semester"
+            >
+              <Repeat className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Rollover</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1654,7 +1732,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </button>
           </div>
         ) : (
-          /* Institutional Horizontal Tabs (Exact Match to Screenshot) */
+          /* Institutional Horizontal Tabs - Strictly 3 Clean Tabs */
           <div className="flex items-center gap-6 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
             <button
               onClick={() => setActiveAdminTab('classes')}
@@ -1677,7 +1755,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>Students & Lecturers</span>
+              <span>Lecturers & Students</span>
             </button>
 
             <button
@@ -1689,79 +1767,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               }`}
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>Excel Roster Import</span>
-            </button>
-
-            <button
-              onClick={() => setActiveAdminTab('roles')}
-              className={`flex items-center gap-2 pb-2 -mb-2 font-bold transition-colors cursor-pointer border-b-2 ${
-                activeAdminTab === 'roles'
-                  ? 'border-[#26394D] text-[#26394D]'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              <span>Manage Roles</span>
-            </button>
-          </div>
-        )}
-
-        {/* If Developer is inspecting Campus Operations, render academic sub-tabs */}
-        {isDeveloper && currentDevSection === 'campus-ops' && (
-          <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 text-xs font-semibold overflow-x-auto">
-            <button
-              onClick={() => setActiveAdminTab('classes')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'classes' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Classes ({courses.length})
-            </button>
-            <button
-              onClick={() => setActiveAdminTab('faculties')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'faculties' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
-              }`}
-            >
-              <FolderTree className="w-3.5 h-3.5" />
-              Faculties ({faculties.length})
-            </button>
-            <button
-              onClick={() => setActiveAdminTab('users')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'users' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              Users ({academicUsers.length})
-            </button>
-            <button
-              onClick={() => setActiveAdminTab('roster')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'roster' ? 'bg-emerald-700 text-white' : 'bg-white text-zinc-600 border border-zinc-200'
-              }`}
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              Roster Import
-            </button>
-            <button
-              onClick={() => setActiveAdminTab('requests')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'requests' ? 'bg-purple-700 text-white' : 'bg-white text-zinc-600 border border-zinc-200'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              Inquiries ({allRequests.length})
-            </button>
-            <button
-              onClick={() => setActiveAdminTab('roles')}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer ${
-                activeAdminTab === 'roles' ? 'bg-[#26394D] text-white' : 'bg-white text-zinc-600 border border-zinc-200'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              Roles
+              <span>Roster Import</span>
             </button>
           </div>
         )}
@@ -2844,180 +2850,155 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         {/* ========================================================= */}
         {(!isDeveloper || currentDevSection === 'campus-ops') && (
           <>
-        {/* TAB 1: ACADEMIC CLASSES & DEPARTMENTS (EXACT CLONE) */}
+        {/* TAB 1: ACADEMIC CLASSES & DEPARTMENTS (UNIFIED VIEW) */}
         {activeAdminTab === 'classes' && (
-          <div className="space-y-4">
-            {/* Top Card: PEBS Departments Info Dropdown */}
-            <div className="relative">
-              <div
-                onClick={() => setTopDepartmentDropdownOpen(!topDepartmentDropdownOpen)}
-                className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs p-4 flex items-center justify-between cursor-pointer hover:border-zinc-300 transition-all select-none"
-              >
-                <div>
-                  <h3 className="font-bold text-sm text-zinc-900">
-                    {activeDepartmentHeaderTitle}
-                  </h3>
-                  <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-3 font-medium">
-                    <span>{filteredCourses.length} Classes</span>
-                    <span>&nbsp;&nbsp;</span>
-                    <span>{totalDepartmentMembersCount} Members</span>
-                  </p>
+          <div className="space-y-5">
+            {/* 1. Unified Department Cards */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-[#26394D]" />
+                  <h2 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">
+                    Academic Departments ({faculties.length})
+                  </h2>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${topDepartmentDropdownOpen ? 'rotate-180' : ''}`} />
+                <button
+                  onClick={() => setShowAddFacultyModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Department</span>
+                </button>
               </div>
 
-              {topDepartmentDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl border border-zinc-200 shadow-lg p-2 z-20 space-y-1">
-                  <button
-                    onClick={() => {
-                      setSelectedFacultyFilter('all');
-                      setTopDepartmentDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
-                      selectedFacultyFilter === 'all' ? 'bg-zinc-100 text-[#26394D]' : 'hover:bg-zinc-50 text-zinc-700'
-                    }`}
-                  >
-                    <span>All Departments ({courses.length} Classes)</span>
-                    {selectedFacultyFilter === 'all' && <CheckCircle2 className="w-3.5 h-3.5 text-[#26394D]" />}
-                  </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* All Departments Filter Card */}
+                <div
+                  onClick={() => setSelectedFacultyFilter('all')}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    selectedFacultyFilter === 'all'
+                      ? 'bg-white border-[#26394D] ring-2 ring-[#26394D]/10 shadow-xs'
+                      : 'bg-white/80 hover:bg-white border-zinc-200 hover:border-zinc-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-xs text-zinc-900">All Departments</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-semibold">
+                      {courses.length} Classes
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500">
+                    Campus-wide master catalog across all departments
+                  </p>
+                </div>
 
-                  {faculties.map(fac => (
-                    <button
-                      key={fac.id}
-                      onClick={() => {
-                        setSelectedFacultyFilter(fac.id);
-                        setTopDepartmentDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
-                        selectedFacultyFilter === fac.id ? 'bg-zinc-100 text-[#26394D]' : 'hover:bg-zinc-50 text-zinc-700'
+                {/* Individual Department Cards */}
+                {faculties.map(dept => {
+                  const isSelected = selectedFacultyFilter === dept.id;
+                  const deptCourses = getFacultyCourses(dept);
+
+                  return (
+                    <div
+                      key={dept.id}
+                      onClick={() => setSelectedFacultyFilter(isSelected ? 'all' : dept.id)}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer relative group ${
+                        isSelected
+                          ? 'bg-white border-[#26394D] ring-2 ring-[#26394D]/10 shadow-xs'
+                          : 'bg-white/80 hover:bg-white border-zinc-200 hover:border-zinc-300'
                       }`}
                     >
-                      <span>{fac.name} ({fac.code}) — {getFacultyClassCount(fac)} classes</span>
-                      {selectedFacultyFilter === fac.id && <CheckCircle2 className="w-3.5 h-3.5 text-[#26394D]" />}
-                    </button>
-                  ))}
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="font-bold text-xs text-zinc-900 truncate max-w-[170px]" title={dept.name}>
+                          {dept.name}
+                        </h4>
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-[#26394D]">
+                          {deptCourses.length} {deptCourses.length === 1 ? 'Class' : 'Classes'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 truncate">
+                        Head: <span className="font-semibold text-zinc-700">{dept.headName || dept.deanName || 'Appointed Head'}</span>
+                      </p>
+                      <div className="flex items-center justify-between mt-2 pt-1 border-t border-zinc-100 text-[10px] text-zinc-400">
+                        <span className="font-mono">{dept.code}</span>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFaculty(dept);
+                            }}
+                            className="hover:text-rose-600 p-0.5 rounded cursor-pointer"
+                            title="Delete Department"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Single Clear Class Catalog Section */}
+            <div className="space-y-4 pt-1">
+              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#26394D]" />
+                  <div>
+                    <h3 className="font-bold text-sm text-zinc-900">
+                      Academic Classes ({filteredCourses.length})
+                    </h3>
+                    <p className="text-[11px] text-zinc-500">
+                      {selectedFacultyFilter === 'all'
+                        ? 'Displaying all active classes across campus'
+                        : `Filtered by department: ${faculties.find(f => f.id === selectedFacultyFilter)?.name || ''}`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative min-w-[200px]">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      value={searchClassQuery}
+                      onChange={e => setSearchClassQuery(e.target.value)}
+                      placeholder="Search classes by name, code..."
+                      className="w-full bg-zinc-50 border border-zinc-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D] focus:bg-white"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => setShowNewClassModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ New Class</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Class Cards Grid */}
+              {filteredCourses.length === 0 ? (
+                <div className="bg-white rounded-xl border border-dashed border-zinc-300 p-8 text-center space-y-3">
+                  <School className="w-8 h-8 text-zinc-400 mx-auto" />
+                  <h4 className="text-sm font-bold text-zinc-800">No classes found</h4>
+                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                    No academic classes match your active department filter or search query.
+                  </p>
+                  <button
+                    onClick={() => setShowNewClassModal(true)}
+                    className="px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg cursor-pointer"
+                  >
+                    + Create Class
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                  {filteredCourses.map(course => renderExactClassCard(course, false))}
                 </div>
               )}
             </div>
-
-            {/* Section Indicator with Curved Arrow Hierarchy */}
-            <div className="relative pl-7 py-0.5 my-1">
-              <svg className="absolute left-1.5 -top-1 w-6 h-10 text-zinc-800" fill="none" viewBox="0 0 24 36" stroke="currentColor">
-                <path d="M 4,4 L 16,4 M 4,4 L 4,28 L 18,28 M 14,24 L 18,28 L 14,32" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className="text-xs font-bold text-zinc-800">{activeDepartmentHeaderTitle}</span>
-            </div>
-
-            {/* 2-Column Responsive Classes & Departments Grid */}
-            {filteredCourses.length === 0 ? (
-              <div className="bg-white rounded-xl border border-zinc-200 p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center mx-auto text-zinc-400">
-                  <School className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-zinc-900">No classes found</h3>
-                  <p className="text-xs text-zinc-500 max-w-md mx-auto">
-                    No academic classes have been provisioned under this department yet.
-                  </p>
-                </div>
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <button
-                    onClick={() => setShowNewClassModal(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>+ New Class</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveAdminTab('roster')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#107c41] hover:bg-[#0c6233] text-white text-xs font-semibold rounded-lg shadow-xs cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>Import Roster</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-                {/* Left Column */}
-                <div className="space-y-4">
-                  {/* Card 1: First Course (e.g. Class 10 A) */}
-                  {filteredCourses[0] && renderExactClassCard(filteredCourses[0], false)}
-
-                  {/* Collapsible Departments Accordions under Card 1 */}
-                  <div className="space-y-3 pt-1">
-                    {otherFacultiesForAccordions.map((dept: any) => {
-                      const isExpanded = expandedDepartments[dept.id];
-                      const facClasses = faculties.some(f => f.id === dept.id)
-                        ? getFacultyCourses(dept)
-                        : [];
-
-                      return (
-                        <div
-                          key={dept.id}
-                          className="bg-white rounded-xl border border-zinc-200/90 shadow-2xs p-4 space-y-3 transition-all"
-                        >
-                          <div
-                            onClick={() => {
-                              setExpandedDepartments(prev => ({
-                                ...prev,
-                                [dept.id]: !prev[dept.id]
-                              }));
-                            }}
-                            className="flex items-center justify-between cursor-pointer select-none"
-                          >
-                            <div>
-                              <h4 className="font-bold text-sm text-zinc-900">{dept.name}</h4>
-                              <p className="text-xs text-zinc-500 mt-0.5 font-medium">
-                                {dept.classCount || facClasses.length || 0} Classes &nbsp;&nbsp; {dept.memberCount || 15} Members
-                              </p>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-600 hover:text-zinc-900">
-                              <span>{isExpanded ? 'Hide Classes' : 'Show Classes'}</span>
-                              <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            </div>
-                          </div>
-
-                          {isExpanded && (
-                            <div className="pt-3 border-t border-zinc-100 space-y-4">
-                              {facClasses.length > 0 ? (
-                                facClasses.map(c => renderExactClassCard(c, false))
-                              ) : (
-                                <div className="p-4 rounded-lg bg-zinc-50 border border-dashed border-zinc-200 text-center text-xs text-zinc-500 space-y-2">
-                                  <p>No classes currently provisioned in {dept.name}.</p>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedFacultyId(dept.id);
-                                      setShowNewClassModal(true);
-                                    }}
-                                    className="px-3 py-1 bg-[#26394D] text-white rounded text-xs font-semibold"
-                                  >
-                                    Add Class to {dept.code || dept.name}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Remaining Odd Index Courses */}
-                  {filteredCourses.slice(2).filter((_, idx) => idx % 2 === 0).map(course => renderExactClassCard(course, false))}
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-4">
-                  {/* Card 2: Second Course (e.g. Class 10 B) */}
-                  {filteredCourses[1] && renderExactClassCard(filteredCourses[1], true)}
-
-                  {/* Remaining Even Index Courses */}
-                  {filteredCourses.slice(2).filter((_, idx) => idx % 2 === 1).map(course => renderExactClassCard(course, true))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -3028,10 +3009,53 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold text-zinc-900">Provisioned Users & License SKUs</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Manage student and faculty accounts, assignments, and mute controls.
-                </p>
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900">Campus Directory & Accounts</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Manage certified lecturers and enrolled students.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('all')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                        userRoleFilter === 'all' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'
+                      }`}
+                    >
+                      All ({academicUsers.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('lecturer')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                        userRoleFilter === 'lecturer' ? 'bg-white text-[#26394D] shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'
+                      }`}
+                    >
+                      Lecturers ({facultyMembers.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRoleFilter('student')}
+                      className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
+                        userRoleFilter === 'student' ? 'bg-white text-emerald-700 shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'
+                      }`}
+                    >
+                      Students ({allStudents.length})
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      value={searchUserQuery}
+                      onChange={e => setSearchUserQuery(e.target.value)}
+                      placeholder="Search users..."
+                      className="bg-zinc-50 border border-zinc-200 rounded-lg pl-8 pr-2.5 py-1 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:bg-white"
+                    />
+                  </div>
+                </div>
               </div>
 
               <button
@@ -3068,7 +3092,18 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         </td>
                       </tr>
                     ) : (
-                      academicUsers.map(user => (
+                      academicUsers
+                      .filter(u => {
+                        if (userRoleFilter === 'lecturer') return u.role !== 'student';
+                        if (userRoleFilter === 'student') return u.role === 'student';
+                        return true;
+                      })
+                      .filter(u => {
+                        if (!searchUserQuery.trim()) return true;
+                        const q = searchUserQuery.toLowerCase().trim();
+                        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.department && u.department.toLowerCase().includes(q));
+                      })
+                      .map(user => (
                         <tr key={user.id} className="hover:bg-zinc-50/80 transition-colors">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
@@ -3500,7 +3535,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-zinc-900 leading-tight">Provision Academic Class</h3>
-                  <p className="text-[11px] text-zinc-500">Create a class under a faculty, configure subject modules, and enroll students.</p>
+                  <p className="text-[11px] text-zinc-500">Create a class under a department, configure subject modules, and enroll students.</p>
                 </div>
               </div>
               <button
@@ -3514,10 +3549,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
             {/* Scrollable Form Body */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-              {/* Faculty / Academic Department Selection */}
+              {/* Academic Department Selection */}
               <div>
                 <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                  Faculty / Academic Department <span className="text-rose-500">*</span>
+                  Academic Department <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={selectedFacultyId}
@@ -3527,12 +3562,12 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 >
                   {faculties.map(fac => (
                     <option key={fac.id} value={fac.id}>
-                      {fac.name} ({fac.code}) — Dean: {fac.deanName}
+                      {fac.name} ({fac.code}) — Head: {fac.deanName}
                     </option>
                   ))}
                 </select>
                 <p className="text-[10px] text-zinc-500 mt-1">
-                  This class and its subject courses will be cataloged under this faculty.
+                  This class and its subject courses will be cataloged under this department.
                 </p>
               </div>
 
@@ -4491,7 +4526,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   onClick={handleSaveFacultyMembers}
                   className="px-4 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer shadow-xs transition-colors"
                 >
-                  Save Faculty Members
+                  Save Department Members
                 </button>
               </div>
             </div>
@@ -4506,7 +4541,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-zinc-200 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-              <h3 className="font-bold text-sm text-zinc-900">Register Student / Faculty ID</h3>
+              <h3 className="font-bold text-sm text-zinc-900">Register Student / Lecturer</h3>
               <button onClick={() => setShowRegisterUserModal(false)} className="text-zinc-400 hover:text-zinc-600">✕</button>
             </div>
 
@@ -4620,7 +4655,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div className="flex items-center gap-2">
                 <FolderTree className="w-5 h-5 text-[#26394D]" />
                 <div>
-                  <h3 className="font-bold text-sm text-zinc-900">Create Academic Faculty</h3>
+                  <h3 className="font-bold text-sm text-zinc-900">Create Academic Department</h3>
                   <p className="text-[11px] text-zinc-500">Establish a university department</p>
                 </div>
               </div>
@@ -4637,14 +4672,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Faculty Name <span className="text-rose-500">*</span>
+                    Department Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
                     value={newFacultyName}
                     onChange={e => setNewFacultyName(e.target.value)}
-                    placeholder="e.g. Faculty of Electrical & Aerospace Engineering"
+                    placeholder="e.g. Department of Computer Science & Engineering"
                     className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   />
                 </div>
@@ -4658,7 +4693,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     required
                     value={newFacultyCode}
                     onChange={e => setNewFacultyCode(e.target.value.toUpperCase())}
-                    placeholder="FEAE"
+                    placeholder="CSE"
                     className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-mono uppercase focus:outline-none focus:border-[#26394D]"
                   />
                 </div>
@@ -4668,7 +4703,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div className="space-y-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-zinc-700">
-                    Appointed Dean / Department Head
+                    Department Head / Lead Lecturer
                   </label>
                   <div className="flex items-center bg-white p-0.5 rounded-md border border-zinc-200 text-[10px] font-medium">
                     <button
@@ -4680,7 +4715,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           : 'text-zinc-600 hover:text-zinc-900'
                       }`}
                     >
-                      Select Faculty Member
+                      Select Lecturer
                     </button>
                     <button
                       type="button"
@@ -4722,8 +4757,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 )}
                 <p className="text-[10px] text-zinc-500">
                   {deanSelectionMode === 'select'
-                    ? 'Only certified faculty professors and department heads are listed (students strictly excluded).'
-                    : 'Type any custom name for the Dean or Head of this Faculty.'}
+                    ? 'Only certified lecturers and department heads are listed (students strictly excluded).'
+                    : 'Type any custom name for the Head or Lead Lecturer of this Department.'}
                 </p>
               </div>
 
@@ -4753,7 +4788,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 type="submit"
                 className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer"
               >
-                Create Faculty
+                Create Department
               </button>
             </div>
           </form>
@@ -4871,6 +4906,66 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <option value="campus-pro">Campus Pro ($0 Zero-Budget Tier)</option>
                   <option value="enterprise">Enterprise Platinum (Full Multi-Tenant SLA)</option>
                 </select>
+              </div>
+
+              {/* Multi-Admin Management During Org Creation */}
+              <div className="bg-purple-50/60 border border-purple-200 rounded-lg p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-purple-600" />
+                      Additional Institutional Admins ({extraOrgAdmins.length})
+                    </span>
+                    <p className="text-[10px] text-purple-700">Appoint multiple administrators for this institution during creation.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExtraOrgAdmins(prev => [...prev, { name: '', email: '', department: 'Campus Operations' }])}
+                    className="text-xs text-purple-700 hover:text-purple-900 font-semibold flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border border-purple-200 shadow-2xs"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Add Admin</span>
+                  </button>
+                </div>
+
+                {extraOrgAdmins.length > 0 && (
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {extraOrgAdmins.map((ea, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-purple-200">
+                        <input
+                          type="text"
+                          required
+                          value={ea.name}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setExtraOrgAdmins(prev => prev.map((item, i) => i === idx ? { ...item, name: val } : item));
+                          }}
+                          placeholder={`Admin ${idx + 2} Name`}
+                          className="flex-1 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-purple-600"
+                        />
+                        <input
+                          type="email"
+                          required
+                          value={ea.email}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setExtraOrgAdmins(prev => prev.map((item, i) => i === idx ? { ...item, email: val } : item));
+                          }}
+                          placeholder={`admin${idx + 2}@campus.edu`}
+                          className="flex-1 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-purple-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setExtraOrgAdmins(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-zinc-400 hover:text-rose-600 p-1 cursor-pointer"
+                          title="Remove admin"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -5051,7 +5146,121 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         </div>
       )}
 
-            {/* Dedicated Assign Lecturer Modal (Exact Functional Match) */}
+      
+      {/* Modal: Add Subject to Class */}
+      {addSubjectModalCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 text-[#26394D] flex items-center justify-center">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">
+                    Add Subject Module
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    {addSubjectModalCourse.name} ({addSubjectModalCourse.code})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddSubjectModalCourse(null)}
+                className="text-zinc-400 hover:text-zinc-700 p-1.5 hover:bg-zinc-200/60 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddSubjectSubmit} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Subject Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newSubjectName}
+                  onChange={e => setNewSubjectName(e.target.value)}
+                  placeholder="e.g. Compulsory Mathematics, Accountancy, Physics"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Subject Code (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newSubjectCode}
+                  onChange={e => setNewSubjectCode(e.target.value)}
+                  placeholder="e.g. MATH-10, ACC-12"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 font-mono uppercase focus:outline-none focus:border-[#26394D] focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Assigned Dedicated Lecturer
+                </label>
+                <select
+                  value={newSubjectLecturerId}
+                  onChange={e => setNewSubjectLecturerId(e.target.value)}
+                  className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D]"
+                >
+                  <option value="">Select Lecturer (Optional - can assign later)</option>
+                  {addSubjectModalCourse.instructor && (
+                    <option value={addSubjectModalCourse.instructor.id}>
+                      {addSubjectModalCourse.instructor.name} (Class Owner)
+                    </option>
+                  )}
+                  {facultyMembers
+                    .filter(f => f.id !== addSubjectModalCourse?.instructor?.id)
+                    .map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.name} ({f.role.toUpperCase()})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Curriculum Description (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={newSubjectDesc}
+                  onChange={e => setNewSubjectDesc(e.target.value)}
+                  placeholder="Syllabus coverage, learning objectives..."
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D] focus:bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => setAddSubjectModalCourse(null)}
+                  className="px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-2xs cursor-pointer"
+                >
+                  + Add Subject to Class
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated Assign Lecturer Modal (Exact Functional Match) */}
       {assignLecturerModal?.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[85vh]">
@@ -5063,7 +5272,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     : `Assign Lecturers: ${assignLecturerModal.course.name}`}
                 </h3>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Select a campus faculty member to teach this subject module.
+                  Select a campus lecturer to teach this subject module.
                 </p>
               </div>
               <button
@@ -5096,7 +5305,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="p-4 sm:p-5 overflow-y-auto space-y-2.5 flex-1">
               {facultyMembers.length === 0 ? (
                 <div className="text-center py-6 text-zinc-500 text-xs">
-                  No faculty members registered. Add teachers in the Students & Lecturers tab.
+                  No lecturers registered. Add teachers in the Students & Lecturers tab.
                 </div>
               ) : (
                 facultyMembers.map(lecturer => (
