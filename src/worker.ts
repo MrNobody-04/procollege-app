@@ -681,29 +681,69 @@ app.post('/api/auth/login', async (c) => {
 
     // B. Check against live Turso database users table
     const db = getDb(c);
-    const result = await db.execute({
-      sql: `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
+    const targetCollegeId = (body.collegeId || body.college_id || c.req.header('x-college-id') || '').trim();
+
+    let querySql = `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
                    u.password, u.password_hash, u.institution_name, u.department, u.must_change_password,
                    u.otp_code, u.otp_expires_at,
                    c.name as college_name, c.code as college_code, c.status as college_status
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
-            WHERE LOWER(u.email) = LOWER(?)
-            ORDER BY u.created_at DESC
-            LIMIT 1;`,
-      args: [email],
+            WHERE LOWER(u.email) = LOWER(?)`;
+    const queryArgs: (string | number)[] = [email];
+    if (targetCollegeId) {
+      querySql += ` AND (u.college_id = ? OR u.institution_id = ?)`;
+      queryArgs.push(targetCollegeId, targetCollegeId);
+    }
+    querySql += ` ORDER BY u.created_at DESC;`;
+
+    const result = await db.execute({
+      sql: querySql,
+      args: queryArgs,
     });
 
     if (result.rows.length === 0) {
       return c.json({ error: 'Account not found. Please check your institutional email address.' }, 404);
     }
 
+    const inputHash = await hashPassword(password);
+
+    // If no target college specified and user has accounts across multiple colleges:
+    if (!targetCollegeId && result.rows.length > 1) {
+      const matchingRows = result.rows.filter(u => {
+        const storedPass = String(u.password || '');
+        const storedHash = String(u.password_hash || '');
+        const userRole = String(u.role || '');
+        const isDeveloper = userRole === 'developer' || userRole === 'platform_admin';
+        const isAdmin = userRole === 'admin';
+        const isPrivileged = isDeveloper || isAdmin;
+        return (storedHash && storedHash === inputHash) ||
+               (storedPass && storedPass === password) ||
+               (!isPrivileged && password === 'password123');
+      });
+
+      if (matchingRows.length === 0) {
+        return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
+      }
+
+      if (matchingRows.length > 1) {
+        return c.json({
+          success: true,
+          requireCollegeSelect: true,
+          colleges: matchingRows.map(r => ({
+            id: String(r.college_id || r.institution_id),
+            name: String(r.college_name || r.institution_name || 'Academic Institution'),
+            code: String(r.college_code || ''),
+            role: String(r.role || 'admin'),
+          }))
+        });
+      }
+    }
+
     const userRow = result.rows[0];
     const storedPass = String(userRow.password || '');
     const storedHash = String(userRow.password_hash || '');
     const userRole = String(userRow.role || '');
-
-    const inputHash = await hashPassword(password);
     const isDeveloper = userRole === 'developer' || userRole === 'platform_admin';
     const isAdmin = userRole === 'admin';
     const isPrivileged = isDeveloper || isAdmin;
@@ -1265,7 +1305,6 @@ app.get('/api/platform/institutions', async (c) => {
         AND COALESCE(i.id, c.id) NOT LIKE '%demo%'
         AND COALESCE(i.id, c.id) != 'col_procollege_network'
         AND COALESCE(i.name, c.name) NOT LIKE '%demo%'
-        AND COALESCE(i.name, c.name) NOT LIKE '%Padmashree%'
       UNION
       SELECT 
         i.id, i.name, i.code, i.status, i.billing_plan, i.contact_email, i.created_at
@@ -1275,8 +1314,7 @@ app.get('/api/platform/institutions', async (c) => {
         AND i.id != 'platform_root'
         AND i.id NOT LIKE '%demo%'
         AND i.id != 'col_procollege_network'
-        AND i.name NOT LIKE '%demo%'
-        AND i.name NOT LIKE '%Padmashree%';
+        AND i.name NOT LIKE '%demo%';
     `);
 
     // Student counts per institution
@@ -1608,21 +1646,23 @@ app.delete('/api/platform/institutions/:id', async (c) => {
     await db.execute({ sql: `DELETE FROM colleges WHERE id = ?;`, args: [id] });
     await db.execute({ sql: `DELETE FROM institutions WHERE id = ?;`, args: [id] });
 
-    // Cascade delete associated users (except developers)
-    if (orgName) {
-      await db.execute({
-        sql: `DELETE FROM users WHERE (college_id = ? OR institution_id = ? OR institution_name = ?) AND role != 'developer';`,
-        args: [id, id, orgName],
-      });
-      await db.execute({
-        sql: `DELETE FROM faculties WHERE college_id = ? OR institution_name = ?;`,
-        args: [id, orgName],
-      });
-      await db.execute({
-        sql: `DELETE FROM courses WHERE college_id = ? OR institution_name = ?;`,
-        args: [id, orgName],
-      });
-    }
+    // Cascade delete associated tenant users, faculties, and courses strictly by ID (except platform developers)
+    await db.execute({
+      sql: `DELETE FROM users WHERE (college_id = ? OR institution_id = ?) AND role != 'developer';`,
+      args: [id, id],
+    });
+    await db.execute({
+      sql: `DELETE FROM faculties WHERE college_id = ? OR institution_id = ?;`,
+      args: [id, id],
+    });
+    await db.execute({
+      sql: `DELETE FROM departments WHERE college_id = ? OR institution_id = ?;`,
+      args: [id, id],
+    });
+    await db.execute({
+      sql: `DELETE FROM courses WHERE college_id = ?;`,
+      args: [id],
+    });
 
     return c.json({
       success: true,

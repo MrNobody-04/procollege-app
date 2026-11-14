@@ -78,8 +78,9 @@ export const PortalLanding: React.FC = () => {
 
   // Sign In & Password Reset Modal State
   const [authStep, setAuthStep] = useState<
-    'credentials' | 'otp' | 'change-password' | 'forgot-password-request' | 'forgot-password-verify'
+    'credentials' | 'select-college' | 'otp' | 'change-password' | 'forgot-password-request' | 'forgot-password-verify'
   >('credentials');
+  const [collegeOptions, setCollegeOptions] = useState<Array<{ id: string; name: string; code: string; role: string }>>([]);
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
@@ -146,6 +147,7 @@ export const PortalLanding: React.FC = () => {
     setResetOtpCode('');
     setResetNewPass('');
     setResetConfirmPass('');
+    setCollegeOptions([]);
     setPendingAuthResponse(null);
   };
 
@@ -214,7 +216,7 @@ export const PortalLanding: React.FC = () => {
     setViewMode('app');
   };
 
-  const performLogin = async (email: string, pass: string) => {
+  const performLogin = async (email: string, pass: string, collegeId?: string) => {
     setIsLoggingIn(true);
     setLoginError('');
     try {
@@ -229,12 +231,18 @@ export const PortalLanding: React.FC = () => {
           'x-device-hash': deviceHash,
           ...(deviceToken ? { 'x-device-token': deviceToken } : {})
         },
-        body: JSON.stringify({ email, password: pass, deviceHash, deviceName }),
+        body: JSON.stringify({ email, password: pass, deviceHash, deviceName, collegeId }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Invalid credentials.');
+      }
+
+      if (data.requireCollegeSelect) {
+        setCollegeOptions(data.colleges || []);
+        setAuthStep('select-college');
+        return;
       }
 
       if (data.requireOtp) {
@@ -1177,14 +1185,6 @@ export const PortalLanding: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Left Content */}
             <div className="lg:col-span-6 space-y-6 text-left">
-              <span
-                data-reveal
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Flexible &amp; Scalable</span>
-              </span>
-
               <h2
                 data-reveal
                 style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
@@ -2537,6 +2537,69 @@ export const PortalLanding: React.FC = () => {
                     </button>
                   </div>
                 </form>
+              </>
+            )}
+
+            {/* Step 1.5: Multi-Campus Account Selection */}
+            {authStep === 'select-college' && (
+              <>
+                <div className="mt-5">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center mb-3">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Select Campus Portal</h3>
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+                    Your email <strong className="text-zinc-800">{loginEmail}</strong> is registered across multiple institutional accounts. Choose where you want to sign in:
+                  </p>
+                </div>
+
+                <div className="mt-5 space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {collegeOptions.map(col => (
+                    <button
+                      key={col.id}
+                      type="button"
+                      disabled={isLoggingIn}
+                      onClick={() => performLogin(loginEmail, loginPassword, col.id)}
+                      className="w-full text-left p-3.5 rounded-xl border border-zinc-200 hover:border-[#4F46E5] bg-zinc-50/70 hover:bg-white flex items-center justify-between transition-all cursor-pointer group shadow-2xs hover:shadow-xs disabled:opacity-50"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-bold text-sm text-zinc-900 group-hover:text-[#4F46E5] truncate">
+                            {col.name}
+                          </h4>
+                          {col.code && (
+                            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-200/80 text-zinc-700 uppercase">
+                              {col.code}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-0.5 font-medium capitalize">
+                          Account Access: <span className="text-zinc-700 font-semibold">{col.role}</span>
+                        </p>
+                      </div>
+                      <div className="w-7 h-7 rounded-lg bg-zinc-100 group-hover:bg-indigo-50 text-zinc-400 group-hover:text-[#4F46E5] flex items-center justify-center shrink-0 transition-colors">
+                        {isLoggingIn ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-zinc-100 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthStep('credentials');
+                      setLoginError('');
+                    }}
+                    className="text-xs text-zinc-500 hover:text-zinc-800 font-semibold cursor-pointer"
+                  >
+                    ← Back to Credentials
+                  </button>
+                </div>
               </>
             )}
 
