@@ -20,7 +20,8 @@ import type {
   PresenceStatus,
   DialogState,
   DialogOptions,
-  DialogType
+  DialogType,
+  Attachment
 } from '../types';
 import {
   INITIAL_USERS,
@@ -112,7 +113,8 @@ interface AppContextType {
     content: string,
     isAnnouncement?: boolean,
     assignmentId?: string,
-    category?: PostCategory
+    category?: PostCategory,
+    attachments?: Attachment[]
   ) => void;
   addReply: (channelId: string, postId: string, content: string) => void;
   toggleReaction: (channelId: string, postId: string, emoji: string, replyId?: string) => void;
@@ -121,7 +123,7 @@ interface AppContextType {
   selectedConversation: Conversation | null;
   setSelectedConversation: (conv: Conversation | null) => void;
   directMessages: Record<string, DirectMessage[]>;
-  sendDirectMessage: (convId: string, content: string) => void;
+  sendDirectMessage: (convId: string, content: string, attachments?: Attachment[]) => void;
 
   assignments: Assignment[];
   createAssignment: (newAsgn: {
@@ -197,6 +199,17 @@ interface AppContextType {
   createFaculty: (faculty: Omit<FacultyDepartment, 'id'>) => void;
   deleteFaculty: (facultyId: string) => void;
   addMembersToFaculty: (facultyId: string, memberIds: string[]) => void;
+
+  departments: FacultyDepartment[];
+  createDepartment: (department: Omit<FacultyDepartment, 'id'>) => void;
+  deleteDepartment: (departmentId: string) => void;
+  addMembersToDepartment: (departmentId: string, memberIds: string[]) => void;
+
+  fetchInstitutionAdmins: (instId: string) => Promise<any[]>;
+  appointInstitutionAdmin: (instId: string, data: { name: string; email: string; department?: string }) => Promise<any>;
+  resetInstitutionAdminPassword: (instId: string, adminId: string) => Promise<any>;
+  removeInstitutionAdmin: (instId: string, adminId: string) => Promise<any>;
+
   createInstitutionalAdmin: (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => User;
   deleteOrganization: (orgName: string) => void;
 
@@ -833,6 +846,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return c;
       })
     );
+
+    // Persist to backend Turso DB
+    try {
+      const token = localStorage.getItem('procollege_token') || '';
+      fetch(`/api/channels/${encodeURIComponent(channelId)}/lecturer`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ lecturerId, lecturerName })
+      }).catch(err => console.warn('Channel lecturer sync warning:', err));
+    } catch (e) {
+      console.warn('Channel lecturer network sync err:', e);
+    }
   };
 
   // Rollover / Clone Course to Next Semester
@@ -984,7 +1012,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     content: string,
     isAnnouncement = false,
     assignmentId?: string,
-    category?: PostCategory
+    category?: PostCategory,
+    attachments?: Attachment[]
   ) => {
     if (currentUser.isMuted) {
       showDialog('You have been muted from posting by the College Administrator or Course Owner.', { type: 'warning', title: 'Muted Notice' });
@@ -1002,13 +1031,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       assignmentId,
       timestamp: 'Just now',
       reactions: {},
-      replies: []
+      replies: [],
+      attachments: attachments && attachments.length > 0 ? attachments : undefined
     };
 
     setPosts(prev => ({
       ...prev,
       [channelId]: [newPost, ...(prev[channelId] || [])]
     }));
+
+    // Auto-sync uploaded post attachments to courseFiles repository
+    if (attachments && attachments.length > 0 && selectedCourse) {
+      const newCourseFiles: CourseFile[] = attachments.map(att => ({
+        id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        courseId: selectedCourse.id,
+        channelId,
+        institutionName: selectedCourse.institutionName || currentUser.institutionName,
+        name: att.name,
+        category: 'Subject Files',
+        size: att.size,
+        uploadedAt: 'Today',
+        uploadedBy: currentUser.name,
+        uploadedByRole: currentUser.role,
+        isClassMaterials: false,
+        permission: 'can-edit',
+        url: att.url,
+        mimeType: att.type
+      }));
+      setCourseFiles(prev => [...newCourseFiles, ...prev]);
+    }
 
     // Broadcast automated notification to students when administrator/lecturer publishes
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer' || currentUser.role === 'admin') {
@@ -1105,15 +1156,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Direct Messages
-  const sendDirectMessage = (convId: string, content: string) => {
-    if (!content.trim()) return;
+  const sendDirectMessage = (convId: string, content: string, attachments?: Attachment[]) => {
+    if (!content.trim() && (!attachments || attachments.length === 0)) return;
     const newMsg: DirectMessage = {
       id: `dm_${Date.now()}`,
       conversationId: convId,
       senderId: currentUser.id,
       content,
       timestamp: 'Just now',
-      reactions: {}
+      reactions: {},
+      attachments: attachments && attachments.length > 0 ? attachments : undefined
     };
     setDirectMessages(prev => ({
       ...prev,
@@ -2159,6 +2211,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [tenantCourses, selectedCourse?.id]);
 
+  const fetchInstitutionAdmins = async (instId: string) => {
+    try {
+      const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+      const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.admins || [];
+    } catch (e) {
+      console.warn('Error fetching institution admins:', e);
+      return [];
+    }
+  };
+
+  const appointInstitutionAdmin = async (instId: string, data: { name: string; email: string; department?: string }) => {
+    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to appoint institutional admin');
+    }
+    return await res.json();
+  };
+
+  const resetInstitutionAdminPassword = async (instId: string, adminId: string) => {
+    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins/${encodeURIComponent(adminId)}/reset`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to reset admin credentials');
+    }
+    return await res.json();
+  };
+
+  const removeInstitutionAdmin = async (instId: string, adminId: string) => {
+    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins/${encodeURIComponent(adminId)}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to remove admin');
+    }
+    return await res.json();
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -2255,6 +2371,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createFaculty,
         deleteFaculty,
         addMembersToFaculty,
+
+        departments: tenantFaculties,
+        createDepartment: createFaculty,
+        deleteDepartment: deleteFaculty,
+        addMembersToDepartment: addMembersToFaculty,
+
+        fetchInstitutionAdmins,
+        appointInstitutionAdmin,
+        resetInstitutionAdminPassword,
+        removeInstitutionAdmin,
+
         createInstitutionalAdmin,
         deleteOrganization,
 

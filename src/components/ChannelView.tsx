@@ -15,14 +15,18 @@ import {
   Plus,
   Calendar,
   FolderLock,
-  ChevronLeft
+  ChevronLeft,
+  Eye,
+  Download
 } from 'lucide-react';
 import { useApp, type ChannelTab } from '../context/AppContext';
 import { ThreadPostItem } from './ThreadPostItem';
 import { CreateAssignmentModal } from './CreateAssignmentModal';
 import { SpeedGraderModal } from './SpeedGraderModal';
 import { StudentAssignmentModal } from './StudentAssignmentModal';
-import type { Assignment, PostCategory } from '../types';
+import { FilePreviewModal } from './FilePreviewModal';
+import { downloadFile, readFileAsDataUrl, getFileType } from '../utils/fileManager';
+import type { Assignment, PostCategory, Attachment, CourseFile } from '../types';
 
 export const ChannelView: React.FC = () => {
   const {
@@ -38,6 +42,8 @@ export const ChannelView: React.FC = () => {
     deleteCourseFile,
     assignments,
     currentUser,
+    availableUsers,
+    updateChannelLecturer,
     mobileSidebarOpen,
     setMobileSidebarOpen,
     showDialog,
@@ -61,6 +67,9 @@ export const ChannelView: React.FC = () => {
   const [uploadCategory, setUploadCategory] = useState<'Class Materials' | 'Subject Files'>('Class Materials');
   const [newFileName, setNewFileName] = useState('');
   const [selectedFileSize, setSelectedFileSize] = useState<string>('2.1 MB');
+  const [selectedUploadedFile, setSelectedUploadedFile] = useState<File | null>(null);
+  const [composerAttachments, setComposerAttachments] = useState<Attachment[]>([]);
+  const [previewCourseFile, setPreviewCourseFile] = useState<CourseFile | null>(null);
 
   const composerFilePickerRef = useRef<HTMLInputElement>(null);
   const modalFilePickerRef = useRef<HTMLInputElement>(null);
@@ -68,6 +77,7 @@ export const ChannelView: React.FC = () => {
   const handleModalFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedUploadedFile(file);
       setNewFileName(file.name);
       const sizeStr =
         file.size > 1024 * 1024
@@ -77,14 +87,28 @@ export const ChannelView: React.FC = () => {
     }
   };
 
-  const handleComposerFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleComposerFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const sizeStr =
-        file.size > 1024 * 1024
-          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-          : `${Math.max(1, Math.round(file.size / 1024))} KB`;
-      setPostContent(prev => prev + (prev ? '\n' : '') + `📎 [Attached File: ${file.name} (${sizeStr})]`);
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const sizeStr =
+          file.size > 1024 * 1024
+            ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+            : `${Math.max(1, Math.round(file.size / 1024))} KB`;
+        const type = getFileType(file.name) as Attachment['type'];
+        const newAttachment: Attachment = {
+          id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: file.name,
+          size: sizeStr,
+          type,
+          url: dataUrl
+        };
+        setComposerAttachments(prev => [...prev, newAttachment]);
+      } catch (err) {
+        showDialog('Failed to process attached file.', { type: 'warning', title: 'File Error' });
+      }
+      if (composerFilePickerRef.current) composerFilePickerRef.current.value = '';
     }
   };
 
@@ -132,23 +156,34 @@ export const ChannelView: React.FC = () => {
 
   const handleCreatePost = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!postContent.trim() || !selectedChannel?.id) return;
+    if ((!postContent.trim() && composerAttachments.length === 0) || !selectedChannel?.id) return;
     addPost(
       selectedChannel.id,
       postTitle.trim(),
-      postContent.trim(),
+      postContent.trim() || (composerAttachments.length > 0 ? `Shared ${composerAttachments.length} file(s)` : ''),
       isOwner || currentUser.role === 'admin',
       undefined,
-      postCategory
+      postCategory,
+      composerAttachments.length > 0 ? composerAttachments : undefined
     );
     setPostTitle('');
     setPostContent('');
+    setComposerAttachments([]);
     setIsExpandedComposer(false);
   };
 
-  const handleUploadFile = (e: React.FormEvent) => {
+  const handleUploadFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFileName.trim()) return;
+
+    let dataUrl: string | undefined = undefined;
+    if (selectedUploadedFile) {
+      try {
+        dataUrl = await readFileAsDataUrl(selectedUploadedFile);
+      } catch (err) {
+        console.warn('Could not read uploaded file as data url:', err);
+      }
+    }
 
     const isCM = uploadCategory === 'Class Materials';
     const res = uploadCourseFile({
@@ -159,12 +194,14 @@ export const ChannelView: React.FC = () => {
       size: selectedFileSize || '2.4 MB',
       uploadedBy: currentUser.name,
       isClassMaterials: isCM,
-      permission: isCM ? 'read-only' : 'can-edit'
+      permission: isCM ? 'read-only' : 'can-edit',
+      url: dataUrl
     });
 
     if (res.success) {
       setShowUploadModal(false);
       setNewFileName('');
+      setSelectedUploadedFile(null);
     } else {
       showDialog(res.message, { type: 'warning', title: 'File Upload Notice' });
     }
@@ -223,6 +260,36 @@ export const ChannelView: React.FC = () => {
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full shrink-0">
                   Noticeboard
                 </span>
+              ) : (currentUser.role === 'admin' || currentUser.role === 'developer') ? (
+                <div className="flex items-center gap-1 shrink-0">
+                  <GraduationCap className="w-3.5 h-3.5 text-[#26394D]" />
+                  <select
+                    value={selectedChannel?.subjectLecturerId || ''}
+                    onChange={(e) => {
+                      const lectId = e.target.value;
+                      const lect = availableUsers.find(u => u.id === lectId);
+                      const name = lect ? lect.name : (lectId ? lectId : '');
+                      if (selectedCourse && selectedChannel) {
+                        updateChannelLecturer(selectedCourse.id, selectedChannel.id, lectId, name);
+                        showDialog(`Subject "${selectedChannel.name}" lecturer updated to ${name || 'Lead Instructor'}.`, {
+                          type: 'success',
+                          title: 'Lecturer Assigned'
+                        });
+                      }
+                    }}
+                    className="text-[11px] font-semibold bg-indigo-50/90 hover:bg-indigo-100 text-[#26394D] border border-indigo-200 rounded px-2 py-0.5 cursor-pointer focus:outline-none"
+                    title="Click to directly select or change the assigned lecturer for this subject (1-Click Assignment)"
+                  >
+                    <option value="">{selectedChannel?.subjectLecturerName || selectedCourse?.instructor?.name || 'Class Owner'}</option>
+                    {availableUsers
+                      .filter(u => u.role === 'lecturer' || u.role === 'admin' || (u.role as any) === 'professor')
+                      .map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.role === 'admin' ? 'Admin' : 'Lecturer'})
+                        </option>
+                      ))}
+                  </select>
+                </div>
               ) : selectedChannel?.subjectLecturerName ? (
                 <span className="text-[10px] font-medium text-zinc-600 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-full truncate shrink-0">
                   {selectedChannel.subjectLecturerName}
@@ -361,6 +428,30 @@ export const ChannelView: React.FC = () => {
                     autoFocus
                   />
 
+                  {/* Attached Files Preview Chips */}
+                  {composerAttachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 py-2 border-t border-zinc-100">
+                      {composerAttachments.map(att => (
+                        <div
+                          key={att.id}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-900 shadow-2xs"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-[#173bff]" />
+                          <span className="font-semibold truncate max-w-48">{att.name}</span>
+                          <span className="text-[10px] text-blue-600">({att.size})</span>
+                          <button
+                            type="button"
+                            onClick={() => setComposerAttachments(prev => prev.filter(a => a.id !== att.id))}
+                            className="ml-1 text-blue-400 hover:text-rose-600 font-bold p-0.5 cursor-pointer"
+                            title="Remove attachment"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Formatting & Send Bar */}
                   <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
                     <div className="flex items-center gap-1 text-zinc-400">
@@ -395,10 +486,10 @@ export const ChannelView: React.FC = () => {
 
                     <button
                       type="submit"
-                      disabled={!postContent.trim()}
-                      className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors ${
-                        postContent.trim()
-                          ? 'bg-[#26394D] hover:bg-[#141E2B] text-white'
+                      disabled={!postContent.trim() && composerAttachments.length === 0}
+                      className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                        postContent.trim() || composerAttachments.length > 0
+                          ? 'bg-[#26394D] hover:bg-[#141E2B] text-white shadow-xs'
                           : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
                       }`}
                     >
@@ -464,8 +555,8 @@ export const ChannelView: React.FC = () => {
                       <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
                       <div className="min-w-0">
                         <p
-                          onClick={() => showDialog(`Opening ${file.name}...`, { type: 'info', title: 'File Access' })}
-                          className="text-xs font-medium text-zinc-900 truncate hover:text-[#26394D] cursor-pointer"
+                          onClick={() => setPreviewCourseFile(file)}
+                          className="text-xs font-semibold text-zinc-900 truncate hover:text-[#173bff] cursor-pointer"
                         >
                           {file.name}
                         </p>
@@ -475,12 +566,29 @@ export const ChannelView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={() => showDialog(`Downloading ${file.name}...`, { type: 'success', title: 'Download' })}
-                        className="text-xs font-medium text-[#26394D] hover:underline cursor-pointer"
+                        onClick={() => setPreviewCourseFile(file)}
+                        className="px-2 py-1 text-zinc-600 hover:text-[#173bff] hover:bg-zinc-100 rounded text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Preview file"
                       >
-                        Download
+                        <Eye className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Preview</span>
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          downloadFile(file.name, file.url, {
+                            courseName: selectedCourse?.name,
+                            category: file.category,
+                            author: file.uploadedBy
+                          })
+                        }
+                        className="px-2 py-1 text-zinc-600 hover:text-emerald-700 hover:bg-zinc-100 rounded text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Download file to computer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Download</span>
                       </button>
 
                       {isOwner && (
@@ -490,7 +598,7 @@ export const ChannelView: React.FC = () => {
                               deleteCourseFile(file.id);
                             }
                           }}
-                          className="text-xs text-zinc-400 hover:text-rose-600"
+                          className="text-xs text-zinc-400 hover:text-rose-600 px-1"
                         >
                           Delete
                         </button>
@@ -761,6 +869,30 @@ export const ChannelView: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* File Preview Modal */}
+      {previewCourseFile && (
+        <FilePreviewModal
+          file={{
+            name: previewCourseFile.name,
+            size: previewCourseFile.size,
+            url: previewCourseFile.url,
+            uploadedBy: previewCourseFile.uploadedBy,
+            uploadedAt: previewCourseFile.uploadedAt,
+            category: previewCourseFile.category,
+            courseName: selectedCourse?.name
+          }}
+          isOpen={Boolean(previewCourseFile)}
+          onClose={() => setPreviewCourseFile(null)}
+          onDownload={() =>
+            downloadFile(previewCourseFile.name, previewCourseFile.url, {
+              courseName: selectedCourse?.name,
+              category: previewCourseFile.category,
+              author: previewCourseFile.uploadedBy
+            })
+          }
+        />
       )}
     </div>
   );

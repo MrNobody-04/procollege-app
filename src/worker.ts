@@ -148,12 +148,19 @@ async function send2FAEmail(params: {
   code: string;
   role?: string;
   institutionName?: string;
+  subject?: string;
+  purpose?: 'login' | 'reset-password';
   env: Env;
   db: any;
 }): Promise<{ success: boolean; provider: string; error?: string }> {
   const recipientEmail = params.to.trim().toLowerCase();
   const recipientName = params.name || 'User';
   const orgName = params.institutionName || 'Academic Institution';
+  const isReset = params.purpose === 'reset-password';
+  const headingTitle = isReset ? 'Password Reset Verification' : 'Two-Factor Authentication (2FA)';
+  const actionText = isReset
+    ? `A password reset request was initiated for your <strong>${orgName}</strong> account (<strong>${recipientEmail}</strong>).`
+    : `A sign-in request was initiated for your <strong>${orgName}</strong> account (<strong>${recipientEmail}</strong>).`;
 
   // 1. Fetch settings from platform_settings table in Turso
   let dbProvider = '';
@@ -186,7 +193,7 @@ async function send2FAEmail(params: {
   const senderEmail = dbSenderEmail || (params.env as any).EMAIL_SENDER || 'security@procollege.edu.np';
   const senderName = dbSenderName || (params.env as any).EMAIL_SENDER_NAME || 'ProCollege Security';
 
-  const subject = `Your ProCollege 2FA Verification Code: ${params.code}`;
+  const subject = params.subject || (isReset ? `Your ProCollege Password Reset Code: ${params.code}` : `Your ProCollege 2FA Verification Code: ${params.code}`);
 
   const emailHtml = `
 <!DOCTYPE html>
@@ -194,7 +201,7 @@ async function send2FAEmail(params: {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your ProCollege 2FA Code</title>
+  <title>${headingTitle}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f6fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#f4f6fa;padding:30px 12px;">
@@ -209,10 +216,10 @@ async function send2FAEmail(params: {
           </tr>
           <tr>
             <td style="padding:32px 28px 24px 28px;">
-              <h2 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:700;">Two-Factor Authentication (2FA)</h2>
+              <h2 style="margin:0 0 12px 0;color:#111827;font-size:18px;font-weight:700;">${headingTitle}</h2>
               <p style="margin:0 0 16px 0;color:#4b5563;font-size:14px;line-height:1.6;">
                 Hello <strong>${recipientName}</strong>,<br>
-                A sign-in request was initiated for your <strong>${orgName}</strong> account (<strong>${recipientEmail}</strong>).
+                ${actionText}
               </p>
               <p style="margin:0 0 8px 0;color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Your 6-Digit Verification Code</p>
               
@@ -720,10 +727,55 @@ app.post('/api/auth/login', async (c) => {
       }, 403);
     }
 
+    // Persistent Trusted Device 2FA Check
+    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || '').trim();
+    const cookieHeader = c.req.header('cookie') || '';
+    let cookieDeviceToken = '';
+    const cookieMatch = cookieHeader.match(/procollege_device_token=([^;]+)/);
+    if (cookieMatch) cookieDeviceToken = decodeURIComponent(cookieMatch[1].trim());
+
+    const clientDeviceToken = (body.deviceToken || c.req.header('x-device-token') || cookieDeviceToken || '').trim();
+
+    let isDeviceTrusted = false;
+    let matchedDeviceToken = clientDeviceToken;
+
+    if (clientDeviceToken || clientDeviceHash) {
+      try {
+        const tdCheck = await db.execute({
+          sql: `SELECT id, user_id, device_hash, last_used_at 
+                FROM trusted_devices 
+                WHERE user_id = ? AND (id = ? OR device_hash = ?)
+                LIMIT 1;`,
+          args: [userRow.id, clientDeviceToken || '__none__', clientDeviceHash || '__none__']
+        });
+
+        if (tdCheck.rows.length > 0) {
+          const tdRow = tdCheck.rows[0];
+          const lastUsed = tdRow.last_used_at ? new Date(String(tdRow.last_used_at)).getTime() : 0;
+          const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+          // Valid only if active within 30 days
+          if (Date.now() - lastUsed < thirtyDaysMs) {
+            isDeviceTrusted = true;
+            matchedDeviceToken = String(tdRow.id);
+            // Refresh last_used_at
+            await db.execute({
+              sql: `UPDATE trusted_devices SET last_used_at = datetime('now') WHERE id = ?;`,
+              args: [tdRow.id]
+            });
+            console.log(`[AUTH-TRUSTED-DEVICE] Recognized trusted device ${tdRow.id} for ${userRow.email}. Skipping 2FA.`);
+          } else {
+            console.log(`[AUTH-TRUSTED-DEVICE] Device ${tdRow.id} for ${userRow.email} expired (> 30 days). Requiring 2FA.`);
+          }
+        }
+      } catch (tdErr) {
+        console.warn('[AUTH] trusted_devices query error:', tdErr);
+      }
+    }
+
     // Zero-Cost 2FA OTP Verification Step for student accounts, institutional admins, or accounts requiring password changes:
     const skipOtp = c.req.query('skipOtp') === 'true';
     const mustChangePassword = Boolean(userRow.must_change_password);
-    const requires2FA = (userRole === 'student' || userRole === 'admin' || mustChangePassword) && !skipOtp && !isDeveloper;
+    const requires2FA = (userRole === 'student' || userRole === 'admin' || mustChangePassword) && !skipOtp && !isDeveloper && !isDeviceTrusted;
 
     if (requires2FA) {
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -767,7 +819,7 @@ app.post('/api/auth/login', async (c) => {
     const tokenPayload = {
       id: userRow.id,
       email: userRow.email,
-      role: userRow.role,
+      role: userRole === 'developer' || userRole === 'platform_admin' ? 'developer' : userRole === 'admin' ? 'admin' : userRole === 'student' ? 'student' : 'lecturer',
       institution_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
       ts: Date.now(),
@@ -779,7 +831,7 @@ app.post('/api/auth/login', async (c) => {
       email: String(userRow.email),
       full_name: String(userRow.name),
       name: String(userRow.name),
-      role: String(userRow.role),
+      role: userRole === 'developer' || userRole === 'platform_admin' ? 'developer' : userRole === 'admin' ? 'admin' : userRole === 'student' ? 'student' : 'lecturer',
       college_id: resolvedInstitutionId,
       institution_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
@@ -795,11 +847,17 @@ app.post('/api/auth/login', async (c) => {
       status: collegeStatus,
     };
 
+    if (matchedDeviceToken) {
+      c.header('Set-Cookie', `procollege_device_token=${matchedDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax`);
+    }
+
     return c.json({
       success: true,
       token,
       user,
       college,
+      deviceToken: matchedDeviceToken || undefined,
+      deviceTrusted: isDeviceTrusted,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -916,7 +974,7 @@ app.post('/api/auth/verify-otp', async (c) => {
     const tokenPayload = {
       id: userRow.id,
       email: userRow.email,
-      role: userRow.role,
+      role: userRow.role === 'developer' || userRow.role === 'platform_admin' ? 'developer' : userRow.role === 'admin' ? 'admin' : userRow.role === 'student' ? 'student' : 'lecturer',
       institution_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
       ts: Date.now(),
@@ -928,7 +986,202 @@ app.post('/api/auth/verify-otp', async (c) => {
       email: String(userRow.email),
       full_name: String(userRow.name),
       name: String(userRow.name),
+      role: userRow.role === 'developer' || userRow.role === 'platform_admin' ? 'developer' : userRow.role === 'admin' ? 'admin' : userRow.role === 'student' ? 'student' : 'lecturer',
+      college_id: resolvedInstitutionId,
+      institution_id: resolvedInstitutionId,
+      institution_name: resolvedInstitutionName,
+      department: String(userRow.department || 'Academic Department'),
+      section_id: userRow.section_id ? String(userRow.section_id) : null,
+      avatar_url: String(userRow.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+    };
+
+    const college = {
+      id: resolvedInstitutionId,
+      name: resolvedInstitutionName,
+      code: String(userRow.college_code || 'PDC'),
+      status: String(userRow.college_status || 'active'),
+    };
+
+    // Persistent Trusted Device 2FA: register device in trusted_devices table upon successful 2FA
+    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || `hash_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`).trim();
+    const deviceName = (body.deviceName || c.req.header('user-agent') || 'Trusted Device').substring(0, 100);
+    const newDeviceToken = `dev_tok_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+
+    try {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO trusted_devices (id, user_id, device_hash, device_name, last_used_at, created_at)
+              VALUES (?, ?, ?, ?, datetime('now'), datetime('now'));`,
+        args: [newDeviceToken, userRow.id, clientDeviceHash, deviceName]
+      });
+      c.header('Set-Cookie', `procollege_device_token=${newDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax`);
+    } catch (tdErr) {
+      console.warn('[AUTH] Failed to save trusted device on 2FA verify:', tdErr);
+    }
+
+    return c.json({
+      success: true,
+      token,
+      user,
+      college,
+      deviceToken: newDeviceToken,
+      deviceHash: clientDeviceHash,
+      mustChangePassword: Boolean(userRow.must_change_password),
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.15 Secure OTP-Based Password Recovery: Request OTP
+app.post('/api/auth/forgot-password/request-otp', async (c) => {
+  try {
+    const body = await c.req.json();
+    const email = (body.email || '').trim().toLowerCase();
+    if (!email) {
+      return c.json({ error: 'Please enter your registered institutional email address.' }, 400);
+    }
+
+    const db = getDb(c);
+    const userRes = await db.execute({
+      sql: `SELECT u.id, u.name, u.email, u.role, u.institution_name, u.college_id, u.institution_id, c.name as college_name
+            FROM users u
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
+            WHERE LOWER(u.email) = LOWER(?)
+            LIMIT 1;`,
+      args: [email]
+    });
+
+    if (userRes.rows.length === 0) {
+      return c.json({ error: 'No account found with this email address. Please verify your credentials or contact campus administration.' }, 404);
+    }
+
+    const userRow = userRes.rows[0];
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await db.execute({
+      sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
+      args: [otpCode, otpExpires, userRow.id]
+    });
+
+    const emailResult = await send2FAEmail({
+      to: String(userRow.email),
+      name: String(userRow.name || 'User'),
+      code: otpCode,
       role: String(userRow.role),
+      institutionName: String(userRow.college_name || userRow.institution_name || 'Academic Institution'),
+      purpose: 'reset-password',
+      subject: `Your ProCollege Password Reset Code: ${otpCode}`,
+      env: c.env,
+      db
+    });
+
+    return c.json({
+      success: true,
+      email: userRow.email,
+      emailSent: emailResult.success,
+      emailProvider: emailResult.provider,
+      message: `A 6-digit password reset verification code has been dispatched to ${userRow.email}. Please check your inbox and spam folder.`
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.16 Secure OTP-Based Password Recovery: Verify OTP & Reset Password
+app.post('/api/auth/forgot-password/verify-reset', async (c) => {
+  try {
+    const body = await c.req.json();
+    const email = (body.email || '').trim().toLowerCase();
+    const otpCode = (body.otpCode || body.otp || '').trim();
+    const newPassword = (body.newPassword || '').trim();
+
+    if (!email || !otpCode || !newPassword) {
+      return c.json({ error: 'Email, 6-digit verification code, and new password are required.' }, 400);
+    }
+
+    if (newPassword.length < 6) {
+      return c.json({ error: 'New password must be at least 6 characters long.' }, 400);
+    }
+
+    const db = getDb(c);
+    const userRes = await db.execute({
+      sql: `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
+                   u.otp_code, u.otp_expires_at, u.institution_name, u.department,
+                   c.name as college_name, c.code as college_code, c.status as college_status
+            FROM users u
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
+            WHERE LOWER(u.email) = LOWER(?)
+            LIMIT 1;`,
+      args: [email]
+    });
+
+    if (userRes.rows.length === 0) {
+      return c.json({ error: 'Account not found.' }, 404);
+    }
+
+    const userRow = userRes.rows[0];
+    const storedOtp = String(userRow.otp_code || '');
+    const expiresAt = userRow.otp_expires_at ? new Date(String(userRow.otp_expires_at)).getTime() : 0;
+    const now = Date.now();
+
+    if (!storedOtp || storedOtp !== otpCode) {
+      return c.json({ error: 'Invalid 6-digit verification code. Please check your code.' }, 400);
+    }
+
+    if (expiresAt > 0 && now > expiresAt) {
+      return c.json({ error: 'Verification code has expired. Please request a new password reset code.' }, 400);
+    }
+
+    // Securely hash password
+    const passHash = await hashPassword(newPassword);
+
+    // Update password and clear OTP
+    await db.execute({
+      sql: `UPDATE users 
+            SET password = ?, password_hash = ?, otp_code = NULL, otp_expires_at = NULL, must_change_password = 0 
+            WHERE id = ?;`,
+      args: [newPassword, passHash, userRow.id]
+    });
+
+    // Register trusted device so session is recognized immediately
+    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || `hash_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`).trim();
+    const deviceName = (body.deviceName || c.req.header('user-agent') || 'Trusted Device').substring(0, 100);
+    const newDeviceToken = `dev_tok_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+
+    try {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO trusted_devices (id, user_id, device_hash, device_name, last_used_at, created_at)
+              VALUES (?, ?, ?, ?, datetime('now'), datetime('now'));`,
+        args: [newDeviceToken, userRow.id, clientDeviceHash, deviceName]
+      });
+      c.header('Set-Cookie', `procollege_device_token=${newDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax`);
+    } catch (tdErr) {
+      console.warn('[AUTH] Failed to register trusted device on reset:', tdErr);
+    }
+
+    const isDeveloper = userRow.role === 'developer' || userRow.role === 'platform_admin';
+    const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || (isDeveloper ? 'platform_root' : 'col_client'));
+    const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || (isDeveloper ? 'ProCollege Platform Operations' : 'Academic Institution'));
+
+    const tokenPayload = {
+      id: userRow.id,
+      email: userRow.email,
+      role: userRow.role === 'developer' || userRow.role === 'platform_admin' ? 'developer' : userRow.role === 'admin' ? 'admin' : userRow.role === 'student' ? 'student' : 'lecturer',
+      institution_id: resolvedInstitutionId,
+      institution_name: resolvedInstitutionName,
+      ts: Date.now(),
+    };
+    const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+
+    const user = {
+      id: String(userRow.id),
+      email: String(userRow.email),
+      full_name: String(userRow.name),
+      name: String(userRow.name),
+      role: userRow.role === 'developer' || userRow.role === 'platform_admin' ? 'developer' : userRow.role === 'admin' ? 'admin' : userRow.role === 'student' ? 'student' : 'lecturer',
       college_id: resolvedInstitutionId,
       institution_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
@@ -949,7 +1202,9 @@ app.post('/api/auth/verify-otp', async (c) => {
       token,
       user,
       college,
-      mustChangePassword: Boolean(userRow.must_change_password),
+      deviceToken: newDeviceToken,
+      deviceHash: clientDeviceHash,
+      message: 'Password reset successfully! You are now logged in.'
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1047,20 +1302,33 @@ app.get('/api/platform/institutions', async (c) => {
       if (row.inst_id) facultyCountMap.set(String(row.inst_id), Number(row.count || 0));
     }
 
-    // Org admins
+    // Org admins per institution (support multiple Institutional Admins per campus)
     const admRes = await db.execute(`
-      SELECT COALESCE(college_id, institution_id) as inst_id, name, email
+      SELECT id, COALESCE(college_id, institution_id) as inst_id, name, email, department, created_at
       FROM users
-      WHERE role = 'admin';
+      WHERE role = 'admin'
+      ORDER BY created_at ASC;
     `);
-    const adminMap = new Map<string, { name: string; email: string }>();
+    const adminsMap = new Map<string, Array<{ id: string; name: string; email: string; department: string; createdAt: string }>>();
     for (const row of admRes.rows) {
-      if (row.inst_id) adminMap.set(String(row.inst_id), { name: String(row.name), email: String(row.email) });
+      if (row.inst_id) {
+        const key = String(row.inst_id);
+        const list = adminsMap.get(key) || [];
+        list.push({
+          id: String(row.id),
+          name: String(row.name),
+          email: String(row.email),
+          department: String(row.department || 'Campus Administration'),
+          createdAt: String(row.created_at || '')
+        });
+        adminsMap.set(key, list);
+      }
     }
 
     const organizations = instRes.rows.map(row => {
       const id = String(row.id);
-      const adm = adminMap.get(id);
+      const adminList = adminsMap.get(id) || [];
+      const primaryAdmin = adminList[0];
       const created = String(row.created_at || '2026-09-01');
       const startDate = created.split('T')[0] || '2026-09-01';
       const startObj = new Date(startDate);
@@ -1076,8 +1344,10 @@ app.get('/api/platform/institutions', async (c) => {
         billingPlan: String(row.billing_plan || 'campus-pro'),
         studentCount: studentCountMap.get(id) || 0,
         facultyCount: facultyCountMap.get(id) || 0,
-        contactEmail: adm?.email || String(row.contact_email || ''),
-        adminName: adm?.name || 'Academic Administrator',
+        adminCount: adminList.length,
+        admins: adminList,
+        contactEmail: primaryAdmin?.email || String(row.contact_email || ''),
+        adminName: primaryAdmin?.name || 'Academic Administrator',
         createdAt: created,
         startDate,
         expiryDate
@@ -1187,21 +1457,112 @@ app.post('/api/platform/institutions/provision', async (c) => {
       args: [adminId, institutionId, institutionId, name, contactName, email, tempPassword, passHash, otpCode, otpExpires, department],
     });
 
-    // 3. Seed initial Faculty
-    const facId = `fac_${Date.now()}`;
+    // Send 2FA verification email to primary admin
+    await send2FAEmail({
+      to: email,
+      name: contactName,
+      code: otpCode,
+      role: 'admin',
+      institutionName: name,
+      env: c.env,
+      db,
+    });
+
+    // 2.5 Provision any additional Institutional Admins requested during creation
+    const createdAdmins = [
+      {
+        id: adminId,
+        loginId,
+        name: contactName,
+        email,
+        temporaryPassword: tempPassword,
+        otpCode,
+        role: 'admin' as const,
+        department,
+        institutionId,
+        institutionName: name,
+      }
+    ];
+
+    if (Array.isArray(body.additionalAdmins)) {
+      for (let i = 0; i < body.additionalAdmins.length; i++) {
+        const extra = body.additionalAdmins[i];
+        const extraName = (extra.name || '').trim();
+        const extraEmail = (extra.email || '').trim().toLowerCase();
+        if (extraName && extraEmail) {
+          const extraAdminId = `usr_admin_${Date.now()}_${i + 1}`;
+          const extraLoginId = `ORG-ADMIN-${Math.floor(1000 + Math.random() * 9000)}`;
+          const extraTempPass = extra.temporaryPassword || generateTemporaryPassword();
+          const extraPassHash = await hashPassword(extraTempPass);
+          const extraOtp = Math.floor(100000 + Math.random() * 900000).toString();
+          const extraDept = (extra.department || 'Campus Administration').trim();
+
+          await db.execute({
+            sql: `INSERT OR REPLACE INTO users (
+                    id, college_id, institution_id, institution_name, name, email,
+                    role, password, password_hash, must_change_password, otp_code, otp_expires_at, department, created_at
+                  ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 1, ?, ?, ?, datetime('now'));`,
+            args: [extraAdminId, institutionId, institutionId, name, extraName, extraEmail, extraTempPass, extraPassHash, extraOtp, otpExpires, extraDept],
+          });
+
+          await send2FAEmail({
+            to: extraEmail,
+            name: extraName,
+            code: extraOtp,
+            role: 'admin',
+            institutionName: name,
+            env: c.env,
+            db,
+          });
+
+          createdAdmins.push({
+            id: extraAdminId,
+            loginId: extraLoginId,
+            name: extraName,
+            email: extraEmail,
+            temporaryPassword: extraTempPass,
+            otpCode: extraOtp,
+            role: 'admin' as const,
+            department: extraDept,
+            institutionId,
+            institutionName: name,
+          });
+        }
+      }
+    }
+
+    // 3. Seed initial Department (unified departments architecture)
+    const deptId = `dept_${Date.now()}`;
+    const deptName = department.includes('Department') ? department : `Department of ${department}`;
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO departments (
+              id, college_id, institution_name, name, code, head_id, head_name, description, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));`,
+      args: [
+        deptId,
+        institutionId,
+        name,
+        deptName,
+        code.slice(0, 4) + 'D',
+        adminId,
+        contactName,
+        `Official Academic Department for ${name}`
+      ],
+    });
+    // Also sync to faculties for legacy readers
     await db.execute({
       sql: `INSERT OR REPLACE INTO faculties (
               id, college_id, institution_name, name, code, dean_id, dean_name, description, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'));`,
       args: [
-        facId,
+        deptId,
         institutionId,
         name,
-        department.includes('Faculty') ? department : `Faculty of ${department}`,
-        code.slice(0, 4) + 'F',
+        deptName,
+        code.slice(0, 4) + 'D',
         adminId,
         contactName,
-        `Official Academic Faculty for ${name}`
+        `Official Academic Department for ${name}`
       ],
     });
 
@@ -1214,18 +1575,9 @@ app.post('/api/platform/institutions/provision', async (c) => {
         status: 'active',
         billingPlan: plan,
       },
-      admin: {
-        id: adminId,
-        loginId,
-        name: contactName,
-        email,
-        temporaryPassword: tempPassword,
-        otpCode,
-        role: 'admin',
-        institutionId,
-        institutionName: name,
-      },
-      message: `Organization ${name} provisioned successfully with Admin ${contactName}.`,
+      admin: createdAdmins[0],
+      admins: createdAdmins,
+      message: `Organization ${name} provisioned successfully with ${createdAdmins.length} Institutional Admin(s).`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1371,6 +1723,221 @@ app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
       temporaryPassword: newTempPassword,
       message: `Administrator credentials for "${orgName}" have been reset. On next login, 2FA OTP verification and password reset will be required.`,
     });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.82 List all Institutional Admins for an Organization
+app.get('/api/platform/institutions/:id/admins', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const id = c.req.param('id');
+    const db = getDb(c);
+
+    const adminsRes = await db.execute({
+      sql: `SELECT id, name, email, department, role, college_id, institution_id, institution_name, created_at, must_change_password
+            FROM users
+            WHERE (college_id = ? OR institution_id = ?) AND role = 'admin'
+            ORDER BY created_at ASC;`,
+      args: [id, id],
+    });
+
+    const admins = adminsRes.rows.map(r => ({
+      id: String(r.id),
+      name: String(r.name),
+      email: String(r.email),
+      department: String(r.department || 'Campus Administration'),
+      role: 'admin' as const,
+      institutionId: String(r.institution_id || r.college_id),
+      institutionName: String(r.institution_name || ''),
+      createdAt: String(r.created_at || ''),
+      mustChangePassword: Boolean(r.must_change_password),
+    }));
+
+    return c.json({ success: true, institutionId: id, admins });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.83 Appoint a new Institutional Admin to an existing Organization
+app.post('/api/platform/institutions/:id/admins', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const name = (body.name || '').trim();
+    const email = (body.email || '').trim().toLowerCase();
+    const department = (body.department || 'Campus Administration').trim();
+
+    if (!name || !email) {
+      return c.json({ error: 'Admin Name and Official Email are required' }, 400);
+    }
+
+    const db = getDb(c);
+
+    // Look up institution name
+    const orgRes = await db.execute({
+      sql: `SELECT name FROM colleges WHERE id = ? UNION SELECT name FROM institutions WHERE id = ? LIMIT 1;`,
+      args: [id, id],
+    });
+    const orgName = orgRes.rows[0]?.name ? String(orgRes.rows[0].name) : 'Academic Institution';
+
+    // Generate credentials
+    const tempPassword = body.temporaryPassword || generateTemporaryPassword();
+    const passHash = await hashPassword(tempPassword);
+    const adminId = `usr_admin_${Date.now()}`;
+    const loginId = `ORG-ADMIN-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO users (
+              id, college_id, institution_id, institution_name, name, email,
+              role, password, password_hash, must_change_password, otp_code, otp_expires_at, department, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 1, ?, ?, ?, datetime('now'));`,
+      args: [adminId, id, id, orgName, name, email, tempPassword, passHash, otpCode, otpExpires, department],
+    });
+
+    // Send 2FA email notification
+    await send2FAEmail({
+      to: email,
+      name,
+      code: otpCode,
+      role: 'admin',
+      institutionName: orgName,
+      env: c.env,
+      db,
+    });
+
+    return c.json({
+      success: true,
+      institutionId: id,
+      admin: {
+        id: adminId,
+        loginId,
+        name,
+        email,
+        department,
+        temporaryPassword: tempPassword,
+        otpCode,
+        role: 'admin',
+        institutionId: id,
+        institutionName: orgName,
+      },
+      message: `Institutional Admin "${name}" appointed successfully for ${orgName}.`,
+    }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.84 Reset password & 2FA OTP for a specific Institutional Admin
+app.post('/api/platform/institutions/:id/admins/:adminId/reset', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const { id, adminId } = c.req.param();
+    const db = getDb(c);
+
+    const userRes = await db.execute({
+      sql: `SELECT u.id, u.name, u.email, u.institution_name, u.college_id, c.name as college_name
+            FROM users u
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
+            WHERE u.id = ? AND (u.college_id = ? OR u.institution_id = ?) AND u.role = 'admin';`,
+      args: [adminId, id, id],
+    });
+
+    if (userRes.rows.length === 0) {
+      return c.json({ error: 'Institutional admin not found' }, 404);
+    }
+
+    const admin = userRes.rows[0];
+    const orgName = String(admin.college_name || admin.institution_name || 'Academic Institution');
+
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const newTempPassword = `Admin#${randomSuffix}`;
+    const newHash = await hashPassword(newTempPassword);
+    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    await db.execute({
+      sql: `UPDATE users
+            SET password = ?, password_hash = ?, otp_code = ?, otp_expires_at = ?, must_change_password = 1
+            WHERE id = ?;`,
+      args: [newTempPassword, newHash, newOtp, otpExpires, adminId],
+    });
+
+    await send2FAEmail({
+      to: String(admin.email),
+      name: String(admin.name),
+      code: newOtp,
+      role: 'admin',
+      institutionName: orgName,
+      env: c.env,
+      db,
+    });
+
+    return c.json({
+      success: true,
+      adminId,
+      adminName: String(admin.name),
+      adminEmail: String(admin.email),
+      temporaryPassword: newTempPassword,
+      otpCode: newOtp,
+      message: `Password and 2FA credentials reset for ${admin.name}.`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.85 Remove an Institutional Admin
+app.delete('/api/platform/institutions/:id/admins/:adminId', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const { id, adminId } = c.req.param();
+    const db = getDb(c);
+
+    // Check count of remaining admins
+    const countRes = await db.execute({
+      sql: `SELECT count(*) as count FROM users WHERE (college_id = ? OR institution_id = ?) AND role = 'admin';`,
+      args: [id, id],
+    });
+    const count = Number(countRes.rows[0]?.count || 0);
+    if (count <= 1) {
+      return c.json({
+        error: 'Cannot remove the sole administrator. Every institution must retain at least one Institutional Admin.',
+      }, 400);
+    }
+
+    await db.execute({
+      sql: `DELETE FROM users WHERE id = ? AND (college_id = ? OR institution_id = ?) AND role = 'admin';`,
+      args: [adminId, id, id],
+    });
+
+    return c.json({ success: true, deletedAdminId: adminId });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
@@ -1954,10 +2521,14 @@ app.get('/api/workspace/bootstrap', async (c) => {
       }
     }
 
-    let facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes, filesRes;
+    let departmentsRes, facultiesRes, coursesRes, channelsRes, assignmentsRes, submissionsRes, noticesRes, usersRes, filesRes;
 
     if (isDeveloper && institutionParam === 'all') {
-      facultiesRes = await db.execute("SELECT * FROM faculties WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY name ASC;");
+      departmentsRes = await db.execute("SELECT * FROM departments WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY name ASC;");
+      if (departmentsRes.rows.length === 0) {
+        departmentsRes = await db.execute("SELECT * FROM faculties WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY name ASC;");
+      }
+      facultiesRes = departmentsRes;
       coursesRes = await db.execute("SELECT * FROM courses WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY code ASC;");
       channelsRes = await db.execute("SELECT * FROM channels WHERE college_id != 'padmashree-demo' ORDER BY name ASC;");
       assignmentsRes = await db.execute("SELECT * FROM assignments WHERE institution_name NOT LIKE '%demo%' AND college_id != 'padmashree-demo' ORDER BY created_at DESC;");
@@ -1966,17 +2537,37 @@ app.get('/api/workspace/bootstrap', async (c) => {
       usersRes = await db.execute("SELECT * FROM users WHERE role != 'developer' AND college_id != 'padmashree-demo' ORDER BY name ASC;");
       filesRes = await db.execute("SELECT * FROM course_files WHERE college_id != 'padmashree-demo' ORDER BY uploaded_at DESC;");
     } else {
-      facultiesRes = await db.execute({
-        sql: 'SELECT * FROM faculties WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
-        args: [institutionParam, collegeId],
+      departmentsRes = await db.execute({
+        sql: `SELECT * FROM departments 
+              WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+              ORDER BY name ASC;`,
+        args: [institutionParam, collegeId, institutionParam],
       });
+      if (departmentsRes.rows.length === 0) {
+        departmentsRes = await db.execute({
+          sql: `SELECT * FROM faculties 
+                WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+                ORDER BY name ASC;`,
+          args: [institutionParam, collegeId, institutionParam],
+        });
+      }
+      facultiesRes = departmentsRes;
+
       coursesRes = await db.execute({
-        sql: 'SELECT * FROM courses WHERE institution_name = ? OR college_id = ? ORDER BY code ASC;',
-        args: [institutionParam, collegeId],
+        sql: `SELECT * FROM courses 
+              WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+              ORDER BY code ASC;`,
+        args: [institutionParam, collegeId, institutionParam],
       });
       channelsRes = await db.execute({
-        sql: 'SELECT * FROM channels WHERE college_id = ? OR course_id IN (SELECT id FROM courses WHERE institution_name = ? OR college_id = ?) ORDER BY name ASC;',
-        args: [collegeId, institutionParam, collegeId],
+        sql: `SELECT * FROM channels 
+              WHERE college_id = ? 
+                 OR course_id IN (
+                    SELECT id FROM courses 
+                    WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+                 )
+              ORDER BY name ASC;`,
+        args: [collegeId, institutionParam, collegeId, institutionParam],
       });
       assignmentsRes = await db.execute({
         sql: 'SELECT * FROM assignments WHERE institution_name = ? OR college_id = ? ORDER BY created_at DESC;',
@@ -2014,10 +2605,10 @@ app.get('/api/workspace/bootstrap', async (c) => {
       let instructor = {
         id: String(cRow.instructor_id || 'usr_lead_prof'),
         name: String(cRow.instructor_name || 'Lead Instructor'),
-        role: 'professor',
+        role: 'lecturer' as const,
         email: 'faculty@campus.edu',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
-        license: 'ProCollege Verified for Faculty',
+        license: 'ProCollege Verified for Faculty' as const,
         department: String(cRow.department || 'Academic Department'),
         institutionName: String(cRow.institution_name || institutionParam),
         status: 'available' as const,
@@ -2054,16 +2645,17 @@ app.get('/api/workspace/bootstrap', async (c) => {
         id: String(cRow.id),
         code: String(cRow.code),
         name: String(cRow.name),
-        department: String(cRow.department || 'Department of BIT'),
-        facultyId: cRow.faculty_id ? String(cRow.faculty_id) : undefined,
+        department: String(cRow.department || 'Academic Department'),
+        departmentId: cRow.department_id ? String(cRow.department_id) : (cRow.faculty_id ? String(cRow.faculty_id) : undefined),
+        facultyId: cRow.department_id ? String(cRow.department_id) : (cRow.faculty_id ? String(cRow.faculty_id) : undefined),
         institutionName: String(cRow.institution_name || institutionParam),
         term: String(cRow.term || 'Fall 2026'),
         color: String(cRow.color || '#4f46e5'),
-        icon: String(cRow.icon || '⚡'),
-        instructor,
-        memberCount: Number(cRow.member_count || enrolledStudents.length || 45),
+        icon: String(cRow.icon || '🏛️'),
+        instructor: { ...instructor, role: 'lecturer' as const },
+        memberCount: Number(cRow.member_count || enrolledStudents.length || 0),
         isActivated: Boolean(cRow.is_activated ?? true),
-        model: (cRow.model || 'model-a') as 'model-a' | 'model-b',
+        model: (cRow.model || 'model-b') as 'model-a' | 'model-b',
         template: 'Class' as const,
         channels: courseChannels,
         enrolledStudents,
@@ -2143,27 +2735,39 @@ app.get('/api/workspace/bootstrap', async (c) => {
       };
     });
 
-    const allFaculties = facultiesRes.rows.map(f => ({
+    const allDepartments = (departmentsRes?.rows || facultiesRes?.rows || []).map(f => ({
       id: String(f.id),
       name: String(f.name),
       code: String(f.code),
-      deanId: String(f.dean_id || 'usr-admin-01'),
-      deanName: String(f.dean_name || 'Academic Dean'),
+      headId: String(f.head_id || f.dean_id || 'usr-admin-01'),
+      headName: String(f.head_name || f.dean_name || 'Department Head'),
+      deanId: String(f.head_id || f.dean_id || 'usr-admin-01'),
+      deanName: String(f.head_name || f.dean_name || 'Department Head'),
       institutionName: String(f.institution_name || institutionParam),
       description: String(f.description || ''),
     }));
 
-    const allUsers = usersRes.rows.map(u => ({
-      id: String(u.id),
-      name: String(u.name),
-      email: String(u.email),
-      role: (u.role === 'teacher' ? 'professor' : u.role) as any,
-      license: u.role === 'student' ? 'ProCollege Verified for Students' : 'ProCollege Verified for Faculty',
-      department: String(u.department || 'Department of BIT'),
-      institutionName: String(u.institution_name || institutionParam),
-      avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
-      status: 'available' as const,
-    }));
+    const allUsers = usersRes.rows.map(u => {
+      let role = String(u.role || 'student');
+      if (role === 'teacher' || role === 'professor' || role === 'ta') {
+        role = 'lecturer';
+      } else if (role === 'platform_admin') {
+        role = 'developer';
+      } else if (role === 'dean') {
+        role = 'admin';
+      }
+      return {
+        id: String(u.id),
+        name: String(u.name),
+        email: String(u.email),
+        role: role as 'developer' | 'admin' | 'lecturer' | 'student',
+        license: (role === 'student' ? 'ProCollege Verified for Students' : 'ProCollege Verified for Faculty') as any,
+        department: String(u.department || 'Academic Department'),
+        institutionName: String(u.institution_name || institutionParam),
+        avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+        status: 'available' as const,
+      };
+    });
 
     const allFiles = filesRes.rows.map(f => ({
       id: String(f.id),
@@ -2181,7 +2785,8 @@ app.get('/api/workspace/bootstrap', async (c) => {
     return c.json({
       success: true,
       institution: institutionParam,
-      faculties: allFaculties,
+      departments: allDepartments,
+      faculties: allDepartments,
       courses: allCourses,
       assignments: allAssignments,
       files: allFiles,
@@ -2194,73 +2799,145 @@ app.get('/api/workspace/bootstrap', async (c) => {
   }
 });
 
-// Get all faculties
-app.get('/api/faculties', async (c) => {
+// --- Departments Management Endpoints (Unified Academic Departments Architecture) ---
+
+// Get all departments / faculties
+app.get('/api/departments', async (c) => {
   try {
+    const caller = extractUserFromHeader(c);
+    const callerInstId = caller?.institution_id || caller?.college_id;
+    const callerInstName = caller?.institution_name;
+    const instParam = c.req.query('institution') || callerInstName;
+    const collegeId = c.req.query('collegeId') || callerInstId;
+
     const db = getDb(c);
-    const res = await db.execute('SELECT * FROM faculties ORDER BY name ASC;');
-    const faculties = res.rows.map(r => ({
+    let res;
+    if (instParam || collegeId) {
+      res = await db.execute({
+        sql: `SELECT * FROM departments 
+              WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+              ORDER BY name ASC;`,
+        args: [instParam || '', collegeId || '', instParam || '']
+      });
+      if (res.rows.length === 0) {
+        res = await db.execute({
+          sql: `SELECT * FROM faculties 
+                WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+                ORDER BY name ASC;`,
+          args: [instParam || '', collegeId || '', instParam || '']
+        });
+      }
+    } else {
+      res = await db.execute('SELECT * FROM departments ORDER BY name ASC;');
+      if (res.rows.length === 0) {
+        res = await db.execute('SELECT * FROM faculties ORDER BY name ASC;');
+      }
+    }
+
+    const departments = res.rows.map(r => ({
       id: String(r.id),
       name: String(r.name),
       code: String(r.code),
-      deanId: r.dean_id ? String(r.dean_id) : undefined,
-      deanName: r.dean_name ? String(r.dean_name) : undefined,
+      headId: r.head_id ? String(r.head_id) : (r.dean_id ? String(r.dean_id) : undefined),
+      headName: r.head_name ? String(r.head_name) : (r.dean_name ? String(r.dean_name) : undefined),
+      deanId: r.head_id ? String(r.head_id) : (r.dean_id ? String(r.dean_id) : undefined),
+      deanName: r.head_name ? String(r.head_name) : (r.dean_name ? String(r.dean_name) : undefined),
       description: r.description ? String(r.description) : undefined,
       institutionName: r.institution_name ? String(r.institution_name) : undefined,
+      collegeId: r.college_id ? String(r.college_id) : undefined,
     }));
-    return c.json({ success: true, faculties });
+    return c.json({ success: true, departments, faculties: departments });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
   }
 });
 
-// 7. Persist newly created Faculty (R13, R22)
-app.post('/api/faculties', async (c) => {
+// Alias for faculties
+app.get('/api/faculties', async (c) => {
+  return app.fetch(new Request(new URL('/api/departments', c.req.url).toString(), c.req.raw), c.env);
+});
+
+// Create Department
+app.post('/api/departments', async (c) => {
   try {
     const body = await c.req.json();
     const db = getDb(c);
     const collegeId = await resolveCollegeId(c, body, db);
-    const id = body.id || `fac_${Date.now()}`;
+    const id = body.id || `dept_${Date.now()}`;
     const institutionName = body.institutionName || body.institution_name || 'PUBLIC ENGLISH BOARDING SCHOOL';
     const name = (body.name || '').trim();
     const code = (body.code || '').trim().toUpperCase();
-    const deanId = body.deanId || body.dean_id || 'usr-admin-01';
-    const deanName = body.deanName || body.dean_name || 'Academic Dean';
+    const headId = body.headId || body.deanId || body.head_id || body.dean_id || 'usr-admin-01';
+    const headName = body.headName || body.deanName || body.head_name || body.dean_name || 'Department Head';
     const description = (body.description || '').trim();
 
     if (!name || !code) {
-      return c.json({ error: 'Faculty name and code are required' }, 400);
+      return c.json({ error: 'Department name and code are required' }, 400);
     }
 
+    // Insert into departments
     await db.execute({
-      sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
+      sql: `INSERT OR REPLACE INTO departments (id, college_id, institution_name, name, code, head_id, head_name, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [id, collegeId, institutionName, name, code, deanId, deanName, description],
+      args: [id, collegeId, institutionName, name, code, headId, headName, description],
     });
 
-    const faculty = { id, college_id: collegeId, institutionName, name, code, deanId, deanName, description };
-    return c.json({ success: true, faculty }, 201);
+    // Also sync to faculties for backward compatibility
+    try {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO faculties (id, college_id, institution_name, name, code, dean_id, dean_name, description)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+        args: [id, collegeId, institutionName, name, code, headId, headName, description],
+      });
+    } catch {}
+
+    const department = { id, collegeId, institutionName, name, code, headId, headName, deanId: headId, deanName: headName, description };
+    return c.json({ success: true, department, faculty: department }, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
   }
 });
 
-// Delete Faculty
-app.delete('/api/faculties/:id', async (c) => {
+// Alias for create faculty
+app.post('/api/faculties', async (c) => {
+  return app.fetch(new Request(new URL('/api/departments', c.req.url).toString(), {
+    method: 'POST',
+    headers: c.req.raw.headers,
+    body: await c.req.raw.clone().blob(),
+  }), c.env);
+});
+
+// Delete Department
+app.delete('/api/departments/:id', async (c) => {
   const id = c.req.param('id');
   try {
     const db = getDb(c);
     await db.execute({
-      sql: 'DELETE FROM faculties WHERE id = ?;',
+      sql: 'DELETE FROM departments WHERE id = ?;',
       args: [id],
     });
+    try {
+      await db.execute({
+        sql: 'DELETE FROM faculties WHERE id = ?;',
+        args: [id],
+      });
+    } catch {}
     return c.json({ success: true, deletedId: id });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
   }
+});
+
+// Alias for delete faculty
+app.delete('/api/faculties/:id', async (c) => {
+  const id = c.req.param('id');
+  return app.fetch(new Request(new URL(`/api/departments/${id}`, c.req.url).toString(), {
+    method: 'DELETE',
+    headers: c.req.raw.headers,
+  }), c.env);
 });
 
 // 8. Persist newly created Course & Channels (R14, R20)
@@ -2274,8 +2951,9 @@ app.post('/api/courses', async (c) => {
     const institutionName = body.institutionName || body.institution_name || 'PUBLIC ENGLISH BOARDING SCHOOL';
     const code = (body.code || '').trim().toUpperCase();
     const name = (body.name || '').trim();
-    const department = (body.department || 'PEBS CLASSES').trim();
-    const facultyId = body.facultyId || body.faculty_id || null;
+    const department = (body.department || 'Academic Department').trim();
+    const departmentId = body.departmentId || body.department_id || body.facultyId || body.faculty_id || null;
+    const facultyId = departmentId;
     const term = (body.term || 'Fall 2026').trim();
     const color = body.color || '#4f46e5';
     const icon = body.icon || '🏛️';
@@ -2292,9 +2970,9 @@ app.post('/api/courses', async (c) => {
     }
 
     await db.execute({
-      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, faculty_id, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [id, collegeId, institutionName, code, name, department, facultyId, term, color, icon, instructorId, instructorName, JSON.stringify(instructor), memberCount, 1, model, template, enrolledStudents],
+      sql: `INSERT OR REPLACE INTO courses (id, college_id, institution_name, code, name, department, department_id, faculty_id, term, color, icon, instructor_id, instructor_name, instructor_data, member_count, is_activated, model, template, enrolled_students)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, institutionName, code, name, department, departmentId, facultyId, term, color, icon, instructorId, instructorName, JSON.stringify(instructor), memberCount, 1, model, template, enrolledStudents],
     });
 
     // Default protected Announcements channel
@@ -2406,6 +3084,58 @@ app.post('/api/courses/:courseId/channels', async (c) => {
     });
 
     return c.json({ success: true, channelId: id }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Update channel dedicated subject lecturer (1-Click Instant Assignment)
+app.patch('/api/channels/:id/lecturer', async (c) => {
+  const channelId = c.req.param('id');
+  try {
+    const body = await c.req.json();
+    const { lecturerId, lecturerName } = body;
+    const db = getDb(c);
+    await db.execute({
+      sql: 'UPDATE channels SET subject_lecturer_id = ?, subject_lecturer_name = ? WHERE id = ?;',
+      args: [lecturerId || null, lecturerName || null, channelId]
+    });
+    return c.json({ success: true, channelId, lecturerId, lecturerName });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+app.post('/api/courses/:courseId/channels/:channelId/lecturer', async (c) => {
+  const channelId = c.req.param('channelId');
+  try {
+    const body = await c.req.json();
+    const { lecturerId, lecturerName } = body;
+    const db = getDb(c);
+    await db.execute({
+      sql: 'UPDATE channels SET subject_lecturer_id = ?, subject_lecturer_name = ? WHERE id = ?;',
+      args: [lecturerId || null, lecturerName || null, channelId]
+    });
+    return c.json({ success: true, channelId, lecturerId, lecturerName });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+app.patch('/api/courses/:courseId/channels/:channelId/lecturer', async (c) => {
+  const channelId = c.req.param('channelId');
+  try {
+    const body = await c.req.json();
+    const { lecturerId, lecturerName } = body;
+    const db = getDb(c);
+    await db.execute({
+      sql: 'UPDATE channels SET subject_lecturer_id = ?, subject_lecturer_name = ? WHERE id = ?;',
+      args: [lecturerId || null, lecturerName || null, channelId]
+    });
+    return c.json({ success: true, channelId, lecturerId, lecturerName });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);

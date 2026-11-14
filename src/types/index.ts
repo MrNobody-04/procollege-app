@@ -1,8 +1,9 @@
-export type UserRole = 'developer' | 'platform_admin' | 'admin' | 'professor' | 'lecturer' | 'student' | 'ta' | 'dean';
+export type UserRole = 'developer' | 'admin' | 'lecturer' | 'student' | 'professor' | 'ta' | 'platform_admin';
 export type PresenceStatus = 'available' | 'busy' | 'away' | 'dnd' | 'in-call' | 'offline';
 export type LicenseSku =
   | 'ProCollege Verified for Faculty'
   | 'ProCollege Verified for Students'
+  | 'ProCollege Verified for Administration'
   | 'ProCollege Enterprise Platform License'
   | 'Microsoft 365 A5 for Faculty'
   | 'Microsoft 365 A3 for Faculty'
@@ -32,17 +33,21 @@ export interface User {
   isDemo?: boolean;
 }
 
-export interface FacultyDepartment {
+export interface Department {
   id: string;
   name: string;
   code: string;
-  deanId?: string;
-  deanName?: string;
+  headId?: string;
+  headName?: string;
+  deanId?: string; // backwards compatibility alias
+  deanName?: string; // backwards compatibility alias
   description: string;
   institutionName?: string;
+  collegeId?: string;
   memberIds?: string[];
   isDemo?: boolean;
 }
+export type FacultyDepartment = Department;
 
 export interface InstitutionalRequest {
   id: string;
@@ -62,9 +67,10 @@ export interface InstitutionalRequest {
 export interface Attachment {
   id: string;
   name: string;
-  type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt';
+  type: 'pdf' | 'doc' | 'code' | 'archive' | 'image' | 'ppt' | 'presentation' | 'sheet' | 'text' | 'other';
   size: string;
   url?: string;
+  mimeType?: string;
   isClassMaterial?: boolean;
   permission?: 'read-only' | 'editable';
 }
@@ -114,8 +120,9 @@ export interface CourseTeam {
   code: string;
   name: string;
   department: string;
+  departmentId?: string;
   institutionName?: string;
-  facultyId?: string;
+  facultyId?: string; // backwards compatibility alias
   term: string;
   color: string;
   icon: string;
@@ -166,6 +173,8 @@ export interface SubmittedFile {
   type: string;
   isReadOnly: boolean;
   uploadedAt: string;
+  url?: string;
+  mimeType?: string;
 }
 
 export interface AssignmentSubmission {
@@ -248,6 +257,8 @@ export interface CourseFile {
   permission: 'read-only' | 'can-edit';
   isPrivate?: boolean; // Private student submissions or working files restricted from public listing
   isDemo?: boolean;
+  url?: string;
+  mimeType?: string;
 }
 
 export interface ActivityNotification {
@@ -265,7 +276,7 @@ export interface ActivityNotification {
   isDemo?: boolean;
 }
 
-export type DialogType = 'success' | 'info' | 'warning' | 'error';
+export type DialogType = 'success' | 'info' | 'warning' | 'error' | 'alert' | 'confirm';
 
 export interface DialogOptions {
   title?: string;

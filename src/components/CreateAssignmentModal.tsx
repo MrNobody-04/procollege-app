@@ -13,9 +13,13 @@ import {
   Paperclip,
   Lock,
   Layers,
-  BookOpen
+  BookOpen,
+  Eye,
+  Download
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FilePreviewModal } from './FilePreviewModal';
+import { downloadFile, readFileAsDataUrl } from '../utils/fileManager';
 import type { RubricCriterion } from '../types';
 
 interface CreateAssignmentModalProps {
@@ -30,6 +34,7 @@ interface AttachedReferenceFile {
   name: string;
   size: string;
   type: 'pdf' | 'doc' | 'ppt' | 'archive' | 'code' | 'image';
+  url?: string;
 }
 
 const toDateTimeLocalString = (date: Date): string => {
@@ -90,6 +95,12 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     }
   ]);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{
+    name: string;
+    size?: string;
+    url?: string;
+    category?: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-calculated Dates & Scheduling Logic
@@ -188,28 +199,38 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const addFilesToList = (files: File[]) => {
-    const newFiles: AttachedReferenceFile[] = files.map(file => {
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      let type: AttachedReferenceFile['type'] = 'doc';
-      if (ext === 'pdf') type = 'pdf';
-      else if (ext === 'ppt' || ext === 'pptx') type = 'ppt';
-      else if (['zip', 'rar', 'tar', '7z', 'gz'].includes(ext)) type = 'archive';
-      else if (['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext)) type = 'image';
-      else if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css'].includes(ext)) type = 'code';
+  const addFilesToList = async (files: File[]) => {
+    const newFiles: AttachedReferenceFile[] = await Promise.all(
+      files.map(async file => {
+        const ext = file.name.split('.').pop()?.toLowerCase() || '';
+        let type: AttachedReferenceFile['type'] = 'doc';
+        if (ext === 'pdf') type = 'pdf';
+        else if (ext === 'ppt' || ext === 'pptx') type = 'ppt';
+        else if (['zip', 'rar', 'tar', '7z', 'gz'].includes(ext)) type = 'archive';
+        else if (['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext)) type = 'image';
+        else if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css'].includes(ext)) type = 'code';
 
-      const sizeFormatted =
-        file.size > 1024 * 1024
-          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-          : `${Math.max(1, Math.round(file.size / 1024))} KB`;
+        const sizeFormatted =
+          file.size > 1024 * 1024
+            ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+            : `${Math.max(1, Math.round(file.size / 1024))} KB`;
 
-      return {
-        id: `ref_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        name: file.name,
-        size: sizeFormatted,
-        type
-      };
-    });
+        let url: string | undefined = undefined;
+        try {
+          url = await readFileAsDataUrl(file);
+        } catch (err) {
+          console.warn('Could not read reference file as data url:', err);
+        }
+
+        return {
+          id: `ref_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          name: file.name,
+          size: sizeFormatted,
+          type,
+          url
+        };
+      })
+    );
 
     setReferenceFiles(prev => [...prev, ...newFiles]);
   };
@@ -322,7 +343,8 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         id: rf.id,
         name: rf.name,
         size: rf.size,
-        type: rf.type
+        type: rf.type,
+        url: rf.url
       })),
       publishedAt: publishedAtFormatted,
       scheduleDate: isScheduled ? scheduleDate : undefined,
@@ -534,14 +556,32 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
                           <p className="text-[10px] text-zinc-400">{file.size} • Student Reference Material</p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveFile(file.id)}
-                        className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer shrink-0 ml-2"
-                        title="Remove file"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFile({ name: file.name, size: file.size, url: file.url, category: 'Assignment Reference Material' })}
+                          className="p-1 text-zinc-400 hover:text-[#173bff] hover:bg-zinc-100 rounded transition-colors cursor-pointer"
+                          title="Preview file"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadFile(file.name, file.url, { courseName: activeCourse?.name, category: 'Assignment Reference Material' })}
+                          className="p-1 text-zinc-400 hover:text-emerald-600 hover:bg-zinc-100 rounded transition-colors cursor-pointer"
+                          title="Download file"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(file.id)}
+                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                          title="Remove file"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -780,6 +820,27 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* File Preview Modal */}
+      {previewFile && (
+        <FilePreviewModal
+          file={{
+            name: previewFile.name,
+            size: previewFile.size,
+            url: previewFile.url,
+            category: previewFile.category,
+            courseName: activeCourse?.name
+          }}
+          isOpen={Boolean(previewFile)}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() =>
+            downloadFile(previewFile.name, previewFile.url, {
+              courseName: activeCourse?.name,
+              category: previewFile.category
+            })
+          }
+        />
+      )}
     </div>
   );
 };

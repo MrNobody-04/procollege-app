@@ -16,6 +16,8 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FilePreviewModal } from './FilePreviewModal';
+import { downloadFile, readFileAsDataUrl } from '../utils/fileManager';
 import type { CourseFile } from '../types';
 
 export const FilesView: React.FC = () => {
@@ -59,59 +61,49 @@ export const FilesView: React.FC = () => {
     return true;
   });
 
-  // Native real file download
+  // Real file download
   const handleDownload = (file: CourseFile) => {
-    const content = `========================================================
-ProCollege - Course Document
-========================================================
-File Name:    ${file.name}
-Course:       ${courses.find(c => c.id === file.courseId)?.name || file.courseId}
-Folder:       ${file.category}
-Access:       ${file.permission === 'read-only' ? 'Read-only (Class Materials)' : 'Collaborative (Can edit)'}
-Uploaded By:  ${file.uploadedBy}
-Uploaded At:  ${file.uploadedAt}
-Size:         ${file.size}
-========================================================
-
-[Official course document content for ${file.name}]
-`;
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadFile(file.name, file.url, {
+      courseName: courses.find(c => c.id === file.courseId)?.name,
+      category: file.category,
+      author: file.uploadedBy
+    });
   };
 
-  // Native device file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Real device file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
-    const sizeStr =
-      file.size > 1024 * 1024
-        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.max(1, Math.round(file.size / 1024))} KB`;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const sizeStr =
+        file.size > 1024 * 1024
+          ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.max(1, Math.round(file.size / 1024))} KB`;
 
-    const isClassMaterials = activeFolderTab === 'class-materials';
-    const targetCourseId = selectedCourseId === 'all' ? courses[0].id : selectedCourseId;
+      const isClassMaterials = activeFolderTab === 'class-materials';
+      const targetCourseId = selectedCourseId === 'all' ? (courses[0]?.id || '') : selectedCourseId;
 
-    const res = uploadCourseFile({
-      courseId: targetCourseId,
-      name: file.name,
-      category: isClassMaterials ? 'Class Materials' : 'Subject Files',
-      size: sizeStr,
-      uploadedBy: currentUser.name,
-      isClassMaterials,
-      permission: isClassMaterials ? 'read-only' : 'can-edit'
-    });
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const res = uploadCourseFile({
+          courseId: targetCourseId,
+          name: file.name,
+          category: isClassMaterials ? 'Class Materials' : 'Subject Files',
+          size: sizeStr,
+          uploadedBy: currentUser.name,
+          isClassMaterials,
+          permission: isClassMaterials ? 'read-only' : 'can-edit',
+          url: dataUrl
+        });
 
-    if (!res.success) {
-      showDialog(res.message, { type: 'warning', title: 'Upload Notice' });
+        if (!res.success) {
+          showDialog(res.message, { type: 'warning', title: 'Upload Notice' });
+        }
+      } catch (err) {
+        showDialog('Failed to process file upload.', { type: 'warning', title: 'Upload Error' });
+      }
     }
 
     if (fileInputRef.current) {
@@ -395,63 +387,24 @@ Size:         ${file.size}
         </div>
       </div>
 
-      {/* Clean Document Preview Modal */}
+      {/* Interactive Document Preview Modal */}
       {previewFile && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-5 shadow-xl border border-zinc-200 space-y-4">
-            <div className="flex items-start justify-between pb-3 border-b border-zinc-200">
-              <div className="flex items-center gap-2.5 min-w-0">
-                {getFileIcon(previewFile.name)}
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-zinc-900 truncate">
-                    {previewFile.name}
-                  </h3>
-                  <p className="text-[11px] text-zinc-500">
-                    {previewFile.size} • Uploaded by {previewFile.uploadedBy} on {previewFile.uploadedAt}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPreviewFile(null)}
-                className="text-zinc-400 hover:text-zinc-700 p-1 rounded"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Document Outline / Content Preview */}
-            <div className="bg-zinc-50 border border-zinc-200 rounded p-4 text-xs font-mono text-zinc-700 space-y-2 max-h-64 overflow-y-auto">
-              <div className="text-[11px] text-zinc-400 pb-1 border-b border-zinc-200 uppercase font-sans font-semibold">
-                Preview Summary • {previewFile.category}
-              </div>
-              <p>Document: {previewFile.name}</p>
-              <p>Course Location: {courses.find(c => c.id === previewFile.courseId)?.name}</p>
-              <p>Access Level: {previewFile.permission === 'read-only' ? 'Read-only (Master Class Materials)' : 'Collaborative'}</p>
-              <p className="text-zinc-500 pt-2 font-sans text-xs">
-                This document is synchronized with your college OneDrive & SharePoint class library. Click download below to save the official copy to your local device.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-200">
-              <button
-                onClick={() => setPreviewFile(null)}
-                className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-medium rounded transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  handleDownload(previewFile);
-                  setPreviewFile(null);
-                }}
-                className="px-3.5 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-medium rounded flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <FilePreviewModal
+          file={{
+            name: previewFile.name,
+            size: previewFile.size,
+            url: previewFile.url,
+            uploadedBy: previewFile.uploadedBy,
+            uploadedAt: previewFile.uploadedAt,
+            category: previewFile.category,
+            courseName: courses.find(c => c.id === previewFile.courseId)?.name
+          }}
+          isOpen={Boolean(previewFile)}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => {
+            handleDownload(previewFile);
+          }}
+        />
       )}
     </div>
   );

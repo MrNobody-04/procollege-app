@@ -102,11 +102,11 @@ export const TeamsSidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Faculty Department Filter Selector for Classes */}
+      {/* Department Filter Selector for Classes */}
       {faculties.length > 0 && (
         <div className="px-2.5 py-1.5 border-b border-[#B2C1C5] bg-zinc-50/70">
           <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">
-            <span>Filter Faculty:</span>
+            <span>Filter Department:</span>
             {selectedFacultyFilter !== 'all' && (
               <button
                 onClick={() => setSelectedFacultyFilter('all')}
@@ -120,12 +120,13 @@ export const TeamsSidebar: React.FC = () => {
             value={selectedFacultyFilter}
             onChange={e => setSelectedFacultyFilter(e.target.value)}
             className="w-full bg-white border border-zinc-200 rounded px-2 py-1 text-xs font-semibold text-zinc-800 focus:outline-none focus:border-[#26394D] cursor-pointer shadow-2xs"
-            title="Choose which faculty's classes to view"
+            title="Choose which department's classes to view"
           >
-            <option value="all">All Faculties ({courses.length} classes)</option>
+            <option value="all">All Departments ({courses.length} classes)</option>
             {faculties.map(fac => {
               const count = courses.filter(c =>
                 (c.facultyId && c.facultyId === fac.id) ||
+                (c.departmentId && c.departmentId === fac.id) ||
                 c.department.toLowerCase() === fac.name.toLowerCase() ||
                 c.department.toLowerCase().includes(fac.code.toLowerCase()) ||
                 fac.name.toLowerCase().includes(c.department.toLowerCase())

@@ -5,15 +5,24 @@ import {
   Download,
   Pin,
   Send,
-  CornerDownRight
+  CornerDownRight,
+  Eye,
+  FileCode,
+  FileSpreadsheet,
+  Presentation,
+  FileArchive,
+  Image as ImageIcon
 } from 'lucide-react';
-import type { ThreadPost } from '../types';
+import type { ThreadPost, Attachment } from '../types';
 import { useApp } from '../context/AppContext';
+import { FilePreviewModal } from './FilePreviewModal';
+import { downloadFile, getFileType } from '../utils/fileManager';
 
 export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
-  const { addReply, toggleReaction, selectedChannel, showDialog } = useApp();
+  const { addReply, toggleReaction, selectedChannel, selectedCourse } = useApp();
   const [replyText, setReplyText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   const availableEmojis = ['👍', '❤️', '👏', '🎉', '💡', '🚀', '👀', '💯'];
 
@@ -129,29 +138,64 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
         {/* Attachments if Present */}
         {post.attachments && post.attachments.length > 0 && (
           <div className="mt-3 space-y-2">
-            {post.attachments.map(att => (
-              <div
-                key={att.id}
-                className="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-zinc-100/80 transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded bg-red-100 text-red-700 flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4" />
+            {post.attachments.map(att => {
+              const type = getFileType(att.name);
+              const icon =
+                type === 'pdf' ? <FileText className="w-4 h-4 text-rose-600" /> :
+                type === 'image' ? <ImageIcon className="w-4 h-4 text-purple-600" /> :
+                type === 'code' ? <FileCode className="w-4 h-4 text-indigo-600" /> :
+                type === 'sheet' ? <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> :
+                type === 'presentation' ? <Presentation className="w-4 h-4 text-amber-600" /> :
+                type === 'archive' ? <FileArchive className="w-4 h-4 text-zinc-600" /> :
+                <FileText className="w-4 h-4 text-blue-600" />;
+
+              return (
+                <div
+                  key={att.id}
+                  className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-200 bg-zinc-50/80 hover:bg-zinc-100/90 transition-all group"
+                >
+                  <div
+                    onClick={() => setPreviewAttachment(att)}
+                    className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0 shadow-2xs">
+                      {icon}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-zinc-900 group-hover:text-[#173bff] transition-colors truncate">
+                        {att.name}
+                      </p>
+                      <p className="text-[10px] text-zinc-400 capitalize">
+                        {type} • {att.size}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-zinc-800 truncate">{att.name}</p>
-                    <p className="text-[10px] text-zinc-400">PDF • {att.size}</p>
+
+                  <div className="flex items-center gap-1 shrink-0 ml-3">
+                    <button
+                      onClick={() => setPreviewAttachment(att)}
+                      className="p-1.5 text-zinc-500 hover:text-[#173bff] hover:bg-white rounded-lg transition-colors cursor-pointer"
+                      title="Preview file"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        downloadFile(att.name, att.url, {
+                          courseName: selectedCourse?.name,
+                          category: 'Post Attachment',
+                          author: post.author.name
+                        })
+                      }
+                      className="p-1.5 text-zinc-500 hover:text-emerald-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
+                      title="Download file"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => showDialog(`Opening ${att.name}...`, { type: 'info', title: 'Attachment Preview' })}
-                  className="p-1 text-zinc-500 hover:text-zinc-800 rounded transition-colors cursor-pointer"
-                  title="Download"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -221,6 +265,23 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
           </button>
         </form>
       </div>
+
+      {/* File Preview Modal */}
+      {previewAttachment && (
+        <FilePreviewModal
+          file={{
+            name: previewAttachment.name,
+            size: previewAttachment.size,
+            url: previewAttachment.url,
+            uploadedBy: post.author.name,
+            uploadedAt: post.timestamp,
+            category: 'Post Attachment',
+            courseName: selectedCourse?.name
+          }}
+          isOpen={Boolean(previewAttachment)}
+          onClose={() => setPreviewAttachment(null)}
+        />
+      )}
     </div>
   );
 };

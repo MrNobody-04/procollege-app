@@ -1,7 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Send, Video, Phone, Paperclip, Smile, MoreHorizontal, ChevronLeft, MessageSquare } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import {
+  Search,
+  Send,
+  Video,
+  Phone,
+  Paperclip,
+  Smile,
+  MoreHorizontal,
+  ChevronLeft,
+  MessageSquare,
+  FileText,
+  FileCode,
+  Image as ImageIcon,
+  FileArchive,
+  Download,
+  Eye,
+  X
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
+import { downloadFile, readFileAsDataUrl, getFileType, getFileMimeType } from '../utils/fileManager';
+import { FilePreviewModal } from './FilePreviewModal';
+import type { Attachment } from '../types';
 
 export const ChatView: React.FC = () => {
   const {
@@ -17,6 +37,9 @@ export const ChatView: React.FC = () => {
   const [messageInput, setMessageInput] = useState('');
   const [filterQuery, setFilterQuery] = useState('');
   const [mobileChatListOpen, setMobileChatListOpen] = useState(false);
+  const [chatAttachments, setChatAttachments] = useState<Attachment[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   // Live Dexie IndexedDB + Turso delta sync + Ably Realtime hook
   const { messages: realtimeMsgs, sendMessage } = useRealtimeMessages(selectedConversation?.id || '');
@@ -29,7 +52,7 @@ export const ChatView: React.FC = () => {
   // Combined messages with deduplication
   const allMessages = useMemo(() => {
     const seen = new Set<string>();
-    const list: { id: string; senderId?: string; content: string; timestamp: string }[] = [];
+    const list: { id: string; senderId?: string; content: string; timestamp: string; attachments?: Attachment[] }[] = [];
 
     // Local state messages
     for (const m of activeMessages) {
@@ -40,6 +63,7 @@ export const ChatView: React.FC = () => {
           senderId: m.senderId,
           content: m.content,
           timestamp: m.timestamp,
+          attachments: m.attachments,
         });
       }
     }
@@ -63,18 +87,53 @@ export const ChatView: React.FC = () => {
     return list;
   }, [activeMessages, realtimeMsgs, currentUser, otherUser]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+    const newAtts: Attachment[] = [];
+    for (const f of files) {
+      const dataUrl = await readFileAsDataUrl(f);
+      newAtts.push({
+        id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        name: f.name,
+        size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
+        type: (getFileType(f.name) === 'presentation' ? 'ppt' : getFileType(f.name)) as any,
+        mimeType: f.type || getFileMimeType(f.name),
+        url: dataUrl
+      });
+    }
+    setChatAttachments(prev => [...prev, ...newAtts]);
+    if (e.target) e.target.value = '';
+  };
+
+  const removeAttachment = (attId: string) => {
+    setChatAttachments(prev => prev.filter(a => a.id !== attId));
+  };
+
+  const getAttachmentIcon = (name: string, _type?: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return <FileText className="w-4 h-4 text-rose-500 shrink-0" />;
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')) return <ImageIcon className="w-4 h-4 text-emerald-500 shrink-0" />;
+    if (['js', 'ts', 'tsx', 'jsx', 'py', 'json', 'cpp', 'java'].includes(ext || '')) return <FileCode className="w-4 h-4 text-indigo-500 shrink-0" />;
+    if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext || '')) return <FileArchive className="w-4 h-4 text-amber-500 shrink-0" />;
+    return <FileText className="w-4 h-4 text-sky-500 shrink-0" />;
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !selectedConversation) return;
+    if ((!messageInput.trim() && chatAttachments.length === 0) || !selectedConversation) return;
     const text = messageInput.trim();
+    const attsToSend = [...chatAttachments];
     setMessageInput('');
+    setChatAttachments([]);
 
     // Update in-memory state
-    sendDirectMessage(selectedConversation.id, text);
+    sendDirectMessage(selectedConversation.id, text, attsToSend);
 
     // Save to IndexedDB, push to Turso via /api/messages, and broadcast on Ably REST
     try {
-      await sendMessage(text, currentUser.name, currentUser.id);
+      const bodyText = text || (attsToSend.length > 0 ? `[Attached ${attsToSend.length} file(s): ${attsToSend.map(a => a.name).join(', ')}]` : '');
+      await sendMessage(bodyText, currentUser.name, currentUser.id);
     } catch (err) {
       console.warn('Realtime message dispatch warning:', err);
     }
@@ -253,7 +312,57 @@ export const ChatView: React.FC = () => {
                           : 'bg-white text-zinc-800 border border-zinc-200/80 rounded-bl-none'
                       }`}
                     >
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      {msg.content && <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-2 space-y-1.5">
+                          {msg.attachments.map(att => (
+                            <div
+                              key={att.id}
+                              className={`flex items-center justify-between gap-2 p-2 rounded-lg border text-xs ${
+                                isMe
+                                  ? 'bg-white/10 border-white/20 text-white'
+                                  : 'bg-zinc-50 border-zinc-200 text-zinc-900'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {getAttachmentIcon(att.name, att.type)}
+                                <div className="min-w-0">
+                                  <span className="font-semibold truncate block max-w-[150px] sm:max-w-[190px]" title={att.name}>
+                                    {att.name}
+                                  </span>
+                                  <span className={`text-[10px] block ${isMe ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                                    {att.size}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewAttachment(att)}
+                                  className={`p-1 rounded transition-colors ${
+                                    isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-zinc-200 text-zinc-700'
+                                  }`}
+                                  title="Preview file"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadFile(att.name, att.url)}
+                                  className={`p-1 rounded transition-colors ${
+                                    isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-zinc-200 text-zinc-700'
+                                  }`}
+                                  title="Download file"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       <span
                         className={`block text-[10px] mt-1 text-right ${
                           isMe ? 'text-indigo-200' : 'text-zinc-400'
@@ -267,12 +376,48 @@ export const ChatView: React.FC = () => {
               })}
             </div>
 
+            {/* Attached Pending Files Tray */}
+            {chatAttachments.length > 0 && (
+              <div className="px-4 py-2 bg-zinc-50 border-t border-zinc-200 flex flex-wrap gap-2">
+                {chatAttachments.map(att => (
+                  <div
+                    key={att.id}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-zinc-300 rounded-md text-xs shadow-2xs"
+                  >
+                    {getAttachmentIcon(att.name, att.type)}
+                    <span className="font-medium text-zinc-800 max-w-[140px] truncate">{att.name}</span>
+                    <span className="text-[10px] text-zinc-400">({att.size})</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(att.id)}
+                      className="text-zinc-400 hover:text-rose-600 transition-colors ml-1"
+                      title="Remove attachment"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Message Input Composer */}
             <form
               onSubmit={handleSendMessage}
               className="p-4 bg-white border-t border-zinc-200 flex items-center gap-2 shrink-0"
             >
-              <button type="button" className="p-2 hover:bg-zinc-100 rounded-full text-zinc-500">
+              <input
+                type="file"
+                ref={chatFileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                multiple
+              />
+              <button
+                type="button"
+                onClick={() => chatFileInputRef.current?.click()}
+                className="p-2 hover:bg-zinc-100 rounded-full text-zinc-500 transition-colors"
+                title="Attach document or media"
+              >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button type="button" className="p-2 hover:bg-zinc-100 rounded-full text-zinc-500">
@@ -287,9 +432,9 @@ export const ChatView: React.FC = () => {
               />
               <button
                 type="submit"
-                disabled={!messageInput.trim()}
+                disabled={!messageInput.trim() && chatAttachments.length === 0}
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                  messageInput.trim()
+                  messageInput.trim() || chatAttachments.length > 0
                     ? 'bg-[#26394D] hover:bg-[#141E2B] text-white shadow'
                     : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
                 }`}
@@ -300,6 +445,12 @@ export const ChatView: React.FC = () => {
           </>
         )}
       </div>
+
+      <FilePreviewModal
+        isOpen={!!previewAttachment}
+        onClose={() => setPreviewAttachment(null)}
+        file={previewAttachment}
+      />
     </div>
   );
 };

@@ -15,9 +15,12 @@ import {
   Award,
   AlertCircle,
   Clock,
-  Upload
+  Upload,
+  Eye
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FilePreviewModal } from './FilePreviewModal';
+import { downloadFile, readFileAsDataUrl } from '../utils/fileManager';
 import type { Assignment, SubmittedFile } from '../types';
 
 interface StudentAssignmentModalProps {
@@ -44,6 +47,12 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
   const [newFileName, setNewFileName] = useState('');
   const [actionNotification, setActionNotification] = useState<string | null>(null);
   const [currentTime] = useState(() => Date.now());
+  const [previewAssignmentFile, setPreviewAssignmentFile] = useState<{
+    name: string;
+    size?: string;
+    url?: string;
+    category?: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Find student submission
@@ -56,12 +65,19 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
     }
   }, [isOpen, assignment.id, currentUser.id, currentUser.role, markAssignmentViewed]);
 
-  const handleDeviceFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeviceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      let dataUrl: string | undefined = undefined;
+      try {
+        dataUrl = await readFileAsDataUrl(file);
+      } catch (err) {
+        console.warn('Could not read file as data url:', err);
+      }
+
       const sizeStr =
         file.size > 1024 * 1024
           ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
@@ -82,7 +98,8 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
         size: sizeStr,
         type,
         isReadOnly: false,
-        uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        uploadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        url: dataUrl
       };
       attachStudentFile(assignment.id, currentUser.id, newFile);
     }
@@ -341,13 +358,36 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => showDialog(`Opening preview of ${rf.name}...`, { type: 'info', title: 'File Preview' })}
-                      className="text-[#26394D] hover:underline font-medium text-xs flex items-center gap-1 shrink-0 ml-3 cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      View
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <button
+                        onClick={() =>
+                          setPreviewAssignmentFile({
+                            name: rf.name,
+                            size: rf.size,
+                            url: rf.url,
+                            category: 'Reference Material'
+                          })
+                        }
+                        className="text-[#173bff] hover:underline font-medium text-xs flex items-center gap-1 cursor-pointer"
+                        title="Preview reference material"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Preview</span>
+                      </button>
+                      <button
+                        onClick={() =>
+                          downloadFile(rf.name, rf.url, {
+                            courseName: assignment.courseCode,
+                            category: 'Assignment Reference Material'
+                          })
+                        }
+                        className="text-zinc-600 hover:text-emerald-700 hover:underline font-medium text-xs flex items-center gap-1 cursor-pointer"
+                        title="Download reference material"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -396,12 +436,40 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPreviewAssignmentFile({
+                            name: file.name,
+                            size: file.size,
+                            url: file.url,
+                            category: 'Student Solution'
+                          })
+                        }
+                        className="p-1 text-zinc-500 hover:text-[#173bff] rounded transition-colors cursor-pointer"
+                        title="Preview submitted file"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          downloadFile(file.name, file.url, {
+                            courseName: assignment.courseCode,
+                            category: 'Student Solution'
+                          })
+                        }
+                        className="p-1 text-zinc-500 hover:text-emerald-600 rounded transition-colors cursor-pointer"
+                        title="Download submitted file"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                       {/* Delete button: ONLY allowed before deadline and when draft is unlocked */}
                       {canEditFiles ? (
                         <button
                           type="button"
                           onClick={() => handleRemoveFile(file.name)}
-                          className="text-zinc-400 hover:text-rose-600 p-1 transition-colors"
+                          className="text-zinc-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
                           title="Remove file (to replace or delete)"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -546,6 +614,27 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* File Preview Modal */}
+      {previewAssignmentFile && (
+        <FilePreviewModal
+          file={{
+            name: previewAssignmentFile.name,
+            size: previewAssignmentFile.size,
+            url: previewAssignmentFile.url,
+            category: previewAssignmentFile.category,
+            courseName: assignment.courseCode
+          }}
+          isOpen={Boolean(previewAssignmentFile)}
+          onClose={() => setPreviewAssignmentFile(null)}
+          onDownload={() =>
+            downloadFile(previewAssignmentFile.name, previewAssignmentFile.url, {
+              courseName: assignment.courseCode,
+              category: previewAssignmentFile.category
+            })
+          }
+        />
+      )}
     </div>
   );
 };

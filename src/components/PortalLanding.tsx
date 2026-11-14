@@ -18,12 +18,20 @@ import {
   Loader2,
   ShieldCheck,
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  KeyRound,
+  RotateCcw
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { INITIAL_USERS } from '../data/initialData';
 import type { User, UserRole } from '../types';
+import {
+  getOrCreateDeviceHash,
+  getStoredDeviceToken,
+  saveDeviceToken,
+  getDeviceDisplayName
+} from '../utils/deviceFingerprint';
 
 export const PortalLanding: React.FC = () => {
   const {
@@ -43,19 +51,27 @@ export const PortalLanding: React.FC = () => {
   const [requestSubmitted, setRequestSubmitted] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
-  // Sign In Modal State
-  const [authStep, setAuthStep] = useState<'credentials' | 'otp' | 'change-password'>('credentials');
+  // Sign In & Password Reset Modal State
+  const [authStep, setAuthStep] = useState<'credentials' | 'otp' | 'change-password' | 'forgot-password-request' | 'forgot-password-verify'>('credentials');
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
 
-  // OTP State
+  // OTP State (Login 2FA)
   const [otpEmail, setOtpEmail] = useState<string>('');
   const [otpCode, setOtpCode] = useState<string>('');
   const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
   const [resendCooldown, setResendCooldown] = useState<number>(0);
   const [isResending, setIsResending] = useState<boolean>(false);
   const [resendMessage, setResendMessage] = useState<string>('');
+
+  // Forgot Password Recovery State
+  const [resetEmail, setResetEmail] = useState<string>('');
+  const [resetOtpCode, setResetOtpCode] = useState<string>('');
+  const [resetNewPass, setResetNewPass] = useState<string>('');
+  const [resetConfirmPass, setResetConfirmPass] = useState<string>('');
+  const [isRequestingResetOtp, setIsRequestingResetOtp] = useState<boolean>(false);
+  const [isVerifyingReset, setIsVerifyingReset] = useState<boolean>(false);
 
   useEffect(() => {
     let timer: any;
@@ -96,6 +112,10 @@ export const PortalLanding: React.FC = () => {
     setOtpEmail('');
     setNewPassword('');
     setConfirmPassword('');
+    setResetEmail('');
+    setResetOtpCode('');
+    setResetNewPass('');
+    setResetConfirmPass('');
     setPendingAuthResponse(null);
   };
 
@@ -110,15 +130,20 @@ export const PortalLanding: React.FC = () => {
     localStorage.setItem('procollege_user', JSON.stringify(data.user));
     localStorage.setItem('procollege_college', JSON.stringify(data.college || { name: instName }));
 
-    const roleStr = data.user.role;
+    if (data.deviceToken) {
+      saveDeviceToken(data.deviceToken);
+    }
+
+    // Strict 4-Tier Role Architecture Enforcement: developer | admin | lecturer | student
+    const roleStr = String(data.user.role || '').toLowerCase();
     const mappedRole: UserRole =
-      roleStr === 'developer'
+      roleStr === 'developer' || roleStr === 'platform_admin'
         ? 'developer'
         : roleStr === 'admin'
           ? 'admin'
-          : roleStr === 'teacher'
-            ? 'professor'
-            : 'student';
+          : roleStr === 'student'
+            ? 'student'
+            : 'lecturer';
 
     const appUser: User = {
       id: data.user.id,
@@ -128,15 +153,17 @@ export const PortalLanding: React.FC = () => {
       license:
         mappedRole === 'developer'
           ? 'ProCollege Enterprise Platform License'
-          : mappedRole === 'admin' || mappedRole === 'professor'
-            ? 'ProCollege Verified for Faculty'
-            : 'ProCollege Verified for Students',
+          : mappedRole === 'admin'
+            ? 'ProCollege Verified for Administration'
+            : mappedRole === 'lecturer'
+              ? 'ProCollege Verified for Faculty'
+              : 'ProCollege Verified for Students',
       department:
         mappedRole === 'developer'
           ? 'Platform Architecture & Operations'
           : mappedRole === 'admin'
             ? 'Administration'
-            : 'Department of BIT',
+            : String(data.user.department || 'Academic Department'),
       institutionName:
         mappedRole === 'developer'
           ? 'ProCollege Platform Operations'
@@ -159,15 +186,29 @@ export const PortalLanding: React.FC = () => {
     setResendMessage('');
 
     try {
+      const deviceHash = getOrCreateDeviceHash();
+      const deviceToken = getStoredDeviceToken();
+      const deviceName = getDeviceDisplayName();
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailToUse, password: passwordToUse }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-hash': deviceHash,
+          'x-device-token': deviceToken,
+        },
+        body: JSON.stringify({
+          email: emailToUse,
+          password: passwordToUse,
+          deviceHash,
+          deviceToken,
+          deviceName,
+        }),
       });
 
       const data = await res.json();
 
-      // Check requireOtp FIRST: triggers 2FA flow for student/admin
+      // Check requireOtp FIRST: triggers 2FA flow for student/admin only if device is NOT recognized
       if (data.requireOtp) {
         setAuthStep('otp');
         setOtpEmail(data.email || emailToUse);
@@ -178,6 +219,10 @@ export const PortalLanding: React.FC = () => {
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Login failed. Please check your credentials.');
+      }
+
+      if (data.deviceToken) {
+        saveDeviceToken(data.deviceToken);
       }
 
       finishLoginSession(data);
@@ -195,16 +240,22 @@ export const PortalLanding: React.FC = () => {
     setResendMessage('');
     setLoginError('');
     try {
-      const res = await fetch('/api/auth/resend-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: otpEmail }),
-      });
+      const targetEmail = authStep === 'forgot-password-verify' ? resetEmail : otpEmail;
+      const res = await fetch(
+        authStep === 'forgot-password-verify'
+          ? '/api/auth/forgot-password/request-otp'
+          : '/api/auth/resend-otp',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: targetEmail }),
+        }
+      );
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to resend verification code');
       }
-      setResendMessage(data.message || `A new 6-digit verification code has been dispatched to ${otpEmail}.`);
+      setResendMessage(data.message || `A new 6-digit verification code has been dispatched to ${targetEmail}.`);
       setResendCooldown(60);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Could not resend verification code';
@@ -225,14 +276,29 @@ export const PortalLanding: React.FC = () => {
 
     setIsVerifyingOtp(true);
     try {
+      const deviceHash = getOrCreateDeviceHash();
+      const deviceName = getDeviceDisplayName();
+
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: otpEmail, otp: code }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-hash': deviceHash
+        },
+        body: JSON.stringify({
+          email: otpEmail,
+          otp: code,
+          deviceHash,
+          deviceName
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Invalid or expired OTP code.');
+      }
+
+      if (data.deviceToken) {
+        saveDeviceToken(data.deviceToken);
       }
 
       if (data.mustChangePassword) {
@@ -247,6 +313,99 @@ export const PortalLanding: React.FC = () => {
       setLoginError(message);
     } finally {
       setIsVerifyingOtp(false);
+    }
+  };
+
+  // Secure OTP-Based Password Recovery (Forgot Password Flow)
+  const handleRequestPasswordResetOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setResendMessage('');
+    const email = resetEmail.trim().toLowerCase();
+    if (!email) {
+      setLoginError('Please enter your registered institutional email address.');
+      return;
+    }
+
+    setIsRequestingResetOtp(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password/request-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to request password reset code.');
+      }
+
+      setResetOtpCode('');
+      setResetNewPass('');
+      setResetConfirmPass('');
+      setAuthStep('forgot-password-verify');
+      setResendCooldown(60);
+      setResendMessage(data.message || `A 6-digit security code has been sent to ${email}.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error requesting password reset.';
+      setLoginError(msg);
+    } finally {
+      setIsRequestingResetOtp(false);
+    }
+  };
+
+  const handleVerifyPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    const code = resetOtpCode.trim();
+    if (!code || code.length !== 6) {
+      setLoginError('Please enter a valid 6-digit verification code.');
+      return;
+    }
+    if (!resetNewPass || resetNewPass.length < 6) {
+      setLoginError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (resetNewPass !== resetConfirmPass) {
+      setLoginError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setIsVerifyingReset(true);
+    try {
+      const deviceHash = getOrCreateDeviceHash();
+      const deviceName = getDeviceDisplayName();
+
+      const res = await fetch('/api/auth/forgot-password/verify-reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-device-hash': deviceHash,
+        },
+        body: JSON.stringify({
+          email: resetEmail.trim().toLowerCase(),
+          otpCode: code,
+          newPassword: resetNewPass,
+          deviceHash,
+          deviceName,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to reset password.');
+      }
+
+      if (data.deviceToken) {
+        saveDeviceToken(data.deviceToken);
+      }
+
+      // Automatically log the user in immediately!
+      finishLoginSession(data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error resetting password.';
+      setLoginError(msg);
+    } finally {
+      setIsVerifyingReset(false);
     }
   };
 
@@ -1529,9 +1688,23 @@ export const PortalLanding: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-                      Password
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-zinc-700">
+                        Password
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLoginError('');
+                          setResendMessage('');
+                          setResetEmail(loginEmail);
+                          setAuthStep('forgot-password-request');
+                        }}
+                        className="text-xs text-[#173bff] hover:text-[#0c2de6] hover:underline font-semibold cursor-pointer"
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
                     <input
                       type="password"
                       required
@@ -1752,6 +1925,195 @@ export const PortalLanding: React.FC = () => {
                         setLoginError('');
                       }}
                       className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Sign In</span>
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* Step 4: Forgot Password - Request 6-Digit OTP */}
+            {authStep === 'forgot-password-request' && (
+              <>
+                <div className="mt-5">
+                  <div className="w-10 h-10 rounded-xl bg-[#173bff]/10 text-[#173bff] flex items-center justify-center mb-3">
+                    <KeyRound className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Reset Your Password</h3>
+                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                    Enter your registered institutional email address. We'll dispatch a secure 6-digit verification code directly to your email inbox.
+                  </p>
+                </div>
+
+                <form onSubmit={handleRequestPasswordResetOtp} className="mt-5 space-y-4">
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Institutional Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      autoComplete="email"
+                      value={resetEmail}
+                      onChange={e => setResetEmail(e.target.value)}
+                      placeholder="e.g. yourname@institution.edu"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isRequestingResetOtp || !resetEmail.trim()}
+                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                  >
+                    {isRequestingResetOtp ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Sending Security Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        <span>Send Verification Code</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthStep('credentials');
+                        setLoginError('');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Sign In</span>
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+
+            {/* Step 5: Forgot Password - Verify OTP & Set New Password */}
+            {authStep === 'forgot-password-verify' && (
+              <>
+                <div className="mt-5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Verify Code & Set New Password</h3>
+                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                    Enter the 6-digit verification code sent to <span className="font-semibold text-zinc-900">{resetEmail}</span> along with your new password.
+                  </p>
+                </div>
+
+                {resendMessage && (
+                  <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{resendMessage}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleVerifyPasswordReset} className="mt-5 space-y-4">
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5 text-center">
+                      6-Digit Verification Code
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      autoFocus
+                      required
+                      value={resetOtpCode}
+                      onChange={e => setResetOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="• • • • • •"
+                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-2.5 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-zinc-500 px-1">
+                    <span>Didn't receive the code?</span>
+                    <button
+                      type="button"
+                      onClick={handleResendOtp}
+                      disabled={resendCooldown > 0 || isResending}
+                      className="font-semibold text-[#173bff] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
+                    >
+                      {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : isResending ? 'Sending...' : 'Resend Code'}
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={resetNewPass}
+                      onChange={e => setResetNewPass(e.target.value)}
+                      placeholder="At least 6 characters"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={resetConfirmPass}
+                      onChange={e => setResetConfirmPass(e.target.value)}
+                      placeholder="Re-enter new password"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isVerifyingReset || resetOtpCode.length !== 6 || !resetNewPass || !resetConfirmPass}
+                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(16,185,129,0.35)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                  >
+                    {isVerifyingReset ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Resetting Password...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Reset Password & Enter Portal</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthStep('credentials');
+                        setLoginError('');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Back to Sign In</span>
