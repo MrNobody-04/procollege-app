@@ -1984,6 +1984,57 @@ app.delete('/api/platform/institutions/:id/admins/:adminId', async (c) => {
   }
 });
 
+// 1.86 Rename / Edit an Institutional Admin
+app.patch('/api/platform/institutions/:id/admins/:adminId', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
+      return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
+    }
+
+    const { id, adminId } = c.req.param();
+    const body = await c.req.json();
+    const newName = (body.name || '').trim();
+    const newDept = body.department !== undefined ? String(body.department).trim() : undefined;
+
+    if (!newName) {
+      return c.json({ error: 'Administrator name cannot be empty' }, 400);
+    }
+
+    const db = getDb(c);
+    let updateSql = `UPDATE users SET name = ?`;
+    const updateArgs: any[] = [newName];
+
+    if (newDept !== undefined) {
+      updateSql += `, department = ?`;
+      updateArgs.push(newDept);
+    }
+
+    updateSql += ` WHERE id = ? AND (college_id = ? OR institution_id = ?) AND role = 'admin';`;
+    updateArgs.push(adminId, id, id);
+
+    const res = await db.execute({
+      sql: updateSql,
+      args: updateArgs
+    });
+
+    if (res.rowsAffected === 0) {
+      return c.json({ error: 'Administrator not found or could not be updated' }, 404);
+    }
+
+    return c.json({
+      success: true,
+      adminId,
+      name: newName,
+      department: newDept,
+      message: `Administrator name updated to "${newName}" successfully.`
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
 // 1.81 Get Platform Email Gateway Settings
 app.get('/api/platform/email-settings', async (c) => {
   try {

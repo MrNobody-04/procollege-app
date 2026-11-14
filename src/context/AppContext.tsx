@@ -220,6 +220,7 @@ interface AppContextType {
   appointInstitutionAdmin: (instId: string, data: { name: string; email: string; department?: string }) => Promise<any>;
   resetInstitutionAdminPassword: (instId: string, adminId: string) => Promise<any>;
   removeInstitutionAdmin: (instId: string, adminId: string) => Promise<any>;
+  renameInstitutionAdmin: (instId: string, adminId: string, data: { name: string; department?: string }) => Promise<any>;
 
   createInstitutionalAdmin: (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => User;
   deleteOrganization: (orgName: string) => void;
@@ -2517,6 +2518,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return await res.json();
   };
 
+  const renameInstitutionAdmin = async (instId: string, adminId: string, data: { name: string; department?: string }) => {
+    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins/${encodeURIComponent(adminId)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to update administrator');
+    }
+    return await res.json();
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -2623,6 +2641,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         appointInstitutionAdmin,
         resetInstitutionAdminPassword,
         removeInstitutionAdmin,
+        renameInstitutionAdmin,
 
         createInstitutionalAdmin,
         deleteOrganization,
