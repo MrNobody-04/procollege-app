@@ -67,6 +67,25 @@ async function testSuite() {
     return;
   }
 
+  // If no admin exists yet for this organization, appoint one using the Developer Admin API
+  if (!targetOrg.adminCount || targetOrg.adminCount === 0 || !targetOrg.admins?.length) {
+    console.log('   Appointing initial Institutional Admin for', targetOrg.name, '...');
+    const appointRes = await fetch(`${BASE}/api/platform/institutions/${encodeURIComponent(targetOrg.id)}/admins`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${devLoginData.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: 'Ram Bista',
+        email: 'rambista@publicenglishboardingschool.edu.np',
+        department: 'Academic Administration'
+      })
+    });
+    const appointData = await appointRes.json();
+    console.log('   Appoint Admin status:', appointRes.status, appointData.success ? 'Success' : appointData.error);
+  }
+
   // Now test Developer Master Reset Password endpoint on this organization
   const resetRes = await fetch(`${BASE}/api/platform/institutions/${encodeURIComponent(targetOrg.id)}/reset-admin-password`, {
     method: 'POST',
