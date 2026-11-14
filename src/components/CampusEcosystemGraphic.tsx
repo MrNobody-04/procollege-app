@@ -104,40 +104,56 @@ export const CampusEcosystemGraphic: React.FC = () => {
         style={{ transformStyle: 'preserve-3d' }}
         className="relative w-full h-full"
       >
-        {/* --- 1. Pristine 3D Campus Isometric Ecosystem Illustration --- */}
-        <img
-          src="/hero-campus-feathered.png"
-          alt="ProSchool 3D Connected Campus Ecosystem"
-          className="w-full h-full object-contain filter drop-shadow-[0_20px_45px_rgba(79,70,229,0.12)] pointer-events-none"
-          draggable={false}
-        />
-
-        {/* --- 2. Central Earth Radiant Atmosphere & Halo Glow Pulse --- */}
+        {/* --- 1. Central Ambient Halo (Positioned BEHIND image to prevent blurring artwork) --- */}
         <div
-          className="absolute top-[41%] left-[49.5%] -translate-x-1/2 -translate-y-1/2 w-[185px] h-[185px] rounded-full pointer-events-none"
+          className="absolute top-[41%] left-[49.5%] -translate-x-1/2 -translate-y-1/2 w-[220px] h-[220px] rounded-full pointer-events-none -z-10"
           style={{
-            background: 'radial-gradient(circle, rgba(0, 240, 255, 0.35) 0%, rgba(99, 102, 241, 0.2) 45%, rgba(168, 85, 247, 0) 70%)',
-            filter: 'blur(12px)',
+            background: 'radial-gradient(circle, rgba(0, 240, 255, 0.45) 0%, rgba(99, 102, 241, 0.25) 45%, rgba(168, 85, 247, 0) 70%)',
+            filter: 'blur(20px)',
             animation: 'earthPulse 4s ease-in-out infinite'
           }}
         />
 
-        {/* Orbiting Gimbal Laser Flare Shimmer */}
+        {/* --- 2. Pristine Ultra-HD 3D Campus Isometric Ecosystem Illustration --- */}
+        <img
+          src="/hero-campus-feathered-hd.png"
+          srcSet="/hero-campus-feathered-hd.png 2x, /hero-campus-feathered.png 1x"
+          alt="ProCollege 3D Connected Campus Ecosystem"
+          className="w-full h-full object-contain pointer-events-none drop-shadow-[0_24px_50px_rgba(79,70,229,0.18)]"
+          style={{
+            imageRendering: '-webkit-optimize-contrast',
+            filter: 'contrast(1.05) saturate(1.10) brightness(1.01)'
+          }}
+          draggable={false}
+        />
+
+        {/* Orbiting Gimbal Laser Flare Shimmer (Pure crisp border) */}
         <div
-          className="absolute top-[41%] left-[49.5%] -translate-x-1/2 -translate-y-1/2 w-[220px] h-[110px] rounded-[100%] border border-cyan-400/40 pointer-events-none"
+          className="absolute top-[41%] left-[49.5%] -translate-x-1/2 -translate-y-1/2 w-[220px] h-[110px] rounded-[100%] border-[1.5px] border-cyan-400/60 pointer-events-none"
           style={{
             transform: 'translate(-50%, -50%) rotate(-25deg)',
-            boxShadow: '0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 15px rgba(0, 240, 255, 0.2)',
+            boxShadow: '0 0 18px rgba(0, 240, 255, 0.4), inset 0 0 15px rgba(0, 240, 255, 0.3)',
             animation: 'orbitSpin 18s linear infinite'
           }}
         />
 
-        {/* --- 3. Luminous Fiber-Optic Energy Stream Traveling Photons (SVG Layer) --- */}
+        {/* Inner Counter-Rotating Precision Orbit Ring */}
+        <div
+          className="absolute top-[41%] left-[49.5%] -translate-x-1/2 -translate-y-1/2 w-[180px] h-[90px] rounded-[100%] border border-purple-400/50 pointer-events-none"
+          style={{
+            transform: 'translate(-50%, -50%) rotate(35deg)',
+            boxShadow: '0 0 12px rgba(168, 85, 247, 0.35)',
+            animation: 'orbitSpin 14s linear infinite reverse'
+          }}
+        />
+
+        {/* --- 3. Luminous Fiber-Optic Energy Stream Traveling Photons (Vector SVG Layer) --- */}
         <svg
           viewBox="0 0 1058 822"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="absolute inset-0 w-full h-full pointer-events-none"
+          shapeRendering="geometricPrecision"
+          className="absolute inset-0 w-full h-full pointer-events-none z-10"
         >
           <defs>
             {/* Glowing Gradient Filters */}

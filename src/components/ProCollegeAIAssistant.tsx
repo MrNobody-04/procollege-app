@@ -97,24 +97,7 @@ function getConsistentMaleVoice(): SpeechSynthesisVoice | null {
   return voices[0] || null;
 }
 
-// 3D Holographic Iridescent Orb
-const IridescentOrb: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md' }) => {
-  const dim = size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-10 h-10' : 'w-8 h-8';
 
-  return (
-    <div
-      className={`relative ${dim} rounded-full overflow-hidden shadow-lg shadow-purple-500/25 shrink-0 select-none`}
-      title="ProCollege AI Intelligence Orb"
-    >
-      <div className="absolute inset-0 bg-gradient-to-tr from-[#3b82f6] via-[#a855f7] to-[#ec4899] opacity-95 animate-pulse" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_75%,rgba(30,58,138,0.85),transparent_65%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_25%,rgba(255,255,255,0.95),rgba(255,255,255,0)_50%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_80%,rgba(56,189,248,0.7),transparent_55%)]" />
-      <div className="absolute top-1 left-1.5 w-3.5 h-1.5 bg-white/80 rounded-full blur-[0.4px] transform -rotate-30" />
-      <div className="absolute bottom-1 right-2 w-1.5 h-1 bg-white/40 rounded-full blur-[0.5px]" />
-    </div>
-  );
-};
 
 export const ProCollegeAIAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -339,7 +322,9 @@ export const ProCollegeAIAssistant: React.FC = () => {
           >
             <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-30 group-hover:opacity-60 blur-md transition duration-500" />
             <div className="relative flex items-center gap-2.5">
-              <IridescentOrb size="md" />
+              <div className="w-8 h-8 rounded-full bg-[#141E2B] border border-white/30 flex items-center justify-center p-1.5 shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <ProCollegeLogo size="sm" variant="mark-only" />
+              </div>
               <div className="text-left">
                 <span className="block text-xs font-bold text-white tracking-wide leading-tight">
                   ProCollege AI
