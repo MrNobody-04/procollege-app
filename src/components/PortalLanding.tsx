@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Video,
@@ -23,10 +23,12 @@ import {
   ChevronUp,
   ChevronRight,
   GraduationCap,
-  Calendar,
   Award,
-  Sparkles
+  Sparkles,
+  Megaphone,
+  ClipboardList
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { CampusEcosystemGraphic } from './CampusEcosystemGraphic';
@@ -66,49 +68,6 @@ export const PortalLanding: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState<boolean>(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
-
-  // Dynamic Up-to-Date Real-Time Calendar for ProSchool Workspace Preview
-  const calendarData = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const currentDay = now.getDate();
-    const currentHour = now.getHours();
-
-    const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
-    const termSeason = currentMonth >= 7 ? 'Fall' : currentMonth >= 4 ? 'Summer' : 'Spring';
-    const termText = `Term: ${termSeason} ${currentYear}`;
-    const monthYearText = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-
-    const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sun
-    const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
-
-    const prevMonthDays = Array.from(
-      { length: firstDayOfWeek },
-      (_, i) => daysInPrevMonth - firstDayOfWeek + 1 + i
-    );
-
-    const currentMonthDays = Array.from(
-      { length: daysInCurrentMonth },
-      (_, i) => i + 1
-    );
-
-    const filledCount = prevMonthDays.length + currentMonthDays.length;
-    const totalGridCells = filledCount <= 28 ? 28 : Math.ceil(filledCount / 7) * 7;
-    const nextMonthDaysCount = totalGridCells - filledCount;
-    const nextMonthDays = Array.from({ length: nextMonthDaysCount }, (_, i) => i + 1);
-
-    return {
-      greeting,
-      termText,
-      monthYearText,
-      currentDay,
-      prevMonthDays,
-      currentMonthDays,
-      nextMonthDays,
-    };
-  }, []);
 
   // Sign In & Password Reset Modal State
   const [authStep, setAuthStep] = useState<
@@ -1371,148 +1330,208 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 6. EVERYTHING YOU NEED IN ONE PLACE (Interactive Dashboard UI) */}
+      {/* 6. EVERYTHING YOU NEED IN ONE PLACE (Matches Image 2 & Motion) */}
       {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-white border-t border-zinc-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Content */}
-            <div className="lg:col-span-5 space-y-6 text-left">
-              <h2
-                data-reveal
-                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight"
-              >
-                Everything You Need in One Place
+      <section className="py-16 sm:py-24 bg-gradient-to-b from-white via-[#FAF5FF]/30 to-white border-t border-zinc-100 overflow-hidden relative">
+        {/* Subtle ambient blur light on top-right */}
+        <div className="absolute top-0 right-0 w-[550px] h-[550px] bg-gradient-to-bl from-purple-200/25 via-indigo-100/15 to-transparent rounded-full blur-3xl pointer-events-none -z-0" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+            
+            {/* Left Column Content & 4 Connected Badges */}
+            <motion.div
+              initial={{ opacity: 0, x: -25 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-5 space-y-6 text-left"
+            >
+              {/* Heading: Exact match with Image 2 */}
+              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-slate-900 tracking-tight leading-[1.12]">
+                Everything You <br className="hidden sm:inline" />
+                Need in{' '}
+                <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
+                  One Place
+                </span>
               </h2>
 
-              <p
-                data-reveal
-                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                className="text-sm sm:text-base text-zinc-600 leading-relaxed"
-              >
+              {/* Subtitle */}
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal max-w-md">
                 From virtual classrooms to student management, ProSchool helps you work smarter, not harder.
               </p>
 
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
-                className="space-y-3 text-xs sm:text-sm text-zinc-700"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Conduct live &amp; recorded classes</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Share resources &amp; announcements</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Manage assignments &amp; deadlines</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Communicate with students &amp; parents</span>
-                </div>
-              </div>
+              {/* 4 Connected Glassmorphism Badges (2x2 Grid) with Organic Fluid Backdrop */}
+              <div className="relative pt-2">
+                {/* Organic Fluid Glow Connector linking badges to the CTA button */}
+                <div className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-indigo-100/40 via-purple-50/50 to-blue-50/30 blur-xl pointer-events-none" />
 
-              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
-                <button
-                  onClick={() => setShowRequestModal(true)}
-                  className="px-6 py-3 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-colors cursor-pointer"
+                {/* Playful Curved Pointer Arrow pointing up & right towards the 3D workspace */}
+                <motion.div
+                  animate={{ x: [0, 4, 0], y: [0, -4, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+                  className="absolute -top-10 right-2 hidden sm:block pointer-events-none select-none z-20"
                 >
-                  Explore All Features →
-                </button>
-              </div>
-            </div>
+                  <svg width="60" height="50" viewBox="0 0 60 50" fill="none" className="text-purple-500/80 filter drop-shadow-[0_2px_4px_rgba(124,58,237,0.15)]">
+                    <path
+                      d="M 10 44 C 18 20, 32 10, 50 14"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                    <path
+                      d="M 43 7 L 51 14 L 41 21"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                  </svg>
+                </motion.div>
 
-            {/* Right Detailed Dashboard Mockup */}
-            <div className="lg:col-span-7" data-reveal="right">
-              <div className="bg-white border border-zinc-200 rounded-3xl p-4 sm:p-6 shadow-[0_20px_50px_rgba(79,70,229,0.08)] space-y-4">
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#4F46E5] text-white flex items-center justify-center font-bold text-xs">
-                      P
+                {/* 2x2 Grid of Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Badge 1: Top-Left (Deep Indigo Gradient) */}
+                  <motion.div
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white shadow-[0_8px_20px_rgba(30,27,75,0.25)] border border-indigo-500/20 cursor-pointer group transition-all"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 text-white shadow-inner group-hover:scale-105 transition-transform">
+                      <Video className="w-4 h-4 stroke-[2.2]" />
                     </div>
-                    <span className="font-bold text-xs text-zinc-900">ProSchool Workspace</span>
-                  </div>
-                  <span className="text-[11px] font-mono text-zinc-400">{calendarData.termText}</span>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-white tracking-tight">Conduct live &amp;</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-white/90 tracking-tight">recorded classes</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Badge 2: Top-Right (Frosted Glass with Megaphone) */}
+                  <motion.div
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-purple-100/90 text-[#7C3AED] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                      <Megaphone className="w-4 h-4 stroke-[2.2]" />
+                    </div>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-800 tracking-tight">Share resources &amp;</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-700 tracking-tight">announcements</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Badge 3: Bottom-Left (Frosted Glass with Clipboard) */}
+                  <motion.div
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-blue-100/90 text-[#2563EB] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                      <ClipboardList className="w-4 h-4 stroke-[2.2]" />
+                    </div>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-800 tracking-tight">Manage assignments</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-700 tracking-tight">&amp; deadlines</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Badge 4: Bottom-Right (Frosted Glass with Chat) */}
+                  <motion.div
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-sky-100/90 text-[#0284C7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                      <MessageSquare className="w-4 h-4 stroke-[2.2]" />
+                    </div>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-800 tracking-tight">Communicate with</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-700 tracking-tight">students &amp; parents</span>
+                    </div>
+                  </motion.div>
                 </div>
-
-                {/* Main Inside Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-                  {/* Left Column Stats */}
-                  <div className="sm:col-span-7 space-y-3">
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3.5 rounded-2xl border border-indigo-100">
-                      <p className="text-xs text-indigo-950 font-bold">{calendarData.greeting}, Teacher! 👋</p>
-                      <p className="text-[11px] text-zinc-500">Ready for today's classes?</p>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-xl text-center">
-                        <span className="text-[10px] text-blue-700 font-semibold block">Students</span>
-                        <span className="text-base font-black text-blue-950">2,850</span>
-                      </div>
-                      <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-xl text-center">
-                        <span className="text-[10px] text-rose-700 font-semibold block">Classes</span>
-                        <span className="text-base font-black text-rose-950">24</span>
-                      </div>
-                      <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-xl text-center">
-                        <span className="text-[10px] text-emerald-700 font-semibold block">Tasks</span>
-                        <span className="text-base font-black text-emerald-950">12</span>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-zinc-50 border border-zinc-200/80 rounded-xl space-y-1">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase">Next Lecture</span>
-                      <p className="text-xs font-bold text-zinc-900">Computer Science • Algorithms</p>
-                      <p className="text-[10px] text-zinc-500">10:00 AM – 11:30 AM (Room 204)</p>
-                    </div>
-                  </div>
-
-                  {/* Right Calendar Simulation - Fully Dynamic & Up-to-Date */}
-                  <div className="sm:col-span-5 bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-3 text-xs space-y-2">
-                    <div className="flex items-center justify-between font-bold text-zinc-800 text-[11px]">
-                      <span>{calendarData.monthYearText}</span>
-                      <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                    </div>
-                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-zinc-400 font-mono">
-                      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-                    </div>
-                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono">
-                      {calendarData.prevMonthDays.map((d) => (
-                        <span key={`prev-${d}`} className="text-zinc-300 py-0.5 select-none">{d}</span>
-                      ))}
-                      {calendarData.currentMonthDays.map((d) => (
-                        <span
-                          key={`curr-${d}`}
-                          className={`py-0.5 rounded transition-colors ${
-                            d === calendarData.currentDay
-                              ? 'bg-[#4F46E5] text-white font-bold shadow-xs'
-                              : 'text-zinc-700 hover:bg-zinc-200 cursor-default'
-                          }`}
-                        >
-                          {d}
-                        </span>
-                      ))}
-                      {calendarData.nextMonthDays.map((d) => (
-                        <span key={`next-${d}`} className="text-zinc-300 py-0.5 select-none">{d}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
               </div>
-            </div>
+
+              {/* Glowing CTA Button */}
+              <div className="pt-2">
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0 15px 30px rgba(99,102,241,0.4)" }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setShowRequestModal(true)}
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] hover:from-[#2563EB] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold shadow-[0_10px_25px_rgba(99,102,241,0.35)] cursor-pointer transition-all duration-300"
+                >
+                  <span>Explore All Features</span>
+                  <span className="text-base leading-none">→</span>
+                </motion.button>
+              </div>
+            </motion.div>
+
+            {/* Right Column: 3D Isometric Glassmorphism Workspace Showcase */}
+            <motion.div
+              initial={{ opacity: 0, x: 25 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="lg:col-span-7 relative flex items-center justify-center"
+            >
+              {/* Atmospheric Background Nebula Glow */}
+              <div className="absolute -inset-6 bg-gradient-to-br from-indigo-500/20 via-purple-500/15 to-transparent blur-3xl rounded-full pointer-events-none" />
+
+              {/* Floating Animated Stars / Sparkles matching Image 2 */}
+              <motion.div
+                animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0.9, 0.4], rotate: [0, 60, 0] }}
+                transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }}
+                className="absolute top-2 right-8 text-purple-400 text-lg pointer-events-none select-none z-20"
+              >
+                ✦
+              </motion.div>
+              <motion.div
+                animate={{ scale: [1, 1.45, 1], opacity: [0.35, 0.85, 0.35], rotate: [0, -60, 0] }}
+                transition={{ repeat: Infinity, duration: 3.5, delay: 0.8, ease: "easeInOut" }}
+                className="absolute bottom-6 right-16 text-indigo-400 text-base pointer-events-none select-none z-20"
+              >
+                ✦
+              </motion.div>
+              <motion.div
+                animate={{ scale: [0.8, 1.3, 0.8], opacity: [0.3, 0.75, 0.3] }}
+                transition={{ repeat: Infinity, duration: 4.8, delay: 1.5, ease: "easeInOut" }}
+                className="absolute top-1/2 right-3 text-purple-300 text-sm pointer-events-none select-none z-20"
+              >
+                ✦
+              </motion.div>
+
+              {/* Main 3D Floating Isometric Canvas */}
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut" }}
+                whileHover={{ scale: 1.02 }}
+                className="relative w-full max-w-[620px] transition-transform duration-500 cursor-pointer group"
+                onClick={() => launchDemoMode('professor')}
+                title="Click to launch interactive teacher demo"
+              >
+                <img
+                  src="/workspace-3d-feathered.png"
+                  alt="ProSchool 3D Glassmorphism Workspace"
+                  className="w-full h-auto object-contain drop-shadow-[0_25px_50px_rgba(79,70,229,0.22)] select-none"
+                />
+
+                {/* Interactive Floating Pill Badge on the 3D board */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 }}
+                  className="absolute bottom-3 right-6 hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 backdrop-blur-md border border-white/90 shadow-md text-[11px] font-semibold text-indigo-950 group-hover:bg-white group-hover:shadow-lg transition-all"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Click to Launch Live Demo</span>
+                  <span className="text-indigo-600 font-bold">→</span>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+
           </div>
         </div>
       </section>
