@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Video,
@@ -21,22 +21,13 @@ import {
   Folder,
   BarChart2,
   ChevronDown,
-  ChevronUp,
   ChevronRight,
   GraduationCap,
   Calendar,
-  Sparkles,
   Award,
   Megaphone,
   BookOpen,
-  Compass,
-  Headphones,
-  Star,
-  QrCode,
-  Bell,
-  Home,
-  User as UserIcon,
-  Laptop
+  Compass
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -74,7 +65,49 @@ export const PortalLanding: React.FC = () => {
   const [requestSubmitted, setRequestSubmitted] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState<boolean>(false);
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
+
+  // Dynamic Up-to-Date Real-Time Calendar for ProSchool Workspace Preview
+  const calendarData = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const currentDay = now.getDate();
+    const currentHour = now.getHours();
+
+    const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
+    const termSeason = currentMonth >= 7 ? 'Fall' : currentMonth >= 4 ? 'Summer' : 'Spring';
+    const termText = `Term: ${termSeason} ${currentYear}`;
+    const monthYearText = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sun
+    const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+    const prevMonthDays = Array.from(
+      { length: firstDayOfWeek },
+      (_, i) => daysInPrevMonth - firstDayOfWeek + 1 + i
+    );
+
+    const currentMonthDays = Array.from(
+      { length: daysInCurrentMonth },
+      (_, i) => i + 1
+    );
+
+    const filledCount = prevMonthDays.length + currentMonthDays.length;
+    const totalGridCells = filledCount <= 28 ? 28 : Math.ceil(filledCount / 7) * 7;
+    const nextMonthDaysCount = totalGridCells - filledCount;
+    const nextMonthDays = Array.from({ length: nextMonthDaysCount }, (_, i) => i + 1);
+
+    return {
+      greeting,
+      termText,
+      monthYearText,
+      currentDay,
+      prevMonthDays,
+      currentMonthDays,
+      nextMonthDays,
+    };
+  }, []);
 
   // Sign In & Password Reset Modal State
   const [authStep, setAuthStep] = useState<
@@ -667,16 +700,10 @@ export const PortalLanding: React.FC = () => {
             </div>
 
             <button
-              onClick={() => scrollTo('pricing')}
+              onClick={() => setShowRequestModal(true)}
               className="hover:text-[#4F46E5] transition-colors cursor-pointer"
             >
-              Pricing
-            </button>
-            <button
-              onClick={() => scrollTo('faq')}
-              className="hover:text-[#4F46E5] transition-colors cursor-pointer"
-            >
-              Resources
+              Contact
             </button>
           </nav>
 
@@ -731,16 +758,13 @@ export const PortalLanding: React.FC = () => {
                 Solutions
               </button>
               <button
-                onClick={() => scrollTo('pricing')}
+                onClick={() => {
+                  setShowRequestModal(true);
+                  setMobileMenuOpen(false);
+                }}
                 className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
               >
-                Pricing
-              </button>
-              <button
-                onClick={() => scrollTo('faq')}
-                className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
-              >
-                Resources & FAQ
+                Contact &amp; Access
               </button>
             </div>
 
@@ -1480,7 +1504,7 @@ export const PortalLanding: React.FC = () => {
                     </div>
                     <span className="font-bold text-xs text-zinc-900">ProSchool Workspace</span>
                   </div>
-                  <span className="text-[11px] font-mono text-zinc-400">Term: Fall 2026</span>
+                  <span className="text-[11px] font-mono text-zinc-400">{calendarData.termText}</span>
                 </div>
 
                 {/* Main Inside Grid */}
@@ -1488,7 +1512,7 @@ export const PortalLanding: React.FC = () => {
                   {/* Left Column Stats */}
                   <div className="sm:col-span-7 space-y-3">
                     <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3.5 rounded-2xl border border-indigo-100">
-                      <p className="text-xs text-indigo-950 font-bold">Good Morning, Teacher! 👋</p>
+                      <p className="text-xs text-indigo-950 font-bold">{calendarData.greeting}, Teacher! 👋</p>
                       <p className="text-[11px] text-zinc-500">Ready for today's classes?</p>
                     </div>
 
@@ -1514,35 +1538,34 @@ export const PortalLanding: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Right Calendar Simulation */}
+                  {/* Right Calendar Simulation - Fully Dynamic & Up-to-Date */}
                   <div className="sm:col-span-5 bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-3 text-xs space-y-2">
                     <div className="flex items-center justify-between font-bold text-zinc-800 text-[11px]">
-                      <span>November 2026</span>
+                      <span>{calendarData.monthYearText}</span>
                       <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-zinc-400 font-mono">
                       <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
                     </div>
                     <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono">
-                      <span className="text-zinc-300">28</span><span className="text-zinc-300">29</span><span className="text-zinc-300">30</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">1</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">2</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">3</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">4</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">5</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">6</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">7</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">8</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">9</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">10</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">11</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">12</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">13</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">14</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">15</span>
-                      <span className="p-1 rounded bg-[#4F46E5] text-white font-bold">16</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">17</span>
-                      <span className="p-1 rounded hover:bg-zinc-200">18</span>
+                      {calendarData.prevMonthDays.map((d) => (
+                        <span key={`prev-${d}`} className="text-zinc-300 py-0.5 select-none">{d}</span>
+                      ))}
+                      {calendarData.currentMonthDays.map((d) => (
+                        <span
+                          key={`curr-${d}`}
+                          className={`py-0.5 rounded transition-colors ${
+                            d === calendarData.currentDay
+                              ? 'bg-[#4F46E5] text-white font-bold shadow-xs'
+                              : 'text-zinc-700 hover:bg-zinc-200 cursor-default'
+                          }`}
+                        >
+                          {d}
+                        </span>
+                      ))}
+                      {calendarData.nextMonthDays.map((d) => (
+                        <span key={`next-${d}`} className="text-zinc-300 py-0.5 select-none">{d}</span>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1553,402 +1576,10 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 8. OUR HAPPY COMMUNITY (Partner Logos Strip)                   */}
-      {/* ============================================================== */}
-      <section className="py-14 bg-zinc-50/70 border-y border-zinc-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div>
-            <h3 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">Our Happy Community</h3>
-            <p className="text-xs text-zinc-500 mt-1">
-              Join a growing network of educational institutions using ProSchool.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-2 opacity-80">
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
-              <Building2 className="w-4 h-4 text-[#4F46E5]" />
-              <span>Kathmandu College</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
-              <GraduationCap className="w-4 h-4 text-[#4F46E5]" />
-              <span>Himalayan College</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
-              <BookOpen className="w-4 h-4 text-[#4F46E5]" />
-              <span>Nepal College of IT</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
-              <Award className="w-4 h-4 text-[#4F46E5]" />
-              <span>United College Nepal</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
-              <Compass className="w-4 h-4 text-[#4F46E5]" />
-              <span>Everest Academy</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 9. WHAT OUR PARTNERS SAY (Testimonial & Metrics)               */}
-      {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-white" id="testimonials">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-left mb-10">
-            <span
-              data-reveal
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
-            >
-              <Award className="w-3.5 h-3.5" />
-              <span>Trusted by Educational Institutions</span>
-            </span>
-            <h2
-              data-reveal
-              style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-              className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
-            >
-              What Our Partners Say
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            {/* Left Testimonial Card */}
-            <div
-              data-reveal="left"
-              className="lg:col-span-7 bg-zinc-50 border border-zinc-200/90 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-1 text-amber-400">
-                  <Star className="w-4 h-4 fill-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400" />
-                  <Star className="w-4 h-4 fill-amber-400" />
-                </div>
-                <blockquote className="text-sm sm:text-base text-zinc-700 italic leading-relaxed">
-                  "ProSchool has completely transformed the way we manage our college. The platform is easy to use, reliable, and packed with features that keep our students and lecturers aligned."
-                </blockquote>
-              </div>
-
-              <div className="flex items-center gap-3.5 pt-6 mt-6 border-t border-zinc-200/60">
-                <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80"
-                  alt="Dr. Ramesh Bhandari"
-                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-2xs"
-                />
-                <div>
-                  <p className="font-bold text-sm text-zinc-900">Dr. Ramesh Bhandari</p>
-                  <p className="text-xs text-zinc-500">Principal, Kathmandu College</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Metric Cards */}
-            <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4" data-reveal="right">
-              <div className="p-6 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
-                <div>
-                  <span className="text-3xl font-black text-[#4F46E5] block">500+</span>
-                  <span className="text-xs text-zinc-600 font-semibold mt-1 block">Active Institutions</span>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-[#4F46E5] flex items-center justify-center">
-                  <Building2 className="w-6 h-6" />
-                </div>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center justify-between">
-                <div>
-                  <span className="text-3xl font-black text-blue-600 block">100K+</span>
-                  <span className="text-xs text-zinc-600 font-semibold mt-1 block">Students &amp; Faculty</span>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <Users className="w-6 h-6" />
-                </div>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between sm:col-span-2 lg:col-span-1">
-                <div>
-                  <span className="text-3xl font-black text-emerald-600 block">99.9%</span>
-                  <span className="text-xs text-zinc-600 font-semibold mt-1 block">Platform Uptime SLA</span>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 10. ON THE GO (Mobile Experience - Pixel-Matched to Spec)       */}
-      {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-white border-t border-zinc-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Realistic Smartphone Mockup */}
-            <div className="lg:col-span-6 flex justify-center" data-reveal="left">
-              <div className="w-72 sm:w-80 bg-zinc-950 p-3 sm:p-3.5 rounded-[44px] shadow-[0_25px_60px_-15px_rgba(99,102,241,0.25)] border-4 border-zinc-800">
-                {/* Phone Screen */}
-                <div className="bg-white rounded-[34px] overflow-hidden p-4 space-y-3.5 select-none">
-                  {/* Status Bar */}
-                  <div className="flex items-center justify-between text-[11px] text-zinc-900 font-bold px-1">
-                    <span>9:41</span>
-                    {/* Dynamic Island Notch */}
-                    <div className="w-16 h-3.5 bg-zinc-900 rounded-full mx-auto" />
-                    <div className="flex items-center gap-1.5 text-zinc-800 text-[10px]">
-                      <span>5G</span>
-                      <div className="w-4 h-2.5 bg-zinc-900 rounded-xs" />
-                    </div>
-                  </div>
-
-                  {/* App Header with Back Arrow, ProSchool, and Qr Scanner */}
-                  <div className="flex items-center justify-between pt-1 pb-1 px-0.5">
-                    <ArrowLeft className="w-4 h-4 text-zinc-800 cursor-pointer" />
-                    <span className="font-extrabold text-sm text-zinc-900 tracking-tight">ProSchool</span>
-                    <QrCode className="w-4 h-4 text-zinc-800 cursor-pointer" />
-                  </div>
-
-                  {/* My Classes */}
-                  <div className="space-y-2 text-left">
-                    <span className="text-xs font-bold text-zinc-900 block">My Classes</span>
-                    <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between shadow-2xs">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                          <Laptop className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-xs text-zinc-900">Computer Science</p>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">Today, 10:00 AM</p>
-                        </div>
-                      </div>
-                      <button className="px-3 py-1 bg-[#4F46E5] text-white rounded-full text-[10px] font-bold shadow-xs">
-                        Join
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Assignments */}
-                  <div className="space-y-2 text-left">
-                    <span className="text-xs font-bold text-zinc-900 block">Assignments</span>
-                    <div className="p-3 rounded-2xl bg-zinc-50/80 border border-zinc-200/80 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-xs text-zinc-900">DSA Assignment</p>
-                          <p className="text-[10px] text-rose-600 font-semibold mt-0.5">Due: Aug 15, 2025</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-                    </div>
-
-                    <div className="p-3 rounded-2xl bg-zinc-50/80 border border-zinc-200/80 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                          <Bell className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-xs text-zinc-900">Notifications</p>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">2 new messages</p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-                    </div>
-                  </div>
-
-                  {/* Phone Bottom Nav (Home, Classes, Messages, Profile) */}
-                  <div className="pt-2 border-t border-zinc-100 grid grid-cols-4 gap-1 text-center">
-                    <div className="flex flex-col items-center gap-0.5 text-[#4F46E5]">
-                      <Home className="w-4 h-4" />
-                      <span className="text-[9px] font-bold">Home</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-zinc-400">
-                      <GraduationCap className="w-4 h-4" />
-                      <span className="text-[9px] font-medium">Classes</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-zinc-400">
-                      <MessageSquare className="w-4 h-4" />
-                      <span className="text-[9px] font-medium">Messages</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5 text-zinc-400">
-                      <UserIcon className="w-4 h-4" />
-                      <span className="text-[9px] font-medium">Profile</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Text & Feature Checks */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              <span
-                data-reveal
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>On the Go</span>
-              </span>
-
-              <h2
-                data-reveal
-                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111827] tracking-tight leading-tight"
-              >
-                Learn. Collaborate. <br />
-                Achieve Anywhere.
-              </h2>
-
-              <p
-                data-reveal
-                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                className="text-sm sm:text-base text-zinc-600 leading-relaxed max-w-lg"
-              >
-                Access ProSchool from any device, anytime, and stay connected with your campus community.
-              </p>
-
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
-                className="space-y-3.5 text-sm sm:text-base text-zinc-800 font-medium"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Mobile Friendly</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Real-time Notifications</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Seamless Experience</span>
-                </div>
-              </div>
-
-              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
-                <button
-                  onClick={() => launchDemoMode('student')}
-                  className="px-7 py-3.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-full text-sm font-bold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
-                >
-                  <span>Download App</span>
-                  <span>→</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 11. FREQUENTLY ASKED QUESTIONS (Accordion & Support Card)       */}
-      {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-[#FAF9FF]" id="faq">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            {/* Left FAQ Accordion */}
-            <div className="lg:col-span-8 space-y-4 text-left">
-              <div>
-                <span
-                  data-reveal
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 mb-3"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>FAQ</span>
-                </span>
-                <h2
-                  data-reveal
-                  style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                  className="text-2xl sm:text-4xl font-extrabold text-[#111827] tracking-tight"
-                >
-                  Frequently Asked Questions
-                </h2>
-                <p
-                  data-reveal
-                  style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                  className="text-xs sm:text-sm text-zinc-500 mt-1"
-                >
-                  Find answers to common questions about ProSchool.
-                </p>
-              </div>
-
-              <div className="space-y-3 pt-4">
-                {[
-                  {
-                    q: 'Is ProSchool free for educational institutions?',
-                    a: 'Yes! We offer a free trial and affordable plans for schools and colleges.'
-                  },
-                  {
-                    q: 'Can I use ProSchool on mobile?',
-                    a: 'Yes, ProSchool is fully optimized for mobile devices with an intuitive touch-first interface and instant sync.'
-                  },
-                  {
-                    q: 'Is my data secure?',
-                    a: 'All academic records, communication, and grades are secured with enterprise-grade encryption and multi-tenant isolation.'
-                  },
-                  {
-                    q: 'How do I get support?',
-                    a: 'Our support team is available 24/7 to assist teachers, administrators, and students with onboarding and technical questions.'
-                  }
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white border border-purple-100/70 rounded-2xl overflow-hidden transition-all shadow-[0_2px_12px_rgba(0,0,0,0.02)]"
-                  >
-                    <button
-                      onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                      className="w-full p-4 sm:p-5 text-left font-bold text-xs sm:text-sm text-zinc-900 flex items-center justify-between gap-4 cursor-pointer hover:bg-purple-50/30 transition-colors"
-                    >
-                      <span>{item.q}</span>
-                      {activeFaq === idx ? (
-                        <ChevronUp className="w-4 h-4 text-[#6366F1] shrink-0" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />
-                      )}
-                    </button>
-                    {activeFaq === idx && (
-                      <div className="px-4 sm:px-5 pb-5 text-xs text-zinc-600 leading-relaxed border-t border-purple-50 pt-3">
-                        {item.a}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right Need Help Card */}
-            <div className="lg:col-span-4" data-reveal="right">
-              <div className="bg-white border border-purple-100/80 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-[0_4px_24px_rgba(99,102,241,0.06)]">
-                <div className="w-16 h-16 rounded-full bg-purple-100 text-[#6366F1] flex items-center justify-center ring-8 ring-purple-50 shadow-inner">
-                  <Headphones className="w-8 h-8" />
-                </div>
-                <h3 className="font-extrabold text-base sm:text-lg text-zinc-900">Need Help?</h3>
-                <p className="text-xs text-zinc-500 leading-relaxed max-w-xs">
-                  Our support team is here to help you 24/7.
-                </p>
-                <button
-                  onClick={() => setShowRequestModal(true)}
-                  className="w-full py-2.5 px-6 rounded-full border border-purple-200 text-[#4F46E5] hover:bg-purple-50 font-bold text-xs transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
-                >
-                  Contact Support →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 12. CONTINUOUS IN-MOTION OCEAN WAVES + DEEP DARK NAVY FOOTER   */}
+      {/* 8. CONTINUOUS IN-MOTION OCEAN WAVES + PHONE-OPTIMIZED FOOTER   */}
       {/* ============================================================== */}
       {/* Continuous Living Ocean Waves Divider */}
-      <div className="relative w-full overflow-hidden leading-none bg-[#FAF9FF] h-20 sm:h-28 md:h-36 -mb-1 select-none pointer-events-none">
+      <div className="relative w-full overflow-hidden leading-none bg-white h-10 sm:h-20 md:h-28 -mb-1 select-none pointer-events-none">
         {/* Layer 1: Back Wave (Translucent Indigo #6366F1) */}
         <div className="absolute inset-x-0 bottom-0 w-[200%] h-full flex animate-wave-slow">
           <svg
@@ -2000,34 +1631,34 @@ export const PortalLanding: React.FC = () => {
         </div>
       </div>
 
-      <footer className="bg-[#111827] text-zinc-400 pt-8 sm:pt-12 pb-10 text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-            {/* Col 1: Brand Logo & Social Icons */}
-            <div className="col-span-2 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300">
-                  <GraduationCap className="w-6 h-6 text-[#A5B4FC]" />
+      <footer className="bg-[#111827] text-zinc-400 pt-6 sm:pt-10 pb-6 sm:pb-8 text-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 sm:gap-8">
+            {/* Brand Logo & Compact Social Icons */}
+            <div className="space-y-3 shrink-0 md:max-w-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300">
+                  <GraduationCap className="w-5 h-5 text-[#A5B4FC]" />
                 </div>
                 <div>
-                  <span className="font-extrabold text-lg text-white tracking-tight block">ProSchool</span>
-                  <span className="text-[9px] font-bold text-zinc-500 tracking-widest uppercase block">
+                  <span className="font-extrabold text-base sm:text-lg text-white tracking-tight block">ProSchool</span>
+                  <span className="text-[8px] sm:text-[9px] font-bold text-zinc-500 tracking-widest uppercase block">
                     LEARN · COLLABORATE · EXCEL
                   </span>
                 </div>
               </div>
 
               {/* Social Icon Row: YouTube, LinkedIn, Discord, X, Facebook */}
-              <div className="flex items-center gap-3 pt-2 text-zinc-400">
+              <div className="flex items-center gap-2 pt-1 text-zinc-400">
                 {/* YouTube */}
                 <a
                   href="https://youtube.com"
                   target="_blank"
                   rel="noreferrer"
                   aria-label="YouTube"
-                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                   </svg>
                 </a>
@@ -2038,9 +1669,9 @@ export const PortalLanding: React.FC = () => {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="LinkedIn"
-                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
                   </svg>
                 </a>
@@ -2051,9 +1682,9 @@ export const PortalLanding: React.FC = () => {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="Discord"
-                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                   </svg>
                 </a>
@@ -2064,9 +1695,9 @@ export const PortalLanding: React.FC = () => {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="X"
-                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                   </svg>
                 </a>
@@ -2077,52 +1708,55 @@ export const PortalLanding: React.FC = () => {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="Facebook"
-                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
                 >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                   </svg>
                 </a>
               </div>
             </div>
 
-            {/* Col 2: Product */}
-            <div className="space-y-3">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Product</h4>
-              <ul className="space-y-2 text-zinc-400">
-                <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Features</button></li>
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Pricing</button></li>
-                <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Changelog</button></li>
-              </ul>
-            </div>
+            {/* 3 Compact Link Columns Side-by-Side on Phone */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-10">
+              {/* Col: Product */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-[11px] sm:text-xs uppercase tracking-wider text-white">Product</h4>
+                <ul className="space-y-1.5 text-[11px] sm:text-xs text-zinc-400">
+                  <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Features</button></li>
+                  <li><button onClick={() => scrollTo('solutions')} className="hover:text-white transition-colors cursor-pointer">Solutions</button></li>
+                  <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Changelog</button></li>
+                </ul>
+              </div>
 
-            {/* Col 3: Resources */}
-            <div className="space-y-3">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Resources</h4>
-              <ul className="space-y-2 text-zinc-400">
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Documentation</button></li>
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Blog</button></li>
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Help Center</button></li>
-              </ul>
-            </div>
+              {/* Col: Resources */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-[11px] sm:text-xs uppercase tracking-wider text-white">Resources</h4>
+                <ul className="space-y-1.5 text-[11px] sm:text-xs text-zinc-400">
+                  <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Platform</button></li>
+                  <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Support</button></li>
+                  <li><button onClick={() => setShowSignInModal(true)} className="hover:text-white transition-colors cursor-pointer">Portal</button></li>
+                </ul>
+              </div>
 
-            {/* Col 4: Company */}
-            <div className="space-y-3">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Company</h4>
-              <ul className="space-y-2 text-zinc-400">
-                <li><button onClick={() => scrollTo('home')} className="hover:text-white transition-colors cursor-pointer">About Us</button></li>
-                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Careers</button></li>
-                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Contact</button></li>
-              </ul>
+              {/* Col: Company */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-[11px] sm:text-xs uppercase tracking-wider text-white">Company</h4>
+                <ul className="space-y-1.5 text-[11px] sm:text-xs text-zinc-400">
+                  <li><button onClick={() => scrollTo('home')} className="hover:text-white transition-colors cursor-pointer">About Us</button></li>
+                  <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Careers</button></li>
+                  <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Contact</button></li>
+                </ul>
+              </div>
             </div>
           </div>
 
           {/* Bottom Bar: Copyright & Legal */}
-          <div className="pt-8 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500">
-            <p>© 2025 ProSchool. All rights reserved.</p>
-            <div className="flex items-center gap-6">
+          <div className="pt-4 sm:pt-6 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4 text-[10px] sm:text-[11px] text-zinc-500">
+            <p>© {new Date().getFullYear()} ProSchool. All rights reserved.</p>
+            <div className="flex items-center gap-4">
               <span className="hover:text-zinc-300 transition-colors cursor-pointer">Privacy Policy</span>
-              <span className="text-zinc-700">|</span>
+              <span className="text-zinc-700">·</span>
               <span className="hover:text-zinc-300 transition-colors cursor-pointer">Terms of Service</span>
             </div>
           </div>

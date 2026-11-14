@@ -47,7 +47,7 @@ async function testSuite() {
   console.log('   Organizations:', orgsData.organizations?.map(o => `${o.name} (${o.id})`));
 
   const hasDemo = orgsData.organizations?.some(o => 
-    o.id.includes('padmashree') || o.name.toLowerCase().includes('padmashree') ||
+    o.id === 'col_demo' || o.id === 'demo' ||
     o.id.includes('stanford') || o.name.toLowerCase().includes('stanford') ||
     o.id.includes('procollege_network') || o.name.toLowerCase().includes('procollege university network')
   );
@@ -59,7 +59,7 @@ async function testSuite() {
 
   // 3. Ensure Public English School is Provisioned by Developer
   console.log('\n3️⃣ Testing Developer Organization Provisioning & Master Admin Credential Reset...');
-  let targetOrg = orgsData.organizations?.find(o => o.id.startsWith('col_')) || orgsData.organizations?.[0];
+  let targetOrg = orgsData.organizations?.find(o => o.id === 'col_public-english-boarding-school_wr3t') || orgsData.organizations?.[0];
   let adminTempPassword = '';
 
   if (!targetOrg) {
