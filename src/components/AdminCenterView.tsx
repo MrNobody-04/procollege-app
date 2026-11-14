@@ -85,6 +85,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     addPost,
     faculties,
     createFaculty,
+    updateFaculty,
     deleteFaculty,
     addMembersToFaculty,
     createInstitutionalAdmin,
@@ -111,7 +112,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [selectedCourseForProfile, setSelectedCourseForProfile] = useState<CourseTeam | null>(null);
 
   const isDeveloper = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
-  const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin';
+  const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin' || currentUser.role === 'assistant_admin';
 
   // Dedicated Developer Navigation Section - seamlessly kept in sync with activeTab
   const [currentDevSection, setCurrentDevSection] = useState<ActiveTab | 'campus-ops' | 'dev-email'>(
@@ -677,6 +678,15 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [deanSelectionMode, setDeanSelectionMode] = useState<'select' | 'manual'>('select');
   const [manualDeanName, setManualDeanName] = useState('');
 
+  // Edit Faculty / Department Form State
+  const [editingFaculty, setEditingFaculty] = useState<FacultyDepartment | null>(null);
+  const [editFacultyName, setEditFacultyName] = useState('');
+  const [editFacultyCode, setEditFacultyCode] = useState('');
+  const [editFacultyDeanId, setEditFacultyDeanId] = useState('');
+  const [editFacultyDesc, setEditFacultyDesc] = useState('');
+  const [editDeanSelectionMode, setEditDeanSelectionMode] = useState<'select' | 'manual'>('select');
+  const [editManualDeanName, setEditManualDeanName] = useState('');
+
   // Developer Direct Institutional Admin Modal State
   const [newAdminInstitution, setNewAdminInstitution] = useState('');
   const [newAdminContact, setNewAdminContact] = useState('');
@@ -688,7 +698,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   // New User Registration Form State
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'student' | 'lecturer' | 'professor'>('student');
+  const [newUserRole, setNewUserRole] = useState<'student' | 'lecturer' | 'professor' | 'assistant_admin'>('student');
   const [newUserLicense, setNewUserLicense] = useState<LicenseSku>('ProCollege Verified for Students');
   const [createdCredentials, setCreatedCredentials] = useState<{ user: User; password?: string } | null>(null);
 
@@ -1041,6 +1051,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     createFaculty({
       name: newFacultyName.trim(),
       code: newFacultyCode.trim().toUpperCase(),
+      headId: deanId,
+      headName: deanName,
       deanId,
       deanName,
       description: newFacultyDesc.trim() || `Department of ${newFacultyName.trim()}`
@@ -1056,6 +1068,68 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       `Faculty "${newFacultyName.trim()}" successfully created! You can now create classes and assign subject modules under this faculty.`,
       { type: 'success', title: 'Faculty / Department Created' }
     );
+  };
+
+  // Open Edit Faculty / Department Handler
+  const handleOpenEditFaculty = (dept: FacultyDepartment) => {
+    setEditingFaculty(dept);
+    setEditFacultyName(dept.name);
+    setEditFacultyCode(dept.code);
+    setEditFacultyDesc(dept.description || '');
+    const currentHead = dept.headName || dept.deanName || '';
+    const match = facultyMembers.find(u => u.name.toLowerCase() === currentHead.toLowerCase()) ||
+                  availableUsers.find(u => u.name.toLowerCase() === currentHead.toLowerCase());
+    if (match) {
+      setEditDeanSelectionMode('select');
+      setEditFacultyDeanId(match.id);
+      setEditManualDeanName('');
+    } else {
+      setEditDeanSelectionMode('manual');
+      setEditManualDeanName(currentHead);
+      setEditFacultyDeanId(facultyMembers[0]?.id || availableUsers[0]?.id || '');
+    }
+  };
+
+  // Save Edit Faculty / Department Handler
+  const handleSaveEditFaculty = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFaculty) return;
+    const trimmedName = editFacultyName.trim();
+    const trimmedCode = editFacultyCode.trim().toUpperCase();
+    if (!trimmedName || !trimmedCode) return;
+
+    let headId: string;
+    let headName: string;
+
+    if (editDeanSelectionMode === 'manual' && editManualDeanName.trim()) {
+      headName = editManualDeanName.trim();
+      const existing = facultyMembers.find(u => u.name.toLowerCase() === headName.toLowerCase()) ||
+                       availableUsers.find(u => u.name.toLowerCase() === headName.toLowerCase());
+      headId = existing ? existing.id : `usr_head_${Date.now()}`;
+    } else {
+      const selected = facultyMembers.find(u => u.id === editFacultyDeanId) ||
+                       availableUsers.find(u => u.id === editFacultyDeanId) ||
+                       facultyMembers[0] ||
+                       availableUsers[0];
+      headId = selected ? selected.id : 'usr-admin-01';
+      headName = selected ? selected.name : 'Department Head';
+    }
+
+    updateFaculty(editingFaculty.id, {
+      name: trimmedName,
+      code: trimmedCode,
+      headId,
+      headName,
+      deanId: headId,
+      deanName: headName,
+      description: editFacultyDesc.trim() || `Department of ${trimmedName}`
+    });
+
+    setEditingFaculty(null);
+    showDialog(`Department "${trimmedName}" updated successfully!`, {
+      type: 'success',
+      title: 'Department Updated'
+    });
   };
 
   // Developer Direct Institutional Admin Provisioning Handler
@@ -1440,11 +1514,64 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {enrolled.map((student: any) => {
-              const att = getStudentOverallAttendance(student.id);
-              const t = att.threshold;
-              return (
+          {enrolled.length === 0 ? (
+            <span className="text-xs text-zinc-400 italic block py-1">No students enrolled yet</span>
+          ) : enrolled.length <= 4 ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              {enrolled.map((student: any) => {
+                const att = getStudentOverallAttendance(student.id);
+                const t = att.threshold;
+                return (
+                  <button
+                    type="button"
+                    key={student.id || student.name}
+                    onClick={() => {
+                      setSelectedStudentForProfile(student);
+                      setSelectedCourseForProfile(course);
+                      setShowStudentProfileModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 hover:border-zinc-300 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+                    title={`View Student Profile (${student.name})`}
+                  >
+                    <img
+                      src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                      alt={student.name}
+                      className="w-4 h-4 rounded-full object-cover shrink-0"
+                    />
+                    <span className="font-medium text-[11px] truncate max-w-[120px]">{student.name}</span>
+                    {att.totalSessions > 0 && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${t.badgeClass}`}>
+                        {att.percentage}%
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Stacked Avatars Cluster for 30-40 students */}
+              <div
+                className="flex items-center -space-x-2 overflow-hidden py-0.5 cursor-pointer"
+                onClick={() => {
+                  setSelectedCourseForAction(course);
+                  setShowManageStudentsModal(true);
+                }}
+                title="Click to view full student roster"
+              >
+                {enrolled.slice(0, 5).map((student: any) => (
+                  <img
+                    key={student.id || student.name}
+                    src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                    alt={student.name}
+                    title={student.name}
+                    className="w-6 h-6 rounded-full object-cover ring-2 ring-white shrink-0 shadow-2xs"
+                  />
+                ))}
+              </div>
+
+              {/* First 3 quick student pills */}
+              {enrolled.slice(0, 3).map((student: any) => (
                 <button
                   type="button"
                   key={student.id || student.name}
@@ -1453,26 +1580,28 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     setSelectedCourseForProfile(course);
                     setShowStudentProfileModal(true);
                   }}
-                  className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 hover:border-zinc-300 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
-                  title={`View Student Profile & Individual Attendance (${t.percentage}% - ${t.label})`}
+                  className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 hover:border-zinc-300 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                  title={`View Student Profile (${student.name})`}
                 >
-                  <img
-                    src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
-                    alt={student.name}
-                    className="w-4 h-4 rounded-full object-cover shrink-0"
-                  />
-                  <span className="font-medium text-[11px] truncate max-w-[120px]">{student.name}</span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${t.badgeClass} flex items-center gap-0.5`}>
-                    <span>{t.icon}</span>
-                    <span>{att.totalSessions === 0 ? 'New' : `${att.percentage}%`}</span>
-                  </span>
+                  <span className="font-medium text-[11px] truncate max-w-[110px]">{student.name}</span>
                 </button>
-              );
-            })}
-            {enrolled.length === 0 && (
-              <span className="text-xs text-zinc-400 italic">No students enrolled yet</span>
-            )}
-          </div>
+              ))}
+
+              {/* View all remaining students button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCourseForAction(course);
+                  setShowManageStudentsModal(true);
+                }}
+                className="inline-flex items-center gap-1 bg-zinc-200/80 hover:bg-zinc-300 text-zinc-700 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer"
+                title="View full roster and manage enrolled students"
+              >
+                <Users className="w-3 h-3 text-zinc-500" />
+                <span>+{enrolled.length - 3} more</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Subjects & Dedicated Teachers List */}
@@ -3077,6 +3206,15 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           <span>Add Class</span>
                         </button>
 
+                        {/* Edit & Rename Department Button */}
+                        <button
+                          onClick={() => handleOpenEditFaculty(dept)}
+                          className="p-1.5 text-zinc-400 hover:text-[#26394D] hover:bg-zinc-100 rounded-lg transition-colors border border-transparent hover:border-zinc-200 cursor-pointer"
+                          title={`Edit & Rename Department "${dept.name}"`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+
                         {/* Delete Department Button for Institutional Admin */}
                         <button
                           onClick={() => handleDeleteFaculty(dept)}
@@ -3787,7 +3925,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 >
                   {faculties.map(fac => (
                     <option key={fac.id} value={fac.id}>
-                      {fac.name} ({fac.code}) — Head: {fac.deanName}
+                      {fac.name} ({fac.code}) — Head: {fac.headName || fac.deanName || 'Department Head'}
                     </option>
                   ))}
                 </select>
@@ -4766,7 +4904,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-zinc-200 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-              <h3 className="font-bold text-sm text-zinc-900">Register Student / Lecturer</h3>
+              <h3 className="font-bold text-sm text-zinc-900">Register Campus User / Assistant Admin</h3>
               <button onClick={() => setShowRegisterUserModal(false)} className="text-zinc-400 hover:text-zinc-600">✕</button>
             </div>
 
@@ -4777,7 +4915,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   type="text"
                   value={newUserName}
                   onChange={e => setNewUserName(e.target.value)}
-                  placeholder="Full Name (Student or Lecturer)"
+                  placeholder="Full Name (Student, Lecturer, or Assistant Admin)"
                   className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
                 />
@@ -4789,7 +4927,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   type="email"
                   value={newUserEmail}
                   onChange={e => setNewUserEmail(e.target.value)}
-                  placeholder="m.lin@student.procollege.edu"
+                  placeholder="name@institution.procollege.edu"
                   className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
                 />
@@ -4800,12 +4938,23 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <label className="block text-xs font-semibold text-zinc-700 mb-1">Role</label>
                   <select
                     value={newUserRole}
-                    onChange={e => setNewUserRole(e.target.value as 'student' | 'lecturer' | 'professor')}
+                    onChange={e => {
+                      const val = e.target.value as 'student' | 'lecturer' | 'professor' | 'assistant_admin';
+                      setNewUserRole(val);
+                      if (val === 'assistant_admin') {
+                        setNewUserLicense('ProCollege Verified for Administration');
+                      } else if (val === 'student') {
+                        setNewUserLicense('ProCollege Verified for Students');
+                      } else {
+                        setNewUserLicense('ProCollege Verified for Faculty');
+                      }
+                    }}
                     className="w-full bg-white border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800"
                   >
                     <option value="student">Student</option>
                     <option value="lecturer">Lecturer</option>
                     <option value="professor">Professor</option>
+                    <option value="assistant_admin">Assistant Admin</option>
                   </select>
                 </div>
                 <div>
@@ -5014,6 +5163,157 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer"
               >
                 Create Department
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 7.5: EDIT FACULTY / DEPARTMENT                      */}
+      {/* ========================================================= */}
+      {editingFaculty && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-hidden">
+          <form
+            onSubmit={handleSaveEditFaculty}
+            className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[88vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
+              <div className="flex items-center gap-2">
+                <FolderTree className="w-5 h-5 text-[#26394D]" />
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">Edit Department</h3>
+                  <p className="text-[11px] text-zinc-500">Rename department, update code, and assign department head</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingFaculty(null)}
+                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                    Department Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFacultyName}
+                    onChange={e => setEditFacultyName(e.target.value)}
+                    placeholder="e.g. PEBS CLASSES or Science Dept"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                    Code / Abbreviation <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFacultyCode}
+                    onChange={e => setEditFacultyCode(e.target.value.toUpperCase())}
+                    placeholder="PEBS"
+                    className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-mono uppercase focus:outline-none focus:border-[#26394D]"
+                  />
+                </div>
+              </div>
+
+              {/* Department Head Selector & Toggle */}
+              <div className="space-y-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-zinc-700">
+                    Department Head / Lead
+                  </label>
+                  <div className="flex items-center bg-white p-0.5 rounded-md border border-zinc-200 text-[10px] font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setEditDeanSelectionMode('select')}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        editDeanSelectionMode === 'select'
+                          ? 'bg-[#26394D] text-white shadow-2xs font-bold'
+                          : 'text-zinc-600 hover:text-zinc-900'
+                      }`}
+                    >
+                      Select Faculty
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditDeanSelectionMode('manual')}
+                      className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                        editDeanSelectionMode === 'manual'
+                          ? 'bg-[#26394D] text-white shadow-2xs font-bold'
+                          : 'text-zinc-600 hover:text-zinc-900'
+                      }`}
+                    >
+                      Type Custom Name
+                    </button>
+                  </div>
+                </div>
+
+                {editDeanSelectionMode === 'select' ? (
+                  <select
+                    value={editFacultyDeanId}
+                    onChange={e => setEditFacultyDeanId(e.target.value)}
+                    className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                  >
+                    {availableUsers.filter(u => u.role !== 'student').map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.role.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div>
+                    <input
+                      type="text"
+                      required={editDeanSelectionMode === 'manual'}
+                      value={editManualDeanName}
+                      onChange={e => setEditManualDeanName(e.target.value)}
+                      placeholder="e.g. Dr. Ramesh Bhandari or Er. Bikash Adhikari"
+                      className="w-full bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                    />
+                  </div>
+                )}
+                <p className="text-[10px] text-zinc-500">
+                  Assign a unique, dedicated Department Head for {editFacultyName || 'this department'}.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Department Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={editFacultyDesc}
+                  onChange={e => setEditFacultyDesc(e.target.value)}
+                  placeholder="Department curriculum, faculties, and programs..."
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                />
+              </div>
+            </div>
+
+            <div className="p-3 sm:p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEditingFaculty(null)}
+                className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded cursor-pointer transition-colors shadow-2xs"
+              >
+                Save Changes
               </button>
             </div>
           </form>
