@@ -148,6 +148,38 @@
 }
 
 /* =====================================
+   HERO 3D ASSET FLOAT & AMBIENT GLOW
+===================================== */
+@keyframes laptopBob {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-0.5deg);
+  }
+}
+
+.hero-laptop-float {
+  animation: laptopBob 5.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.06);
+  }
+}
+
+.hero-glow-pulse {
+  animation: pulseGlow 7s ease-in-out infinite;
+}
+
+/* =====================================
    ACCESSIBILITY & MOBILE
 ===================================== */
 @media (max-width: 950px) {

@@ -45,7 +45,7 @@ export const NavigationRail: React.FC = () => {
     { id: 'assignments', label: 'Assignments', icon: <FileCheck className="w-5 h-5" /> },
     { id: 'calendar', label: 'Calendar', icon: <Calendar className="w-5 h-5" /> },
     { id: 'files', label: 'Files', icon: <FolderOpen className="w-5 h-5" /> },
-    ...(currentUser.role === 'admin'
+    ...(currentUser.role === 'admin' || currentUser.role === 'assistant_admin'
       ? [{ id: 'admin' as ActiveTab, label: 'Admin', icon: <Shield className="w-5 h-5" /> }]
       : [])
   ];

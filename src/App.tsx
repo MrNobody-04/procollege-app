@@ -52,7 +52,7 @@ const MainWorkspace: React.FC = () => {
               {activeTab === 'activity' && <ActivityView />}
 
               {activeTab === 'admin' && (
-                currentUser.role === 'admin' ? (
+                (currentUser.role === 'admin' || currentUser.role === 'assistant_admin') ? (
                   <AdminCenterView />
                 ) : (
                   <>

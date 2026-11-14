@@ -201,18 +201,20 @@ interface AppContextType {
   registerUserByAdmin: (userData: {
     name: string;
     email: string;
-    role: 'student' | 'lecturer' | 'professor';
+    role: 'student' | 'lecturer' | 'professor' | 'assistant_admin';
     department: string;
     license: LicenseSku;
   }) => User;
 
   faculties: FacultyDepartment[];
   createFaculty: (faculty: Omit<FacultyDepartment, 'id'>) => void;
+  updateFaculty: (facultyId: string, updates: Partial<FacultyDepartment>) => void;
   deleteFaculty: (facultyId: string) => void;
   addMembersToFaculty: (facultyId: string, memberIds: string[]) => void;
 
   departments: FacultyDepartment[];
   createDepartment: (department: Omit<FacultyDepartment, 'id'>) => void;
+  updateDepartment: (departmentId: string, updates: Partial<FacultyDepartment>) => void;
   deleteDepartment: (departmentId: string) => void;
   addMembersToDepartment: (departmentId: string, memberIds: string[]) => void;
 
@@ -2091,21 +2093,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const registerUserByAdmin = (userData: {
     name: string;
     email: string;
-    role: 'student' | 'lecturer' | 'professor';
+    role: 'student' | 'lecturer' | 'professor' | 'assistant_admin';
     department: string;
     license: LicenseSku;
   }): User => {
     const year = new Date().getFullYear();
     const isStudent = userData.role === 'student';
-    const deptPrefix = (userData.department || 'GEN').substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
+    const isAssistantAdmin = userData.role === 'assistant_admin';
+    const deptPrefix = (userData.department || (isAssistantAdmin ? 'ADM' : 'GEN')).substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const loginId = isStudent ? `STU-${year}-${randomSuffix}` : `FAC-${deptPrefix}-${randomSuffix}`;
+    const loginId = isStudent ? `STU-${year}-${randomSuffix}` : isAssistantAdmin ? `ASST-${deptPrefix}-${randomSuffix}` : `FAC-${deptPrefix}-${randomSuffix}`;
     const temporaryPassword = `ProCol-${Math.random().toString(36).substring(2, 8).toUpperCase()}!`;
 
     const avatarMap: Record<string, string> = {
       student: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
       lecturer: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80',
-      professor: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80'
+      professor: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+      assistant_admin: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80'
     };
 
     const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'ProCollege University Network');
@@ -2120,7 +2124,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       institutionName: inst,
       avatar: avatarMap[userData.role] || avatarMap.student,
       status: 'available',
-      statusMessage: `${isStudent ? 'Student' : 'Faculty'} Account Active`,
+      statusMessage: `${isStudent ? 'Student' : isAssistantAdmin ? 'Assistant Admin' : 'Faculty'} Account Active`,
       temporaryPassword,
       createdAt: new Date().toISOString().split('T')[0]
     };
@@ -2138,6 +2142,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       ...prev
     ]);
+
+    // Persist new user to Turso database
+    if (!isDemoMode) {
+      const collegeId = currentUser.collegeId || currentUser.institutionId;
+      fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          college_id: collegeId,
+          password: temporaryPassword
+        })
+      }).catch(console.error);
+    }
 
     return newUser;
   };
@@ -2168,6 +2191,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           college_id: collegeId,
           institution_id: collegeId
         }),
+      }).catch(console.error);
+    }
+  };
+
+  const updateFaculty = (facultyId: string, updates: Partial<FacultyDepartment>) => {
+    const oldFac = faculties.find(f => f.id === facultyId);
+    setFaculties(prev =>
+      prev.map(f => {
+        if (f.id === facultyId) {
+          const headName = updates.headName || updates.deanName || f.headName || f.deanName;
+          const headId = updates.headId || updates.deanId || f.headId || f.deanId;
+          return {
+            ...f,
+            ...updates,
+            headName,
+            headId,
+            deanName: headName,
+            deanId: headId
+          };
+        }
+        return f;
+      })
+    );
+
+    // If department name was changed, sync associated courses
+    if (updates.name && oldFac && updates.name !== oldFac.name) {
+      setCourses(prev =>
+        prev.map(c => {
+          if (c.facultyId === facultyId || c.department === oldFac.name) {
+            return { ...c, department: updates.name! };
+          }
+          return c;
+        })
+      );
+    }
+
+    // Persist to backend Turso database
+    if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      fetch(`/api/faculties/${facultyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(updates)
       }).catch(console.error);
     }
   };
@@ -2629,11 +2698,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         faculties: tenantFaculties,
         createFaculty,
+        updateFaculty,
         deleteFaculty,
         addMembersToFaculty,
 
         departments: tenantFaculties,
         createDepartment: createFaculty,
+        updateDepartment: updateFaculty,
         deleteDepartment: deleteFaculty,
         addMembersToDepartment: addMembersToFaculty,
 

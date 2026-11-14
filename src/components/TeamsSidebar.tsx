@@ -85,7 +85,7 @@ export const TeamsSidebar: React.FC = () => {
           Your Classes
         </h2>
         <div className="flex items-center gap-1">
-          {(currentUser.role === 'admin' || currentUser.role === 'developer') && (
+          {(currentUser.role === 'admin' || currentUser.role === 'assistant_admin' || currentUser.role === 'developer') && (
             <button
               onClick={() => setActiveTab('admin')}
               className="p-1 rounded hover:bg-zinc-200/80 text-[#26394D] transition-colors cursor-pointer"
@@ -338,8 +338,8 @@ export const TeamsSidebar: React.FC = () => {
         }))}
       </div>
 
-      {/* Admin Quick Action Bar at bottom - Only visible to Admin / Developer */}
-      {(currentUser.role === 'admin' || currentUser.role === 'developer') && (
+      {/* Admin Quick Action Bar at bottom - Visible to Admin, Assistant Admin, Developer */}
+      {(currentUser.role === 'admin' || currentUser.role === 'assistant_admin' || currentUser.role === 'developer') && (
         <div className="p-2 border-t border-[#B2C1C5] bg-[#E8E9E2]">
           <button
             onClick={() => setActiveTab('admin')}

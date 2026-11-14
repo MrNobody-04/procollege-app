@@ -3043,6 +3043,85 @@ app.post('/api/faculties', async (c) => {
   }), c.env);
 });
 
+// Update / Rename Department (R13, R22)
+app.put('/api/departments/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const body = await c.req.json();
+    const db = getDb(c);
+    const name = (body.name || '').trim();
+    const code = (body.code || '').trim().toUpperCase();
+    const headId = body.headId || body.deanId || body.head_id || body.dean_id;
+    const headName = body.headName || body.deanName || body.head_name || body.dean_name;
+    const description = body.description !== undefined ? String(body.description).trim() : undefined;
+
+    // Fetch existing department record
+    const existing = await db.execute({
+      sql: 'SELECT * FROM departments WHERE id = ?;',
+      args: [id],
+    });
+    const oldDept = existing.rows[0];
+
+    const updatedName = name || (oldDept?.name ? String(oldDept.name) : 'Department');
+    const updatedCode = code || (oldDept?.code ? String(oldDept.code) : 'DEPT');
+    const updatedHeadId = headId || (oldDept?.head_id ? String(oldDept.head_id) : 'usr-admin-01');
+    const updatedHeadName = headName || (oldDept?.head_name ? String(oldDept.head_name) : 'Department Head');
+    const updatedDesc = description !== undefined ? description : (oldDept?.description ? String(oldDept.description) : '');
+
+    await db.execute({
+      sql: `UPDATE departments 
+            SET name = ?, code = ?, head_id = ?, head_name = ?, description = ?
+            WHERE id = ?;`,
+      args: [updatedName, updatedCode, updatedHeadId, updatedHeadName, updatedDesc, id],
+    });
+
+    try {
+      await db.execute({
+        sql: `UPDATE faculties 
+              SET name = ?, code = ?, dean_id = ?, dean_name = ?, description = ?
+              WHERE id = ?;`,
+        args: [updatedName, updatedCode, updatedHeadId, updatedHeadName, updatedDesc, id],
+      });
+    } catch {}
+
+    // If department name was changed, keep courses table synchronized
+    if (oldDept?.name && updatedName !== String(oldDept.name)) {
+      try {
+        await db.execute({
+          sql: `UPDATE courses SET department = ? WHERE faculty_id = ? OR department = ?;`,
+          args: [updatedName, id, String(oldDept.name)],
+        });
+      } catch {}
+    }
+
+    const department = {
+      id,
+      name: updatedName,
+      code: updatedCode,
+      headId: updatedHeadId,
+      headName: updatedHeadName,
+      deanId: updatedHeadId,
+      deanName: updatedHeadName,
+      description: updatedDesc,
+    };
+
+    return c.json({ success: true, department, faculty: department });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Alias for update faculty
+app.put('/api/faculties/:id', async (c) => {
+  const id = c.req.param('id');
+  return app.fetch(new Request(new URL(`/api/departments/${id}`, c.req.url).toString(), {
+    method: 'PUT',
+    headers: c.req.raw.headers,
+    body: await c.req.raw.clone().blob(),
+  }), c.env);
+});
+
 // Delete Department
 app.delete('/api/departments/:id', async (c) => {
   const id = c.req.param('id');

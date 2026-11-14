@@ -44,6 +44,7 @@ export const TopHeader: React.FC = () => {
   const currentBadge = useMemo(() => {
     if (currentUser.role === 'developer' || currentUser.role === 'platform_admin') return 'Developer Admin';
     if (currentUser.role === 'admin') return 'Institutional Admin';
+    if (currentUser.role === 'assistant_admin') return 'Assistant Admin';
     if (currentUser.role === 'lecturer' || (currentUser as unknown as { role: string }).role === 'professor' || (currentUser as unknown as { role: string }).role === 'teacher') {
       return 'Campus Lecturer';
     }
@@ -179,7 +180,7 @@ export const TopHeader: React.FC = () => {
                   <span className="font-semibold text-zinc-800">Files</span>
                 </button>
 
-                {(currentUser.role === 'admin' || currentUser.role === 'developer') && (
+                {(currentUser.role === 'admin' || currentUser.role === 'assistant_admin' || currentUser.role === 'developer') && (
                   <button
                     onClick={() => {
                       setActiveTab('admin');
@@ -238,8 +239,8 @@ export const TopHeader: React.FC = () => {
           <span className="text-[10px] text-zinc-400">↗</span>
         </button>
 
-        {/* Admin Center Shortcut - Only visible to Admin */}
-        {currentUser.role === 'admin' && (
+        {/* Admin Center Shortcut - Visible to Admin and Assistant Admin */}
+        {(currentUser.role === 'admin' || currentUser.role === 'assistant_admin') && (
           <button
             onClick={() => setActiveTab('admin')}
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-white bg-[#26394D] hover:bg-[#141E2B] rounded transition-colors ml-1 cursor-pointer shadow-2xs"

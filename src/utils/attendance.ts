@@ -1,5 +1,5 @@
 export type AttendanceStatus = 'present' | 'absent' | 'late';
-export type AttendanceThresholdStatus = 'safe' | 'warning' | 'danger';
+export type AttendanceThresholdStatus = 'safe' | 'warning' | 'danger' | 'pending';
 
 export interface AttendanceThreshold {
   status: AttendanceThresholdStatus;
@@ -61,11 +61,26 @@ export interface StudentAttendanceSummary {
   threshold: AttendanceThreshold;
 }
 
+export function getPendingAttendanceThreshold(): AttendanceThreshold {
+  return {
+    status: 'pending',
+    label: 'No Records',
+    percentage: 0,
+    badgeClass: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+    pillClass: 'bg-zinc-400 text-white',
+    textClass: 'text-zinc-600',
+    borderClass: 'border-zinc-300',
+    dotColor: '#94a3b8',
+    icon: '',
+    isRestricted: false
+  };
+}
+
 /**
  * Global Threshold & Color-Coding Rules:
- * 🟢 Safe: Attendance >= 80% (Green badge/text)
- * ⚪ Moderate / Warning: Attendance between 75% and 79% (Neutral/Grey badge/text)
- * 🔴 In Danger: Attendance < 75% (Red badge/text)
+ * Safe: Attendance >= 80% (Emerald badge/text)
+ * Moderate / Warning: Attendance between 75% and 79% (Zinc/Slate badge/text)
+ * In Danger: Attendance < 75% (Rose badge/text)
  */
 export function getAttendanceThreshold(percentage: number): AttendanceThreshold {
   const rounded = Math.round(percentage);
@@ -76,11 +91,11 @@ export function getAttendanceThreshold(percentage: number): AttendanceThreshold 
       label: 'Safe',
       percentage: rounded,
       badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      pillClass: 'bg-emerald-500 text-white',
+      pillClass: 'bg-emerald-600 text-white',
       textClass: 'text-emerald-700',
       borderClass: 'border-emerald-500',
       dotColor: '#10b981',
-      icon: '🟢',
+      icon: '',
       isRestricted: false
     };
   }
@@ -95,7 +110,7 @@ export function getAttendanceThreshold(percentage: number): AttendanceThreshold 
       textClass: 'text-zinc-700',
       borderClass: 'border-zinc-400',
       dotColor: '#71717a',
-      icon: '⚪',
+      icon: '',
       isRestricted: false
     };
   }
@@ -109,7 +124,7 @@ export function getAttendanceThreshold(percentage: number): AttendanceThreshold 
     textClass: 'text-rose-700',
     borderClass: 'border-rose-500',
     dotColor: '#f43f5e',
-    icon: '🔴',
+    icon: '',
     isRestricted: true
   };
 }
@@ -130,14 +145,14 @@ export function calculateSchoolAttendance(
 } {
   const totalSessions = records.length;
   if (totalSessions === 0) {
-    // If no attendance has been recorded yet, student starts in safe standing (100%)
+    // If no attendance has been recorded yet, student has no records
     return {
       totalSessions: 0,
       presentCount: 0,
       absentCount: 0,
       lateCount: 0,
-      percentage: 100,
-      threshold: getAttendanceThreshold(100)
+      percentage: 0,
+      threshold: getPendingAttendanceThreshold()
     };
   }
 
@@ -180,8 +195,8 @@ export function calculateSubjectAttendance(
       presentCount: 0,
       absentCount: 0,
       lateCount: 0,
-      percentage: 100,
-      threshold: getAttendanceThreshold(100)
+      percentage: 0,
+      threshold: getPendingAttendanceThreshold()
     };
   }
 

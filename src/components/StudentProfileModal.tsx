@@ -65,13 +65,20 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-base text-zinc-900 leading-tight">{student.name}</h3>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${threshold.badgeClass}`}>
-                  <span>{threshold.icon}</span>
-                  <span>{threshold.label} ({threshold.percentage}%)</span>
-                </span>
+                {threshold.status === 'pending' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                    <span>No Records</span>
+                  </span>
+                ) : (
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${threshold.badgeClass}`}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: threshold.dotColor }} />
+                    <span>{threshold.label} ({threshold.percentage}%)</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-zinc-500 font-mono mt-0.5">
-                ID: {student.loginId || student.id} • {student.department || 'Enrolled Student'}
+                ID: {student.loginId || student.id} • {student.department || course?.department || 'Enrolled Student'}
               </p>
             </div>
           </div>
@@ -122,46 +129,65 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
           {activeTab === 'overview' && (
             <div className="space-y-4">
               {/* Prominent Attendance Standing Card */}
-              <div className={`p-4 rounded-xl border ${threshold.badgeClass} space-y-3`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{threshold.icon}</span>
+              {overallAttendance.totalSessions === 0 ? (
+                <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/80 space-y-3">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-bold text-sm">Overall Attendance Rate: {threshold.percentage}%</h4>
-                      <p className="text-xs opacity-90">
-                        Standing: <strong>{threshold.label}</strong> (Minimum required threshold: 75%)
+                      <h4 className="font-bold text-sm text-zinc-800">Academic Standing: Awaiting Attendance</h4>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        No attendance sessions have been logged yet for this academic term. Standard 75% minimum threshold applies once sessions begin.
                       </p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-black">{threshold.percentage}%</span>
-                  </div>
-                </div>
-
-                {/* Visual Progress Bar */}
-                <div className="w-full bg-black/10 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, threshold.percentage))}%`,
-                      backgroundColor: threshold.dotColor
-                    }}
-                  />
-                </div>
-
-                {/* Gatekeeper Warning if In Danger */}
-                {threshold.status === 'danger' && (
-                  <div className="bg-white/80 p-3 rounded-lg border border-rose-300 flex items-start gap-2.5 text-xs text-rose-900">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold">Assignment Access Gatekeeper: Locked</p>
-                      <p className="text-[11px] text-rose-800 mt-0.5">
-                        This student's attendance has fallen below 75%. Assignment submissions are automatically locked. Reading materials remain accessible. A lecturer must toggle a manual override to grant permission to submit.
-                      </p>
+                    <div className="text-right">
+                      <span className="text-xl font-mono font-bold text-zinc-400">—</span>
                     </div>
                   </div>
-                )}
-              </div>
+                  <div className="w-full bg-zinc-200/80 rounded-full h-2 overflow-hidden">
+                    <div className="h-full bg-zinc-300 w-0" />
+                  </div>
+                </div>
+              ) : (
+                <div className={`p-4 rounded-xl border ${threshold.badgeClass} space-y-3 bg-white`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: threshold.dotColor }} />
+                      <div>
+                        <h4 className="font-bold text-sm text-zinc-900">Overall Attendance Rate: {threshold.percentage}%</h4>
+                        <p className="text-xs text-zinc-600 mt-0.5">
+                          Standing: <strong className="text-zinc-800">{threshold.label}</strong> (Minimum required threshold: 75%)
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold font-mono text-zinc-900">{threshold.percentage}%</span>
+                    </div>
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  <div className="w-full bg-zinc-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, threshold.percentage))}%`,
+                        backgroundColor: threshold.dotColor
+                      }}
+                    />
+                  </div>
+
+                  {/* Gatekeeper Warning if In Danger */}
+                  {threshold.status === 'danger' && (
+                    <div className="bg-rose-50 p-3 rounded-lg border border-rose-200 flex items-start gap-2.5 text-xs text-rose-900">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Assignment Access Gatekeeper: Restricted</p>
+                        <p className="text-[11px] text-rose-800 mt-0.5">
+                          This student's attendance has fallen below 75%. Assignment submissions are automatically locked. Reading materials remain accessible. A lecturer must toggle a manual override to grant permission to submit.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Attendance Statistics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -254,10 +280,17 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
                           <div className="min-w-0 pr-3">
                             <div className="flex items-center gap-2">
                               <h5 className="font-bold text-xs text-zinc-900 truncate">{ch.name}</h5>
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${t.badgeClass}`}>
-                                <span>{t.icon}</span>
-                                <span>{t.label} ({t.percentage}%)</span>
-                              </span>
+                              {t.status === 'pending' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                                  <span>No Records</span>
+                                </span>
+                              ) : (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${t.badgeClass}`}>
+                                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.dotColor }} />
+                                  <span>{t.label} ({t.percentage}%)</span>
+                                </span>
+                              )}
                             </div>
                             <p className="text-[11px] text-zinc-500 mt-0.5">
                               Class: {c.code} • Teacher: {ch.subjectLecturerName || 'Assigned Lecturer'}
@@ -325,12 +358,12 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
 
         {/* Modal Footer */}
         <div className="p-3 sm:p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
-          <p className="text-[11px] text-zinc-500">
-            ProCollege Official Attendance & Academic Record Ledger
+          <p className="text-[11px] text-zinc-500 font-medium">
+            Campus Directory · Student Academic Record
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            className="px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
           >
             Close
           </button>

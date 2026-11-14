@@ -17,17 +17,14 @@ import {
   KeyRound,
   RotateCcw,
   Play,
-  FileText,
   Folder,
   BarChart2,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   GraduationCap,
   Calendar,
-  Award,
-  Megaphone,
-  BookOpen,
-  Compass
+  Award
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -65,6 +62,7 @@ export const PortalLanding: React.FC = () => {
   const [requestSubmitted, setRequestSubmitted] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState<boolean>(false);
+  const [activeFaq, setActiveFaq] = useState<number | null>(0);
 
   // Dynamic Up-to-Date Real-Time Calendar for ProSchool Workspace Preview
   const calendarData = useMemo(() => {
@@ -790,7 +788,7 @@ export const PortalLanding: React.FC = () => {
       </header>
 
       {/* ============================================================== */}
-      {/* 2. HERO SECTION WITH 3D TILT DASHBOARD & FLOATING NOTIFICATIONS */}
+      {/* 2. HERO SECTION WITH 3D TILT LAPTOP & FLOATING MOTION TILES    */}
       {/* ============================================================== */}
       <section className="hero relative bg-gradient-to-b from-[#FAF8FF] via-white to-white pt-10 sm:pt-16 pb-16 sm:pb-24 overflow-hidden" id="home">
         {/* Subtle Parallax Background Glows */}
@@ -804,11 +802,11 @@ export const PortalLanding: React.FC = () => {
               <h1
                 data-reveal
                 style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-                className="text-3xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-zinc-950 leading-[1.12]"
+                className="text-3xl sm:text-5xl lg:text-[58px] font-black tracking-tight text-zinc-950 leading-[1.12]"
               >
-                Build a Smarter <br className="hidden sm:inline" />
-                <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#4338CA] bg-clip-text text-transparent">
-                  Campus Experience
+                Designed for Modern <br className="hidden sm:inline" />
+                <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#3B82F6] bg-clip-text text-transparent">
+                  Education
                 </span>
               </h1>
 
@@ -817,7 +815,7 @@ export const PortalLanding: React.FC = () => {
                 style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
                 className="text-base sm:text-lg text-zinc-600 max-w-xl leading-relaxed"
               >
-                ProSchool brings your college or school community together in one powerful platform — just like Teams, but built for education.
+                Everything you need to manage, teach, and grow — all in one modern platform.
               </p>
 
               {/* Action Buttons */}
@@ -880,155 +878,51 @@ export const PortalLanding: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Column: Realistic 3D Tilt Floating Dashboard & Floating Notifications */}
-            <div className="lg:col-span-6 relative">
+            {/* Right Column: 3D Laptop with Cap & Floating Motion Tiles (Matches Image 2) */}
+            <div className="lg:col-span-6 relative flex items-center justify-center">
               <div
-                className="hero-dashboard-shell relative"
+                className="hero-dashboard-shell relative w-full max-w-lg lg:max-w-none"
                 data-reveal="right"
                 style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
               >
-                {/* Main 3D Floating Dashboard Card */}
-                <div className="hero-dashboard bg-white border border-[#E0E7FF] rounded-2xl shadow-[0_25px_70px_rgba(79,70,229,0.13),0_5px_20px_rgba(79,70,229,0.06)] p-3 sm:p-5 overflow-hidden">
-                  {/* Mock Window Top Bar */}
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-zinc-100">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                      <span className="ml-2 text-[11px] font-bold text-zinc-600 font-mono">
-                        proschool.edu.np/dashboard
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-                        ● Term Active
-                      </span>
-                    </div>
+                {/* Radial Glow Backdrop */}
+                <div className="absolute inset-0 -m-8 bg-gradient-to-tr from-indigo-200/40 via-purple-100/30 to-blue-200/40 blur-3xl rounded-full hero-glow-pulse pointer-events-none" />
+
+                {/* 3D Laptop & Floating App Tiles Visual */}
+                <div className="relative z-10 hero-laptop-float flex items-center justify-center">
+                  <img
+                    src="/hero-laptop-education.png"
+                    alt="Designed for Modern Education - ProSchool 3D Interactive Platform"
+                    className="w-full max-w-[560px] h-auto object-contain drop-shadow-[0_20px_45px_rgba(79,70,229,0.22)] select-none"
+                  />
+                </div>
+
+                {/* Floating Notification 1: Term Schedule Synced */}
+                <div className="hero-notification -top-3 -right-2 sm:-right-4 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-indigo-100 shadow-[0_12px_28px_rgba(79,70,229,0.18)] flex items-center gap-2.5 text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-[#4F46E5] shrink-0 font-bold">
+                    <Calendar className="w-4 h-4" />
                   </div>
-
-                  {/* Dashboard Content Mockup */}
-                  <div className="grid grid-cols-12 gap-3 text-xs">
-                    {/* Mini Sidebar */}
-                    <div className="col-span-3 bg-zinc-50/70 border border-zinc-100 rounded-xl p-2.5 space-y-2 hidden sm:block">
-                      <div className="flex items-center gap-1.5 text-[#4F46E5] font-bold pb-2 border-b border-zinc-200/60">
-                        <GraduationCap className="w-4 h-4" />
-                        <span className="text-[11px]">ProSchool</span>
-                      </div>
-                      <div className="space-y-1 text-[11px] text-zinc-600">
-                        <div className="bg-[#4F46E5]/10 text-[#4F46E5] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1.5">
-                          <Compass className="w-3.5 h-3.5" />
-                          <span>Dashboard</span>
-                        </div>
-                        <div className="hover:bg-zinc-100 px-2 py-1 rounded flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>Classes</span>
-                        </div>
-                        <div className="hover:bg-zinc-100 px-2 py-1 rounded flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>Assignments</span>
-                        </div>
-                        <div className="hover:bg-zinc-100 px-2 py-1 rounded flex items-center gap-1.5">
-                          <Video className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>Meetings</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Main Workspace Area */}
-                    <div className="col-span-12 sm:col-span-9 space-y-3">
-                      {/* Greeting Header */}
-                      <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50/60 to-purple-50/40 p-3 rounded-xl border border-indigo-100/60">
-                        <div>
-                          <h4 className="font-bold text-zinc-900 text-xs sm:text-sm">
-                            Good Morning, Professor! 👋
-                          </h4>
-                          <p className="text-[11px] text-zinc-500">B.Sc. Computer Science • Semester 4</p>
-                        </div>
-                        <span className="text-[10px] bg-white text-indigo-700 px-2 py-1 rounded-md font-semibold border border-indigo-100 shadow-2xs">
-                          Live Sync
-                        </span>
-                      </div>
-
-                      {/* Stat Counters */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-100">
-                          <span className="text-[10px] text-blue-700 font-semibold block">Total Students</span>
-                          <span className="text-base sm:text-lg font-black text-blue-950">2,850</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100">
-                          <span className="text-[10px] text-purple-700 font-semibold block">Active Classes</span>
-                          <span className="text-base sm:text-lg font-black text-purple-950">24</span>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
-                          <span className="text-[10px] text-emerald-700 font-semibold block">Pending Tasks</span>
-                          <span className="text-base sm:text-lg font-black text-emerald-950">12</span>
-                        </div>
-                      </div>
-
-                      {/* Upcoming Class Schedule Item */}
-                      <div className="p-3 bg-white border border-zinc-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                            CS
-                          </div>
-                          <div>
-                            <p className="font-bold text-zinc-900 text-xs">CS 301: Advanced Algorithms</p>
-                            <p className="text-[10px] text-zinc-500">Today, 10:00 AM – 11:30 AM • Turing Hall</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => launchDemoMode('professor')}
-                          className="px-2.5 py-1 bg-[#4F46E5] text-white rounded-lg text-[10px] font-bold hover:bg-[#4338CA] transition-colors cursor-pointer shrink-0"
-                        >
-                          Join Class
-                        </button>
-                      </div>
-                    </div>
+                  <div>
+                    <p className="font-bold text-zinc-900 leading-tight">Term Schedule Synced</p>
+                    <p className="text-[10px] text-zinc-500">Live Campus Routine Active</p>
                   </div>
                 </div>
 
-                {/* Floating Notification 1: Assignment Submitted */}
-                <div className="hero-notification -top-4 -right-2 sm:-right-6 bg-white px-3.5 py-2.5 rounded-xl border border-emerald-100 shadow-[0_12px_28px_rgba(16,185,129,0.18)] flex items-center gap-2.5 text-xs">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                {/* Floating Notification 2: Academic Gatekeeper Safe Standing */}
+                <div className="hero-notification -bottom-4 -left-2 sm:-left-4 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-emerald-100 shadow-[0_12px_28px_rgba(16,185,129,0.18)] flex items-center gap-2.5 text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0 font-bold">
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-bold text-zinc-900 leading-tight">Assignment Submitted</p>
-                    <p className="text-[10px] text-zinc-500">CS 301: Dynamic Graph Solvers</p>
+                    <p className="font-bold text-zinc-900 leading-tight">Attendance Standing: Safe</p>
+                    <p className="text-[10px] text-emerald-600 font-semibold">● 92.5% Aggregate • Unlocked</p>
                   </div>
                 </div>
 
-                {/* Floating Notification 2: New Announcement */}
-                <div className="hero-notification -bottom-4 -left-2 sm:-left-6 bg-white px-3.5 py-2.5 rounded-xl border border-indigo-100 shadow-[0_12px_28px_rgba(79,70,229,0.18)] flex items-center gap-2.5 text-xs">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                    <Megaphone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900 leading-tight">New Class Announcement</p>
-                    <p className="text-[10px] text-zinc-500">Semester Term Timetable Released</p>
-                  </div>
-                </div>
-
-                {/* Floating Notification 3: Upcoming Meeting */}
-                <div className="hero-notification -top-6 left-10 bg-white px-3 py-2 rounded-xl border border-blue-100 shadow-[0_10px_24px_rgba(37,99,235,0.14)] hidden sm:flex items-center gap-2 text-xs">
-                  <div className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                    <Video className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900 leading-tight text-[11px]">Upcoming Meeting</p>
-                    <p className="text-[9px] text-zinc-500">Faculty Council in 15 mins</p>
-                  </div>
-                </div>
-
-                {/* Floating Notification 4: Resource Uploaded */}
-                <div className="hero-notification -bottom-6 right-6 bg-white px-3 py-2 rounded-xl border border-purple-100 shadow-[0_10px_24px_rgba(147,51,234,0.14)] hidden sm:flex items-center gap-2 text-xs">
-                  <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-                    <FileText className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900 leading-tight text-[11px]">Resource Uploaded</p>
-                    <p className="text-[9px] text-zinc-500">Lecture04_Graphs.pdf</p>
-                  </div>
+                {/* Floating Badge 3: Active Classroom */}
+                <div className="hero-notification top-8 -left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-purple-100 shadow-[0_8px_20px_rgba(147,51,234,0.14)] hidden sm:flex items-center gap-2 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-bold text-zinc-800 text-[11px]">Real-Time Classroom</span>
                 </div>
               </div>
             </div>
@@ -1576,7 +1470,152 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 8. CONTINUOUS IN-MOTION OCEAN WAVES + PHONE-OPTIMIZED FOOTER   */}
+      {/* 7. TRANSFORM YOUR EDUCATIONAL EXPERIENCE (Matches Image 3)    */}
+      {/* ============================================================== */}
+      <section className="py-8 sm:py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#818CF8] via-[#6366F1] to-[#3B82F6] p-6 sm:p-10 shadow-[0_20px_50px_rgba(99,102,241,0.25)] flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8">
+            {/* Ambient Background Glows */}
+            <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+            {/* Left: 3D Graduation Cap with Rolled Diploma & Red Seal + Text */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-5 sm:gap-7 z-10 text-center sm:text-left">
+              <div className="w-28 sm:w-36 md:w-44 shrink-0 flex items-center justify-center">
+                <img
+                  src="/cta-cap-scroll.png"
+                  alt="Ready to Transform Your Educational Experience"
+                  className="w-full h-auto object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.22)] transform hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-white">
+                <h3 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight leading-snug">
+                  Ready to Transform Your Educational Experience?
+                </h3>
+                <p className="text-white/85 text-xs sm:text-sm font-medium">
+                  Join hundreds of institutions using ProSchool today.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Pill CTA Button */}
+            <div className="z-10 shrink-0 w-full sm:w-auto flex justify-center md:justify-end">
+              <button
+                onClick={() => setShowRequestModal(true)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-zinc-50 active:scale-95 text-[#4F46E5] font-extrabold text-sm sm:text-base px-7 sm:px-8 py-3.5 rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.15)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.22)] transition-all cursor-pointer"
+              >
+                <span>Get Started Free</span>
+                <span className="text-lg leading-none">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 8. FREQUENTLY ASKED QUESTIONS & NEED HELP (Matches Image 4)   */}
+      {/* ============================================================== */}
+      <section className="py-12 sm:py-16 bg-white" id="faq">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          {/* Section Header */}
+          <div className="text-left space-y-1.5">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-950 tracking-tight">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-sm sm:text-base text-zinc-600">
+              Find answers to common questions about ProSchool.
+            </p>
+          </div>
+
+          {/* 2-Column Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: 4 Interactive Accordion Items */}
+            <div className="lg:col-span-8 space-y-3.5">
+              {[
+                {
+                  q: 'Is ProSchool free for educational institutions?',
+                  a: 'Yes! We offer a free trial and affordable plans for schools and colleges.'
+                },
+                {
+                  q: 'Can I use ProSchool on mobile?',
+                  a: 'Yes! ProSchool is 100% web-based and fully responsive for iOS, Android, and tablets with zero app installation needed.'
+                },
+                {
+                  q: 'Is my data secure?',
+                  a: 'Yes! All academic data is isolated with tenant-level encryption, multi-factor authentication, and daily automated cloud backups.'
+                },
+                {
+                  q: 'How do I get support?',
+                  a: 'Our customer success team provides round-the-clock 24/7 technical support, teacher onboarding, and live student assistance.'
+                }
+              ].map((faq, idx) => {
+                const isOpen = activeFaq === idx;
+                return (
+                  <div
+                    key={idx}
+                    className="border border-zinc-200/80 rounded-2xl overflow-hidden transition-all duration-200 bg-white hover:border-indigo-200"
+                  >
+                    <button
+                      onClick={() => setActiveFaq(isOpen ? null : idx)}
+                      className="w-full px-5 sm:px-6 py-4 sm:py-4.5 flex items-center justify-between text-left cursor-pointer transition-colors hover:bg-zinc-50/60"
+                    >
+                      <span className="font-bold text-zinc-900 text-sm sm:text-base pr-4">
+                        {faq.q}
+                      </span>
+                      <span className="shrink-0 text-zinc-500">
+                        {isOpen ? (
+                          <ChevronUp className="w-5 h-5 text-[#4F46E5] transition-transform" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-zinc-400 transition-transform" />
+                        )}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 sm:px-6 pb-4 pt-1 text-xs sm:text-sm text-zinc-600 leading-relaxed border-t border-zinc-100 bg-zinc-50/40">
+                        {faq.a}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Right Column: "Need Help?" Card (Matches Image 4) */}
+            <div className="lg:col-span-4">
+              <div className="bg-[#FAF8FF] border border-purple-100 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-[0_15px_40px_rgba(99,102,241,0.06)] flex flex-col items-center">
+                <div className="w-20 h-20 rounded-full bg-white shadow-[0_8px_20px_rgba(99,102,241,0.12)] border border-purple-100 flex items-center justify-center p-2">
+                  <img
+                    src="/faq-headset-support.png"
+                    alt="Customer Support 24/7"
+                    className="w-14 h-14 object-contain"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <h3 className="text-xl sm:text-2xl font-black text-zinc-900">
+                    Need Help?
+                  </h3>
+                  <p className="text-zinc-600 text-xs sm:text-sm max-w-[240px] mx-auto leading-relaxed">
+                    Our support team is here to help you 24/7.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="inline-flex items-center justify-center gap-2 border-2 border-indigo-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/40 text-[#4F46E5] font-bold text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-xs hover:shadow-md transition-all cursor-pointer"
+                >
+                  <span>Contact Support</span>
+                  <span>→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 9. CONTINUOUS IN-MOTION OCEAN WAVES + PHONE-OPTIMIZED FOOTER   */}
       {/* ============================================================== */}
       {/* Continuous Living Ocean Waves Divider */}
       <div className="relative w-full overflow-hidden leading-none bg-white h-10 sm:h-20 md:h-28 -mb-1 select-none pointer-events-none">

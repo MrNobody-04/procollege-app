@@ -3304,12 +3304,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
                                 user.role === 'admin'
                                   ? 'bg-purple-100 text-purple-800'
+                                  : user.role === 'assistant_admin'
+                                  ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
                                   : user.role === 'professor' || user.role === 'lecturer'
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-emerald-100 text-emerald-800'
                               }`}
                             >
-                              {user.role}
+                              {user.role === 'assistant_admin' ? 'Assistant Admin' : user.role}
                             </span>
                           </td>
                           <td className="py-3 px-4 font-mono font-medium text-zinc-700">{user.loginId || 'N/A'}</td>
@@ -3317,6 +3319,22 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             {user.role === 'student' ? (() => {
                               const att = getStudentOverallAttendance(user.id);
                               const t = att.threshold;
+                              if (t.status === 'pending') {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedStudentForProfile(user);
+                                      setShowStudentProfileModal(true);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 border border-zinc-200 hover:opacity-80 cursor-pointer transition-opacity"
+                                    title="No roll-call records logged yet"
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                                    <span>No Records</span>
+                                  </button>
+                                );
+                              }
                               return (
                                 <button
                                   type="button"
@@ -3324,10 +3342,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                     setSelectedStudentForProfile(user);
                                     setShowStudentProfileModal(true);
                                   }}
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${t.badgeClass} hover:opacity-80 cursor-pointer transition-opacity`}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${t.badgeClass} hover:opacity-80 cursor-pointer transition-opacity`}
                                   title={`Click to view detailed attendance history (${t.percentage}% - ${t.label})`}
                                 >
-                                  <span>{t.icon}</span>
+                                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: t.dotColor }} />
                                   <span>{t.percentage}% {t.label}</span>
                                 </button>
                               );
