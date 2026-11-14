@@ -556,7 +556,73 @@ app.get('/api/messages/:channelId', async (c) => {
   }
 });
 
-// Echo AI Concierge Endpoint (Powered by Google Gemini)
+// Intelligent offline ProCollege answer generator (zero-latency fallback)
+function getOfflineProCollegeReply(query: string): string {
+  const q = query.toLowerCase().trim();
+
+  // 1. Nepali / Romanized Nepali greetings & questions
+  if (/\b(k\s*xa|k\s*cha|khabar|sanchai|namaste|sancho|thik\s*cha|hajur)\b/i.test(q)) {
+    return 'Sanchai chhu! Tapai ko k khabar chha? ProCollege ko cloud-native campus platform bare kehi bujhna chahanu huncha?';
+  }
+
+  // 2. Short English greetings
+  if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|yo|greetings)[\s!.]*$/i.test(q)) {
+    return "Hello! I'm Echo, your ProCollege AI concierge. I'm here to help you explore our campus features, pricing, and infrastructure. What can I help you with today?";
+  }
+
+  // 3. Attendance & Gatekeeper Questions
+  if (/\b(attendance|75%?|lock|gatekeeper|absent|roll[\s-]?call|minimum)\b/i.test(q)) {
+    return `ProCollege features a smart, automated Attendance Gatekeeper:
+
+• **School Level (Nursery to Class 12):** Daily bulk roll-call managed by Class Heads with automated aggregate percentage tracking.
+• **University Level (Bachelor's):** Granular per-subject attendance calculated from conducted lecture sessions. If a student's attendance drops below 75%, their LMS assignment submission portal is automatically locked until the course lecturer grants a manual override.
+
+Would you like to know how lecturers can configure or override attendance limits?`;
+  }
+
+  // 4. Pricing & Plans Questions
+  if (/\b(price|pricing|cost|plan|plans|free|tier|subscription|how\s*much)\b/i.test(q)) {
+    return `ProCollege offers three flexible institutional tiers:
+
+• **Starter (Free):** Up to 100 users, core collaboration channels, and shared campus workspaces — ideal for clubs and small academic departments.
+• **Campus Pro ($6/student/mo):** Full ProCollege Teams experience, HD virtual lectures (Meet), unified LMS workflows, and AI study assistance.
+• **Enterprise University (Custom Pricing):** Multi-campus governance, SIS integrations, Cloudflare D1 backup vaults, and dedicated SLA support.
+
+Would you like help choosing the best plan for your campus?`;
+  }
+
+  // 5. Broad "What is ProCollege" / Platform Overview Questions
+  if (/\b(what\s*(is|actually\s*is|does)\s*procollege|about\s*procollege|who\s*are\s*you|tell\s*me\s*about|platform|features)\b/i.test(q)) {
+    return `ProCollege is a cloud-native campus SaaS ecosystem designed for schools (Nursery to Class 12) and universities (Bachelor's programs).
+
+It unifies daily campus operations into four core modules:
+• **ProCollege Teams:** Real-time chat, student discussions, and departmental channels.
+• **ProCollege Meet:** Built-in HD virtual lectures with calendar synchronization.
+• **ProCollege LMS:** Assignment pipelines, automated grading, and our 75% attendance gatekeeper.
+• **ProCollege Cloud:** Centralized repository for syllabi, study materials, and institutional records.
+
+Powered by edge SQLite (Turso) and Cloudflare Workers, ProCollege provides instant sub-second performance with zero complex IT overhead. What specific area of campus management would you like to explore?`;
+  }
+
+  // 6. Technology & Architecture
+  if (/\b(tech\s*stack|architecture|database|turso|cloudflare|ably|cloudinary|speed|edge|security)\b/i.test(q)) {
+    return `ProCollege is built on a high-performance, zero-budget edge architecture:
+
+• **Edge Database:** Distributed SQLite via Turso for single-digit millisecond latency worldwide.
+• **Compute & CDN:** Cloudflare Workers & Pages for serverless scalability.
+• **Real-Time Layer:** Ably WebSockets for instantaneous messaging and lecture handshakes.
+• **Media & Vaults:** Cloudinary for media assets with Cloudflare D1 backup vaults.
+
+This guarantees sub-second responsiveness, bank-grade tenant isolation, and zero server maintenance. Would you like to dive deeper into our multi-tenant data architecture?`;
+  }
+
+  // 7. General Fallback
+  return `ProCollege is a unified campus management SaaS designed for schools (Nursery-12) and universities. We streamline virtual lectures (Meet), collaboration (Teams), assignments (LMS), and cloud documents with an automated 75% attendance gatekeeper.
+
+Feel free to ask about our pricing tiers, LMS workflows, or edge architecture!`;
+}
+
+// Echo AI Concierge Endpoint (Powered by Google Gemini with resilient multi-model cascade)
 app.post('/api/ai/chat', async (c) => {
   try {
     const body = await c.req.json();
@@ -565,63 +631,76 @@ app.post('/api/ai/chat', async (c) => {
       return c.json({ error: 'Messages array is required' }, 400);
     }
 
+    const latestUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+    const userQueryText = latestUserMsg?.text || '';
+
     const apiKey =
       (c.env as any)?.GEMINI_API_KEY ||
       (typeof atob === 'function'
         ? atob('QVEuQWI4Uk42SzVHamVYZlFWZmV1aEl0U296MmpnZFM0RmhzMGJSN0VVQllncGxXTjFPWXc=')
         : '');
 
-    const systemInstruction = `You are Echo, the official, highly intelligent, and human-like AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev).
+    const systemInstruction = `You are Echo, the charismatic, highly intelligent, and articulate AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev).
+ProCollege is a cloud-native campus SaaS ecosystem built for schools (Nursery-12) and universities (Bachelor's programs).
 
-## CRITICAL CONVERSATIONAL RULES:
-1. MULTILINGUAL & EXACT LANGUAGE MATCHING:
-   - Detect and strictly reply in the EXACT language and script the user uses.
-   - If the user writes in Romanized Nepali (e.g. "k xa khabar", "namaste", "sanchai xau", "procollege k ho?"), reply warmly and naturally in Romanized Nepali! (e.g. "Sanchai chu! ProCollege bare k janna chahanu huncha?").
-   - If the user writes in Nepali script (e.g. "के छ खबर"), reply in Nepali.
-   - If the user writes in Hindi, reply in Hindi.
-   - If in English, reply in clean, natural English.
-2. BE BRIEF & ANSWER ONLY WHAT IS ASKED:
-   - NEVER send long walls of text or unsolicited promotional paragraphs!
-   - For greetings or small-talk (like "hi", "k xa khabar", "how are you"), reply in ONE short, friendly sentence. Do NOT dump platform feature lists on greetings.
-   - For specific questions, provide a direct, crisp 1-3 sentence answer.
-3. STRICT PLATFORM SCOPE & KNOWLEDGE:
-   - ProCollege is a unified campus SaaS for schools (Nursery-12) & universities (Bachelor's).
-   - Zero-Budget Stack: Turso SQLite edge DB, Cloudflare Workers, Ably real-time messaging, Cloudinary, Cloudflare D1 backup vaults.
-   - Core Modules: Teams (channels/chats), Meet (virtual classrooms), LMS (assignments & rubrics), Cloud (document repository).
-   - Attendance Lock: School level uses daily bulk roll-call. University level tracks per-subject sessions; if attendance drops below 75%, assignment submissions are automatically locked until the lecturer grants manual override permission.
+Guidelines:
+1. For casual greetings or small-talk (e.g., 'hi', 'k xa khabar', 'namaste'):
+   Respond in 1-2 friendly, engaging sentences matching their exact language (Nepali, Romanized Nepali, or English) and offer a natural entry point into ProCollege.
+2. For conceptual or complex questions (e.g., 'What actually is ProCollege?', 'What does ProCollege do for me?', 'How does the attendance lock work?'):
+   Give a smart, comprehensive, and well-structured answer with clear value propositions for students, faculty, and administrators.
+3. Tech specs & features:
+   - High-Speed Zero-Budget Edge Stack: Turso SQLite edge DB, Cloudflare Workers, Ably WebSockets, Cloudinary CDN, Cloudflare D1 vaults.
+   - Core Modules: ProCollege Teams (chat & channels), Meet (virtual lectures), LMS (grading & assignments), Cloud (syllabus & documents).
+   - Smart Attendance Gatekeeper: Daily bulk roll-call for Nursery-12; per-subject session tracking for Bachelor's with automated LMS assignment locking below 75% attendance until manual faculty override.
    - Pricing: Starter (Free up to 100 users), Campus Pro ($6/student/mo), Enterprise University (Custom).
-4. NATURAL CONVERSATIONAL CLOSING:
-   - Keep any follow-up question short, friendly, and directly relevant to the user's inquiry.`;
+4. Always remain positive, helpful, and natural. Never say 'As an AI language model' or 'How may I assist you today?'. End with a natural conversational follow-up.`;
 
     const contents = messages.map((m: { role: string; text: string }) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.text }]
     }));
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const modelsToTry = [
+      'gemini-3-flash-preview',
+      'gemini-flash-lite-latest',
+      'gemini-flash-latest',
+      'gemini-2.5-flash'
+    ];
 
-    const res = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1000
+    let replyText = '';
+
+    for (const model of modelsToTry) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            contents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1000
+            }
+          })
+        });
+
+        if (res.ok) {
+          const data: any = await res.json();
+          const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidateText && candidateText.trim().length > 0) {
+            replyText = candidateText.trim();
+            break;
+          }
         }
-      })
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      return c.json({ error: `Gemini API error: ${errText}` }, 502);
+      } catch {
+        // Continue to next model in cascade
+      }
     }
 
-    const data: any = await res.json();
-    const replyText =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      'I am here to guide you through ProCollege campus operations. What would you like to explore next?';
+    if (!replyText) {
+      replyText = getOfflineProCollegeReply(userQueryText);
+    }
 
     return c.json({ reply: replyText });
   } catch (err: unknown) {
@@ -755,12 +834,13 @@ app.post('/api/auth/login', async (c) => {
 
     // B. Check against live Turso database users table
     const db = getDb(c);
+    try { await db.execute(`ALTER TABLE colleges ADD COLUMN education_level TEXT;`); } catch {}
     const targetCollegeId = (body.collegeId || body.college_id || c.req.header('x-college-id') || '').trim();
 
     let querySql = `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
                    u.password, u.password_hash, u.institution_name, u.department, u.must_change_password,
                    u.otp_code, u.otp_expires_at,
-                   c.name as college_name, c.code as college_code, c.status as college_status
+                   c.name as college_name, c.code as college_code, c.status as college_status, c.education_level as college_education_level
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
             WHERE LOWER(u.email) = LOWER(?)`;
@@ -952,6 +1032,7 @@ app.post('/api/auth/login', async (c) => {
       department: String(userRow.department || 'Administration'),
       section_id: userRow.section_id ? String(userRow.section_id) : null,
       avatar_url: String(userRow.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+      educationLevel: String(userRow.college_education_level || 'bachelor'),
     };
 
     const college = {
@@ -959,6 +1040,7 @@ app.post('/api/auth/login', async (c) => {
       name: resolvedInstitutionName,
       code: String(userRow.college_code || 'PDC'),
       status: collegeStatus,
+      educationLevel: String(userRow.college_education_level || 'bachelor'),
     };
 
     if (matchedDeviceToken) {
@@ -1364,6 +1446,9 @@ app.get('/api/platform/institutions', async (c) => {
     }
 
     const db = getDb(c);
+    try { await db.execute(`ALTER TABLE colleges ADD COLUMN education_level TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE institutions ADD COLUMN education_level TEXT;`); } catch {}
+
     const instRes = await db.execute(`
       SELECT 
         COALESCE(i.id, c.id) as id,
@@ -1371,6 +1456,7 @@ app.get('/api/platform/institutions', async (c) => {
         COALESCE(i.code, c.code) as code,
         COALESCE(i.status, c.status, 'active') as status,
         COALESCE(i.billing_plan, c.billing_plan, 'campus-pro') as billing_plan,
+        COALESCE(i.education_level, c.education_level, 'bachelor') as education_level,
         COALESCE(i.contact_email, '') as contact_email,
         COALESCE(i.created_at, c.created_at, datetime('now')) as created_at
       FROM colleges c
@@ -1381,7 +1467,9 @@ app.get('/api/platform/institutions', async (c) => {
         AND COALESCE(i.name, c.name) NOT LIKE '%demo%'
       UNION
       SELECT 
-        i.id, i.name, i.code, i.status, i.billing_plan, i.contact_email, i.created_at
+        i.id, i.name, i.code, i.status, i.billing_plan,
+        COALESCE(i.education_level, 'bachelor') as education_level,
+        i.contact_email, i.created_at
       FROM institutions i
       LEFT JOIN colleges c ON i.id = c.id
       WHERE c.id IS NULL
@@ -1454,6 +1542,7 @@ app.get('/api/platform/institutions', async (c) => {
         code: String(row.code || ''),
         status: String(row.status || 'active'),
         billingPlan: String(row.billing_plan || 'campus-pro'),
+        educationLevel: String(row.education_level || 'bachelor'),
         studentCount: studentCountMap.get(id) || 0,
         facultyCount: facultyCountMap.get(id) || 0,
         adminCount: adminList.length,
@@ -1531,12 +1620,16 @@ app.post('/api/platform/institutions/provision', async (c) => {
     const email = (body.email || '').trim().toLowerCase();
     const department = (body.department || 'Chief Academic Operations').trim();
     const plan = body.plan || 'campus-pro';
+    const educationLevel = (body.educationLevel || body.education_level || 'bachelor').trim();
 
     if (!name || !email || !contactName) {
       return c.json({ error: 'Institution Name, Admin Name, and Official Email are required.' }, 400);
     }
 
     const db = getDb(c);
+    try { await db.execute(`ALTER TABLE colleges ADD COLUMN education_level TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE institutions ADD COLUMN education_level TEXT;`); } catch {}
+
     const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 30);
     const institutionId = `col_${slug}_${Math.random().toString(36).slice(2, 6)}`;
     const code = body.code || name.split(/\s+/).map((w: string) => w[0]).join('').toUpperCase().slice(0, 5) || 'COL';
@@ -1548,12 +1641,12 @@ app.post('/api/platform/institutions/provision', async (c) => {
 
     // 1. Insert into colleges & institutions
     await db.execute({
-      sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan) VALUES (?, ?, ?, 'active', ?);`,
-      args: [institutionId, name, code, plan],
+      sql: `INSERT OR REPLACE INTO colleges (id, name, code, status, billing_plan, education_level) VALUES (?, ?, ?, 'active', ?, ?);`,
+      args: [institutionId, name, code, plan, educationLevel],
     });
     await db.execute({
-      sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email) VALUES (?, ?, ?, 'active', ?, ?);`,
-      args: [institutionId, name, code, plan, email],
+      sql: `INSERT OR REPLACE INTO institutions (id, name, code, status, billing_plan, contact_email, education_level) VALUES (?, ?, ?, 'active', ?, ?, ?);`,
+      args: [institutionId, name, code, plan, email, educationLevel],
     });
 
     // Generate initial 2FA OTP code valid for 48h
@@ -1686,6 +1779,7 @@ app.post('/api/platform/institutions/provision', async (c) => {
         code,
         status: 'active',
         billingPlan: plan,
+        educationLevel,
       },
       admin: createdAdmins[0],
       admins: createdAdmins,
@@ -1776,6 +1870,43 @@ app.post('/api/platform/institutions/:id/renew', async (c) => {
       id,
       status: 'active',
       message: `Subscription for organization ${id} renewed successfully for 1 year.`
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// 1.75 Update Education Level / Tier for an Organization
+app.patch('/api/platform/institutions/:id/education-level', async (c) => {
+  try {
+    const caller = extractUserFromHeader(c);
+    if (!caller) {
+      return c.json({ error: 'Unauthorized: Authentication required' }, 401);
+    }
+
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    const educationLevel = (body.educationLevel || body.education_level || 'bachelor').trim();
+    const db = getDb(c);
+
+    try { await db.execute(`ALTER TABLE colleges ADD COLUMN education_level TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE institutions ADD COLUMN education_level TEXT;`); } catch {}
+
+    await db.execute({
+      sql: `UPDATE colleges SET education_level = ? WHERE id = ?;`,
+      args: [educationLevel, id],
+    });
+    await db.execute({
+      sql: `UPDATE institutions SET education_level = ? WHERE id = ?;`,
+      args: [educationLevel, id],
+    });
+
+    return c.json({
+      success: true,
+      id,
+      educationLevel,
+      message: `Institution education tier updated to ${educationLevel}.`
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -2912,17 +3043,47 @@ app.get('/api/workspace/bootstrap', async (c) => {
       };
     });
 
-    const allDepartments = (departmentsRes?.rows || facultiesRes?.rows || []).map(f => ({
-      id: String(f.id),
-      name: String(f.name),
-      code: String(f.code),
-      headId: String(f.head_id || f.dean_id || 'usr-admin-01'),
-      headName: String(f.head_name || f.dean_name || 'Department Head'),
-      deanId: String(f.head_id || f.dean_id || 'usr-admin-01'),
-      deanName: String(f.head_name || f.dean_name || 'Department Head'),
-      institutionName: String(f.institution_name || institutionParam),
-      description: String(f.description || ''),
-    }));
+    const allDepartments = (departmentsRes?.rows || facultiesRes?.rows || []).map(f => {
+      let subjects = [];
+      if (f.subjects) {
+        try { subjects = typeof f.subjects === 'string' ? JSON.parse(String(f.subjects)) : f.subjects; } catch {}
+      }
+      return {
+        id: String(f.id),
+        name: String(f.name),
+        code: String(f.code),
+        headId: String(f.head_id || f.dean_id || 'usr-admin-01'),
+        headName: String(f.head_name || f.dean_name || 'Department Head'),
+        deanId: String(f.head_id || f.dean_id || 'usr-admin-01'),
+        deanName: String(f.head_name || f.dean_name || 'Department Head'),
+        institutionName: String(f.institution_name || institutionParam),
+        description: String(f.description || ''),
+        subjects: Array.isArray(subjects) ? subjects : [],
+      };
+    });
+
+    let activeEducationLevel = 'bachelor';
+    if (collegeId) {
+      try {
+        const eduRes = await db.execute({
+          sql: `SELECT education_level FROM colleges WHERE id = ? UNION SELECT education_level FROM institutions WHERE id = ? LIMIT 1;`,
+          args: [collegeId, collegeId]
+        });
+        if (eduRes.rows.length > 0 && eduRes.rows[0].education_level) {
+          activeEducationLevel = String(eduRes.rows[0].education_level);
+        }
+      } catch {}
+    } else if (institutionParam && institutionParam !== 'all') {
+      try {
+        const eduRes = await db.execute({
+          sql: `SELECT education_level FROM colleges WHERE LOWER(name) = LOWER(?) UNION SELECT education_level FROM institutions WHERE LOWER(name) = LOWER(?) LIMIT 1;`,
+          args: [institutionParam, institutionParam]
+        });
+        if (eduRes.rows.length > 0 && eduRes.rows[0].education_level) {
+          activeEducationLevel = String(eduRes.rows[0].education_level);
+        }
+      } catch {}
+    }
 
     const allUsers = usersRes.rows.map(u => {
       let role = String(u.role || 'student');
@@ -2962,6 +3123,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
     return c.json({
       success: true,
       institution: institutionParam,
+      educationLevel: activeEducationLevel,
       departments: allDepartments,
       faculties: allDepartments,
       courses: allCourses,
@@ -3157,6 +3319,22 @@ app.put('/api/departments/:id', async (c) => {
         args: [updatedName, updatedCode, updatedHeadId, updatedHeadName, updatedDesc, id],
       });
     } catch {}
+
+    const subjects = body.subjects !== undefined ? (Array.isArray(body.subjects) ? JSON.stringify(body.subjects) : String(body.subjects)) : undefined;
+    if (subjects !== undefined) {
+      try { await db.execute(`ALTER TABLE departments ADD COLUMN subjects TEXT;`); } catch {}
+      try { await db.execute(`ALTER TABLE faculties ADD COLUMN subjects TEXT;`); } catch {}
+      try {
+        await db.execute({
+          sql: `UPDATE departments SET subjects = ? WHERE id = ?;`,
+          args: [subjects, id],
+        });
+        await db.execute({
+          sql: `UPDATE faculties SET subjects = ? WHERE id = ?;`,
+          args: [subjects, id],
+        });
+      } catch {}
+    }
 
     // If department name was changed, keep courses table synchronized
     if (oldDept?.name && updatedName !== String(oldDept.name)) {

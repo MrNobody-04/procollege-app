@@ -1,5 +1,6 @@
 export type UserRole = 'developer' | 'admin' | 'assistant_admin' | 'lecturer' | 'student' | 'professor' | 'ta' | 'platform_admin';
 export type PresenceStatus = 'available' | 'busy' | 'away' | 'dnd' | 'in-call' | 'offline';
+export type EducationLevel = 'school_k10' | 'high_school_11_12' | 'bachelor';
 export type LicenseSku =
   | 'ProCollege Verified for Faculty'
   | 'ProCollege Verified for Students'
@@ -24,6 +25,7 @@ export interface User {
   institutionId?: string;
   collegeId?: string;
   collegeName?: string;
+  educationLevel?: EducationLevel;
   avatar: string;
   status: PresenceStatus;
   statusMessage?: string;
@@ -31,6 +33,13 @@ export interface User {
   temporaryPassword?: string;
   createdAt?: string;
   isDemo?: boolean;
+}
+
+export interface DepartmentSubject {
+  id?: string;
+  name: string;
+  code: string;
+  description?: string;
 }
 
 export interface Department {
@@ -45,6 +54,8 @@ export interface Department {
   institutionName?: string;
   collegeId?: string;
   memberIds?: string[];
+  subjects?: DepartmentSubject[];
+  educationLevel?: EducationLevel;
   isDemo?: boolean;
 }
 export type FacultyDepartment = Department;
@@ -134,6 +145,7 @@ export interface CourseTeam {
   isActivated: boolean; // Pre-staged inactive state until Lecturer clicks Activate banner
   model: DeploymentModel;
   template: 'Class' | 'PLC' | 'Staff' | 'Other';
+  educationLevel?: EducationLevel;
   isDemo?: boolean;
 }
 

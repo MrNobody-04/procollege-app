@@ -21,6 +21,14 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
     deanName: 'Prof. Alan Turing',
     institutionName: 'ProCollege University Network',
     description: 'Algorithms, Software Architecture, Operating Systems & Distributed Infrastructure',
+    educationLevel: 'bachelor',
+    subjects: [
+      { name: 'Operating Systems', code: 'CS-302', description: 'Processes, Memory Management & Syscalls' },
+      { name: 'Computer Networks', code: 'CS-304', description: 'TCP/IP, Routing Protocols & Sockets' },
+      { name: 'Database Systems', code: 'CS-305', description: 'Relational Models & SQL Optimization' },
+      { name: 'Algorithms & Complexity', code: 'CS-301', description: 'Graph algorithms & NP-completeness' },
+      { name: 'Software Engineering', code: 'CS-306', description: 'System Design & Agile Practices' }
+    ],
     isDemo: true
   },
   {
@@ -31,6 +39,13 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
     deanName: 'Dr. Fei-Fei Li',
     institutionName: 'ProCollege University Network',
     description: 'Neural Networks, Computer Vision, Foundation Models & Deep Learning',
+    educationLevel: 'bachelor',
+    subjects: [
+      { name: 'Machine Learning', code: 'AI-401', description: 'Supervised & Unsupervised Learning' },
+      { name: 'Deep Learning & Neural Networks', code: 'AI-402', description: 'PyTorch, CNNs & Backprop' },
+      { name: 'Big Data Analytics', code: 'DS-403', description: 'Distributed Data, Spark & Pipelines' },
+      { name: 'Natural Language Processing', code: 'AI-405', description: 'Tokenization, Embeddings & LLMs' }
+    ],
     isDemo: true
   },
   {
@@ -41,6 +56,12 @@ export const INITIAL_FACULTIES: FacultyDepartment[] = [
     deanName: 'Dr. Richard Feynman',
     institutionName: 'ProCollege University Network',
     description: 'Quantum Mechanics, Electromagnetism & Applied Computational Physics',
+    educationLevel: 'bachelor',
+    subjects: [
+      { name: 'Quantum Mechanics', code: 'PHYS-201', description: 'Wave mechanics & Schrödinger equation' },
+      { name: 'Electromagnetism', code: 'PHYS-202', description: 'Maxwell equations & vector fields' },
+      { name: 'Computational Physics', code: 'PHYS-203', description: 'Numerical simulation & modeling' }
+    ],
     isDemo: true
   }
 ];

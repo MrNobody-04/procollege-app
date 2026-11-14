@@ -18,6 +18,7 @@ import type {
   InstitutionalRequest,
   FacultyDepartment,
   PresenceStatus,
+  EducationLevel,
   DialogState,
   DialogOptions,
   DialogType,
@@ -224,8 +225,11 @@ interface AppContextType {
   removeInstitutionAdmin: (instId: string, adminId: string) => Promise<any>;
   renameInstitutionAdmin: (instId: string, adminId: string, data: { name: string; department?: string }) => Promise<any>;
 
-  createInstitutionalAdmin: (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => User;
+  createInstitutionalAdmin: (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string; educationLevel?: EducationLevel }) => User;
   deleteOrganization: (orgName: string) => void;
+
+  institutionEducationLevel: EducationLevel;
+  setInstitutionEducationLevel: (level: EducationLevel) => void;
 
   deleteChannel: (courseId: string, channelId: string) => void;
   selectedInstitution: string;
@@ -286,6 +290,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [institutionalRequests, setInstitutionalRequests] = useState<InstitutionalRequest[]>(INITIAL_INSTITUTIONAL_REQUESTS);
   const [faculties, setFaculties] = useState<FacultyDepartment[]>(INITIAL_FACULTIES);
   const [selectedInstitution, setSelectedInstitution] = useState<string>('ProCollege University Network');
+  const [institutionEducationLevel, setInstitutionEducationLevelState] = useState<EducationLevel>(() => {
+    try {
+      const savedColStr = localStorage.getItem('procollege_college');
+      if (savedColStr) {
+        const parsed = JSON.parse(savedColStr);
+        if (parsed.educationLevel || parsed.education_level) {
+          return parsed.educationLevel || parsed.education_level;
+        }
+      }
+    } catch {}
+    return 'bachelor';
+  });
+
+  const setInstitutionEducationLevel = (level: EducationLevel) => {
+    setInstitutionEducationLevelState(level);
+    try {
+      const savedColStr = localStorage.getItem('procollege_college');
+      const parsed = savedColStr ? JSON.parse(savedColStr) : {};
+      parsed.educationLevel = level;
+      parsed.education_level = level;
+      localStorage.setItem('procollege_college', JSON.stringify(parsed));
+    } catch {}
+  };
 
   // Attendance & Gatekeeper State
   const [schoolAttendance, setSchoolAttendance] = useState<SchoolAttendanceRecord[]>([]);
@@ -359,6 +386,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!res.ok) return;
       const data = await res.json();
       if (data.success) {
+        if (data.educationLevel) {
+          setInstitutionEducationLevelState(data.educationLevel);
+        }
         // 1. Faculties
         setFaculties(data.faculties || []);
 
@@ -2281,7 +2311,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const createInstitutionalAdmin = (data: { name: string; email: string; institutionName: string; department?: string; temporaryPassword?: string }) => {
+  const createInstitutionalAdmin = (data: {
+    name: string;
+    email: string;
+    institutionName: string;
+    department?: string;
+    temporaryPassword?: string;
+    educationLevel?: EducationLevel;
+  }) => {
+    const level: EducationLevel = data.educationLevel || 'bachelor';
     const newAdmin: User = {
       id: `user_admin_${Date.now()}`,
       loginId: `ORG-ADMIN-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -2289,8 +2327,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email: data.email,
       role: 'admin',
       license: 'ProCollege Verified for Faculty',
-      department: data.department || 'Chief Academic Operations',
+      department: data.department || (level === 'school_k10' ? 'School Administration' : level === 'high_school_11_12' ? 'High School Administration' : 'Chief Academic Operations'),
       institutionName: data.institutionName,
+      educationLevel: level,
       avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=256&q=80',
       status: 'available',
       statusMessage: `Admin for ${data.institutionName}`,
@@ -2299,18 +2338,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString().split('T')[0]
     };
     setAvailableUsers(prev => [newAdmin, ...prev]);
+    setInstitutionEducationLevel(level);
 
     // Automatically seed an initial Faculty for this institution if none exists yet
     const hasFac = faculties.some(f => f.institutionName === data.institutionName);
     if (!hasFac) {
+      const defaultFacName = data.department
+        ? (data.department.toLowerCase().includes('faculty') || data.department.toLowerCase().includes('department') ? data.department : `Department of ${data.department}`)
+        : (level === 'school_k10' ? 'General Academic Section (Nursery - Class 10)' : level === 'high_school_11_12' ? 'Department of Higher Secondary (+2)' : 'Department of Computer Science & Engineering');
+
+      const defaultFacCode = level === 'school_k10' ? 'SCH' : level === 'high_school_11_12' ? 'HSC' : 'FCSE';
+
       const defaultFac: FacultyDepartment = {
         id: `fac_${Date.now()}`,
-        name: data.department ? `Faculty of ${data.department}` : 'Faculty of Computer Science & Information Technology',
-        code: 'FCIT',
+        name: defaultFacName,
+        code: defaultFacCode,
         deanId: newAdmin.id,
         deanName: newAdmin.name,
         institutionName: data.institutionName,
-        description: `Official academic faculty for ${data.institutionName}.`
+        educationLevel: level,
+        description: `Official academic department for ${data.institutionName}.`,
+        subjects: level === 'bachelor' ? [
+          { name: 'Operating Systems', code: 'CS-302', description: 'Processes, Memory & Syscalls' },
+          { name: 'Computer Networks', code: 'CS-304', description: 'TCP/IP, Routing Protocols & Sockets' },
+          { name: 'Database Systems', code: 'CS-305', description: 'Relational Models & SQL' },
+          { name: 'Algorithms & Complexity', code: 'CS-301', description: 'Graph algorithms & NP-completeness' }
+        ] : []
       };
       setFaculties(prev => [...prev, defaultFac]);
     }
@@ -2716,6 +2769,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         createInstitutionalAdmin,
         deleteOrganization,
+
+        institutionEducationLevel,
+        setInstitutionEducationLevel,
 
         selectedInstitution,
         setSelectedInstitution,

@@ -148,9 +148,12 @@ export const PortalLanding: React.FC = () => {
 
   const finishLoginSession = (data: any) => {
     const instName = data.college?.name || data.user.institutionName || 'ProSchool Campus';
+    const eduLevel = data.college?.educationLevel || data.college?.education_level || data.user?.educationLevel || data.user?.education_level || 'bachelor';
+    const collegeObj = data.college ? { ...data.college, educationLevel: eduLevel, education_level: eduLevel } : { name: instName, educationLevel: eduLevel, education_level: eduLevel };
+
     localStorage.setItem('procollege_token', data.token);
     localStorage.setItem('procollege_user', JSON.stringify(data.user));
-    localStorage.setItem('procollege_college', JSON.stringify(data.college || { name: instName }));
+    localStorage.setItem('procollege_college', JSON.stringify(collegeObj));
 
     if (data.deviceToken) {
       saveDeviceToken(data.deviceToken);
@@ -193,6 +196,7 @@ export const PortalLanding: React.FC = () => {
       institutionId: data.college?.id || 'inst_active',
       collegeId: data.college?.id || 'inst_active',
       collegeName: instName,
+      educationLevel: eduLevel,
       avatar:
         data.user.avatar ||
         `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80`,

@@ -8,27 +8,20 @@ interface ChatMessage {
   text: string;
 }
 
-const SYSTEM_PROMPT = `You are Echo, the official, highly intelligent, and human-like AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev).
+const SYSTEM_PROMPT = `You are Echo, the charismatic, highly intelligent, and articulate AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev).
+ProCollege is a cloud-native campus SaaS ecosystem built for schools (Nursery-12) and universities (Bachelor's programs).
 
-## CRITICAL CONVERSATIONAL RULES:
-1. MULTILINGUAL & EXACT LANGUAGE MATCHING:
-   - Detect and strictly reply in the EXACT language and script the user uses.
-   - If the user writes in Romanized Nepali (e.g. "k xa khabar", "namaste", "sanchai xau", "procollege k ho?"), reply warmly and naturally in Romanized Nepali! (e.g. "Sanchai chu! ProCollege bare k janna chahanu huncha?").
-   - If the user writes in Nepali script (e.g. "के छ खबर"), reply in Nepali.
-   - If the user writes in Hindi, reply in Hindi.
-   - If in English, reply in clean, natural English.
-2. BE BRIEF & ANSWER ONLY WHAT IS ASKED:
-   - NEVER send long walls of text or unsolicited promotional paragraphs!
-   - For greetings or small-talk (like "hi", "k xa khabar", "how are you"), reply in ONE short, friendly sentence. Do NOT dump platform feature lists on greetings.
-   - For specific questions, provide a direct, crisp 1-3 sentence answer.
-3. STRICT PLATFORM SCOPE & KNOWLEDGE:
-   - ProCollege is a unified campus SaaS for schools (Nursery-12) & universities (Bachelor's).
-   - Zero-Budget Stack: Turso SQLite edge DB, Cloudflare Workers, Ably real-time messaging, Cloudinary, Cloudflare D1 backup vaults.
-   - Core Modules: Teams (channels/chats), Meet (virtual classrooms), LMS (assignments & rubrics), Cloud (document repository).
-   - Attendance Lock: School level uses daily bulk roll-call. University level tracks per-subject sessions; if attendance drops below 75%, assignment submissions are automatically locked until the lecturer grants manual override permission.
+Guidelines:
+1. For casual greetings or small-talk (e.g., 'hi', 'k xa khabar', 'namaste'):
+   Respond in 1-2 friendly, engaging sentences matching their exact language (Nepali, Romanized Nepali, or English) and offer a natural entry point into ProCollege.
+2. For conceptual or complex questions (e.g., 'What actually is ProCollege?', 'What does ProCollege do for me?', 'How does the attendance lock work?'):
+   Give a smart, comprehensive, and well-structured answer with clear value propositions for students, faculty, and administrators.
+3. Tech specs & features:
+   - High-Speed Zero-Budget Edge Stack: Turso SQLite edge DB, Cloudflare Workers, Ably WebSockets, Cloudinary CDN, Cloudflare D1 vaults.
+   - Core Modules: ProCollege Teams (chat & channels), Meet (virtual lectures), LMS (grading & assignments), Cloud (syllabus & documents).
+   - Smart Attendance Gatekeeper: Daily bulk roll-call for Nursery-12; per-subject session tracking for Bachelor's with automated LMS assignment locking below 75% attendance until manual faculty override.
    - Pricing: Starter (Free up to 100 users), Campus Pro ($6/student/mo), Enterprise University (Custom).
-4. NATURAL CONVERSATIONAL CLOSING:
-   - Keep any follow-up question short, friendly, and directly relevant to the user's inquiry.`;
+4. Always remain positive, helpful, and natural. Never say 'As an AI language model' or 'How may I assist you today?'. End with a natural conversational follow-up.`;
 
 // Automatic initial greeting from Echo
 const INITIAL_MESSAGES: ChatMessage[] = [
@@ -40,7 +33,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 ];
 
 const SUGGESTED_QUESTIONS = [
-  'What is ProCollege?',
+  'What actually is ProCollege?',
   'How does the 75% attendance lock work?',
   'Campus Pricing & Plans'
 ];
@@ -51,21 +44,137 @@ const GEMINI_API_KEY =
     ? atob('QVEuQWI4Uk42SzVHamVYZlFWZmV1aEl0U296MmpnZFM0RmhzMGJSN0VVQllncGxXTjFPWXc=')
     : '');
 
-// Helper to strictly find and lock a consistent natural MALE voice
+// Intelligent offline ProCollege answer generator (zero-latency fallback)
+function getOfflineProCollegeReply(query: string): string {
+  const q = query.toLowerCase().trim();
+
+  // 1. Nepali / Romanized Nepali greetings
+  if (/\b(k\s*xa|k\s*cha|khabar|sanchai|namaste|sancho|thik\s*cha|hajur)\b/i.test(q)) {
+    return 'Sanchai chhu! Tapai ko k khabar chha? ProCollege ko cloud-native campus platform bare kehi bujhna chahanu huncha?';
+  }
+
+  // 2. Short English greetings
+  if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|yo|greetings)[\s!.]*$/i.test(q)) {
+    return "Hello! I'm Echo, your ProCollege AI concierge. I'm here to help you explore our campus features, pricing, and infrastructure. What can I help you with today?";
+  }
+
+  // 3. Attendance & Gatekeeper Questions
+  if (/\b(attendance|75%?|lock|gatekeeper|absent|roll[\s-]?call|minimum)\b/i.test(q)) {
+    return `ProCollege features a smart, automated Attendance Gatekeeper:
+
+• **School Level (Nursery to Class 12):** Daily bulk roll-call managed by Class Heads with automated aggregate percentage tracking.
+• **University Level (Bachelor's):** Granular per-subject attendance calculated from conducted lecture sessions. If a student's attendance drops below 75%, their LMS assignment submission portal is automatically locked until the course lecturer grants a manual override.
+
+Would you like to know how lecturers can configure or override attendance limits?`;
+  }
+
+  // 4. Pricing & Plans Questions
+  if (/\b(price|pricing|cost|plan|plans|free|tier|subscription|how\s*much)\b/i.test(q)) {
+    return `ProCollege offers three flexible institutional tiers:
+
+• **Starter (Free):** Up to 100 users, core collaboration channels, and shared campus workspaces — ideal for clubs and small academic departments.
+• **Campus Pro ($6/student/mo):** Full ProCollege Teams experience, HD virtual lectures (Meet), unified LMS workflows, and AI study assistance.
+• **Enterprise University (Custom Pricing):** Multi-campus governance, SIS integrations, Cloudflare D1 backup vaults, and dedicated SLA support.
+
+Would you like help choosing the best plan for your campus?`;
+  }
+
+  // 5. Broad "What is ProCollege" / Platform Overview Questions
+  if (/\b(what\s*(is|actually\s*is|does)\s*procollege|about\s*procollege|who\s*are\s*you|tell\s*me\s*about|platform|features)\b/i.test(q)) {
+    return `ProCollege is a cloud-native campus SaaS ecosystem designed for schools (Nursery to Class 12) and universities (Bachelor's programs).
+
+It unifies daily campus operations into four core modules:
+• **ProCollege Teams:** Real-time chat, student discussions, and departmental channels.
+• **ProCollege Meet:** Built-in HD virtual lectures with calendar synchronization.
+• **ProCollege LMS:** Assignment pipelines, automated grading, and our 75% attendance gatekeeper.
+• **ProCollege Cloud:** Centralized repository for syllabi, study materials, and institutional records.
+
+Powered by edge SQLite (Turso) and Cloudflare Workers, ProCollege provides instant sub-second performance with zero complex IT overhead. What specific area of campus management would you like to explore?`;
+  }
+
+  // 6. Technology & Architecture
+  if (/\b(tech\s*stack|architecture|database|turso|cloudflare|ably|cloudinary|speed|edge|security)\b/i.test(q)) {
+    return `ProCollege is built on a high-performance, zero-budget edge architecture:
+
+• **Edge Database:** Distributed SQLite via Turso for single-digit millisecond latency worldwide.
+• **Compute & CDN:** Cloudflare Workers & Pages for serverless scalability.
+• **Real-Time Layer:** Ably WebSockets for instantaneous messaging and lecture handshakes.
+• **Media & Vaults:** Cloudinary for media assets with Cloudflare D1 backup vaults.
+
+This guarantees sub-second responsiveness, bank-grade tenant isolation, and zero server maintenance. Would you like to dive deeper into our multi-tenant data architecture?`;
+  }
+
+  // 7. General Fallback
+  return `ProCollege is a unified campus management SaaS designed for schools (Nursery-12) and universities. We streamline virtual lectures (Meet), collaboration (Teams), assignments (LMS), and cloud documents with an automated 75% attendance gatekeeper.
+
+Feel free to ask about our pricing tiers, LMS workflows, or edge architecture!`;
+}
+
+// Clean and extract fluent conversational summary for spoken audio
+function cleanPhonetics(str: string): string {
+  return str
+    .replace(/\bLMS\b/g, 'L M S')
+    .replace(/\bAI\b/g, 'A I')
+    .replace(/\bSaaS\b/g, 'sass')
+    .replace(/(\d+)%/g, '$1 percent')
+    .replace(/\bNursery-12\b/g, 'Nursery to 12')
+    .replace(/\bN-12\b/g, 'Nursery to 12')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractSpokenSummary(text: string): string {
+  // 1. Remove markdown formatting, hashes, brackets, bullets, headers
+  let cleaned = text
+    .replace(/^#+\s.*$/gm, '')
+    .replace(/[*#_`>]/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\bhttps?:\/\/\S+/gi, '')
+    .replace(/^\s*[•\-\*\d\.]+\s+/gm, '')
+    .trim();
+
+  // If text is short (< 160 chars), speak as is
+  if (cleaned.length <= 160) {
+    return cleanPhonetics(cleaned);
+  }
+
+  // Otherwise, split by real sentence boundaries (. ! ?)
+  const sentences = cleaned.split(/(?<=[.!?])\s+/);
+  let summary = '';
+  for (const s of sentences) {
+    const candidate = s.trim();
+    if (!candidate || /^\d+\.?$/.test(candidate)) continue;
+    if ((summary + ' ' + candidate).trim().length <= 180) {
+      summary = (summary + ' ' + candidate).trim();
+    } else {
+      break;
+    }
+  }
+
+  if (!summary) {
+    summary = sentences[0] || cleaned.slice(0, 140);
+  }
+
+  return cleanPhonetics(summary.replace(/\s+\d+\.?$/, ''));
+}
+
+// Strictly find and lock a consistent natural MALE voice
 function getConsistentMaleVoice(): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
   const voices = window.speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null;
 
-  // 1. Prioritize natural male voices (Windows / Edge / Chrome / macOS)
+  // 1. Prioritize premier natural male neural voices
   const maleKeywords = [
+    'christopher online (natural)',
     'guy online (natural)',
-    'guy',
+    'eric online (natural)',
+    'roger online (natural)',
+    'google us english male',
+    'google us english',
     'david desktop',
     'david',
     'george',
-    'google us english male',
-    'google uk english male',
     'daniel',
     'arthur',
     'ryan',
@@ -87,7 +196,7 @@ function getConsistentMaleVoice(): SpeechSynthesisVoice | null {
   });
   if (maleVoice) return maleVoice;
 
-  // 3. Fallback: English voice that is not explicitly female
+  // 3. Fallback: English voice not explicitly female
   const neutralVoice = voices.find(v => {
     const n = v.name.toLowerCase();
     return v.lang.startsWith('en') && !femaleKeywords.some(f => n.includes(f));
@@ -96,8 +205,6 @@ function getConsistentMaleVoice(): SpeechSynthesisVoice | null {
 
   return voices[0] || null;
 }
-
-
 
 export const ProCollegeAIAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -138,22 +245,13 @@ export const ProCollegeAIAssistant: React.FC = () => {
     try {
       window.speechSynthesis.cancel();
 
-      // Clean and normalize text for fluent, natural male pronunciation
-      const cleanText = text
-        .replace(/[*#_`>]/g, '')
-        .replace(/\bhttps?:\/\/\S+/gi, '')
-        .replace(/\bLMS\b/g, 'L M S')
-        .replace(/\bAI\b/g, 'A I')
-        .replace(/\bSaaS\b/g, 'SaaS')
-        .replace(/(\d+)%/g, '$1 percent')
-        .replace(/\bNursery-12\b/g, 'Nursery to 12')
-        .trim();
+      // Extract spoken summary for natural, fluent delivery
+      const spokenText = extractSpokenSummary(text);
+      if (!spokenText) return;
 
-      if (!cleanText) return;
-
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 0.96; // Fluent human pace
-      utterance.pitch = 0.92; // Deep, confident masculine pitch
+      const utterance = new SpeechSynthesisUtterance(spokenText);
+      utterance.rate = 1.0; // 100% natural conversational human tempo
+      utterance.pitch = 1.0; // 100% native natural pitch (no synthetic distortion)
 
       if (!lockedMaleVoice.current) {
         lockedMaleVoice.current = getConsistentMaleVoice();
@@ -224,6 +322,8 @@ export const ProCollegeAIAssistant: React.FC = () => {
 
     try {
       let replyText = '';
+
+      // 1. First attempt: Dedicated Backend Worker with Model Cascade
       try {
         const backendRes = await fetch('/api/ai/chat', {
           method: 'POST',
@@ -235,42 +335,61 @@ export const ProCollegeAIAssistant: React.FC = () => {
 
         if (backendRes.ok) {
           const backendData = await backendRes.json();
-          if (backendData.reply) {
-            replyText = backendData.reply;
+          if (backendData.reply && backendData.reply.trim().length > 0) {
+            replyText = backendData.reply.trim();
           }
         }
       } catch {
-        // Fallback to client-side Gemini API
+        // Fallback to client-side direct cascade
       }
 
-      if (!replyText) {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      // 2. Second attempt: Client-side Gemini Multi-Model Cascade
+      if (!replyText && GEMINI_API_KEY) {
+        const modelsToTry = [
+          'gemini-3-flash-preview',
+          'gemini-flash-lite-latest',
+          'gemini-flash-latest',
+          'gemini-2.5-flash'
+        ];
+
         const contents = newHistory.map(m => ({
           role: m.role === 'user' ? 'user' : 'model',
           parts: [{ text: m.text }]
         }));
 
-        const res = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 1000
+        for (const model of modelsToTry) {
+          try {
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+            const res = await fetch(geminiUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                contents,
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 1000
+                }
+              })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (candidate && candidate.trim().length > 0) {
+                replyText = candidate.trim();
+                break;
+              }
             }
-          })
-        });
-
-        if (!res.ok) {
-          throw new Error(`Gemini request failed: ${res.statusText}`);
+          } catch {
+            // Continue to next model
+          }
         }
+      }
 
-        const data = await res.json();
-        replyText =
-          data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-          'I am here to help you explore ProCollege. What would you like to know?';
+      // 3. Third attempt: Zero-Latency Intelligent Offline Knowledge Engine
+      if (!replyText) {
+        replyText = getOfflineProCollegeReply(userQuery);
       }
 
       const aiMsg: ChatMessage = {
@@ -283,13 +402,14 @@ export const ProCollegeAIAssistant: React.FC = () => {
       speak(replyText);
     } catch (err) {
       console.error('Echo Assistant Error:', err);
+      const fallbackReply = getOfflineProCollegeReply(userQuery);
       const errorMsg: ChatMessage = {
-        id: `msg_err_${Date.now()}`,
+        id: `msg_fallback_${Date.now()}`,
         role: 'model',
-        text: 'ProCollege Echo is momentarily connecting. Feel free to ask about our LMS, attendance gates, or campus pricing!'
+        text: fallbackReply
       };
       setMessages(prev => [...prev, errorMsg]);
-      speak(errorMsg.text);
+      speak(fallbackReply);
     } finally {
       setIsLoading(false);
     }
@@ -424,7 +544,7 @@ export const ProCollegeAIAssistant: React.FC = () => {
                   <div className="w-7 h-7 rounded-full bg-[#141E2B] border border-white/25 flex items-center justify-center p-1 shrink-0 mt-0.5 shadow-xs overflow-hidden">
                     <ProCollegeLogo size="sm" variant="mark-only" />
                   </div>
-                  <div className="bg-white/85 backdrop-blur-md border border-white/40 text-slate-900 font-normal px-4 py-2.5 rounded-2xl rounded-tl-xs shadow-sm text-[13px] leading-relaxed whitespace-pre-line">
+                  <div className="bg-white/90 backdrop-blur-md border border-white/40 text-slate-900 font-normal px-4 py-2.5 rounded-2xl rounded-tl-xs shadow-sm text-[13px] leading-relaxed whitespace-pre-line">
                     {msg.text}
                   </div>
                 </div>
