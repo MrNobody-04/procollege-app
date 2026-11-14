@@ -752,7 +752,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new subject channel to live Turso SQL database
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_auth_token');
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       const collegeId = currentUser.collegeId || currentUser.institutionId;
       fetch(`/api/courses/${encodeURIComponent(courseId)}/channels`, {
         method: 'POST',
@@ -932,7 +932,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist automated Semester Rollover to live Turso SQL database (R23) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_auth_token');
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       const collegeId = currentUser.collegeId || currentUser.institutionId;
       fetch('/api/courses/rollover', {
         method: 'POST',
