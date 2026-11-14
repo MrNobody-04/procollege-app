@@ -80,3 +80,4 @@ export function getDeviceDisplayName(): string {
     return 'Trusted Web Browser';
   }
 }
+
