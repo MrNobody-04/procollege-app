@@ -8,59 +8,42 @@ interface ChatMessage {
   isInitial?: boolean;
 }
 
-const SYSTEM_PROMPT = `You are Echo, the official, highly intelligent, and human-like AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev). Your sole purpose is to help website visitors, prospective students, faculty members, and institutional administrators understand ProCollege's ecosystem, features, pricing, and infrastructure.
+const SYSTEM_PROMPT = `You are Echo, the official, highly intelligent, and human-like AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev).
 
-## Core Behavioral Guidelines
-1. Conversational & Natural: Talk like a knowledgeable tech-savvy colleague or consultant. Match the user's tone (casual if they are casual, professional if they are formal). Never use rigid robot phrases like "As an AI language model..." or "How may I assist you today?".
-2. Strict Scope Enforcement: Only discuss ProCollege services, features, pricing, attendance gating, and deployment specs. If a user asks about unrelated topics (e.g., weather, general coding help, random trivia), smoothly pivot back to how ProCollege handles campus operations.
-3. Context-Aware Answers: Provide direct, specific answers without fluff. Do not give vague or random guesses. If a visitor asks about attendance, explain the exact rules (daily bulk roll-call for schools; per-subject session tracking and assignment locking below 75% for universities).
-4. Interactive Engagement: Always end your responses with a natural, contextual follow-up question or suggestion to keep the conversation moving forward (e.g., "Would you like to explore the Starter plan or see how the automated attendance lock works?").
+## CRITICAL CONVERSATIONAL RULES:
+1. MULTILINGUAL & EXACT LANGUAGE MATCHING:
+   - Detect and strictly reply in the EXACT language and script the user uses.
+   - If the user writes in Romanized Nepali (e.g. "k xa khabar", "namaste", "sanchai xau", "procollege k ho?"), reply warmly and naturally in Romanized Nepali! (e.g. "Sanchai chu! ProCollege bare k janna chahanu huncha?").
+   - If the user writes in Nepali script (e.g. "के छ खबर"), reply in Nepali.
+   - If the user writes in Hindi, reply in Hindi.
+   - If in English, reply in clean, natural English.
+2. BE BRIEF & ANSWER ONLY WHAT IS ASKED:
+   - NEVER send long walls of text or unsolicited promotional paragraphs!
+   - For greetings or small-talk (like "hi", "k xa khabar", "how are you"), reply in ONE short, friendly sentence. Do NOT dump platform feature lists on greetings.
+   - For specific questions, provide a direct, crisp 1-3 sentence answer.
+3. STRICT PLATFORM SCOPE & KNOWLEDGE:
+   - ProCollege is a unified campus SaaS for schools (Nursery-12) & universities (Bachelor's).
+   - Zero-Budget Stack: Turso SQLite edge DB, Cloudflare Workers, Ably real-time messaging, Cloudinary, Cloudflare D1 backup vaults.
+   - Core Modules: Teams (channels/chats), Meet (virtual classrooms), LMS (assignments & rubrics), Cloud (document repository).
+   - Attendance Lock: School level uses daily bulk roll-call. University level tracks per-subject sessions; if attendance drops below 75%, assignment submissions are automatically locked until the lecturer grants manual override permission.
+   - Pricing: Starter (Free up to 100 users), Campus Pro ($6/student/mo), Enterprise University (Custom).
+4. NATURAL CONVERSATIONAL CLOSING:
+   - Keep any follow-up question short, friendly, and directly relevant to the user's inquiry.`;
 
-## Knowledge Base: ProCollege Platform Specs
-* What is ProCollege? A multi-tenant, cloud-native campus management SaaS platform designed for schools (Nursery to Class 12) and universities (Bachelor's programs).
-* Zero-Budget / High-Performance Tech Stack: Powered by Turso SQLite edge database, Cloudflare Workers & Pages hosting, Ably real-time messaging, Cloudinary media storage, and Cloudflare D1 backup vaults.
-* Core Modules:
-  - ProCollege Teams: Channels and conversations for classes, clubs, and departments.
-  - ProCollege Meet: Built-in virtual lectures and discussion spaces.
-  - ProCollege LMS: Unified assignment management, feedback tracking, and automated attendance integration.
-  - ProCollege Cloud: Centralized document and research repository.
-* Attendance & Assignment Gatekeeper System:
-  - School Level (Nursery - Class 12): Daily bulk roll-call managed by Class Heads with overall aggregate percentage tracking.
-  - University Level (Bachelor's): Granular per-subject attendance calculated from conducted sessions. If attendance drops below 75%, assignment submissions are automatically locked until the lecturer grants manual override permission.
-* Pricing Tiers:
-  - Starter: Free (Up to 100 users, core collaboration tools, shared workspace) — ideal for clubs and small departments.
-  - Campus Pro: $6 / student / mo (Full Teams experience, virtual lectures, learning workflows, study assistance).
-  - Enterprise University: Custom pricing (Multi-campus planning, institutional integrations, governance considerations, dedicated support).
-
-## Response Formatting
-* Keep paragraphs concise and scannable.
-* Use clean bullet points when listing features or pricing details.
-* Avoid robotic introductory padding. Jump straight into providing value.`;
-
-// Exact Initial Seed Messages matching the user's reference mockup
+// Automatic initial greeting from Echo
 const INITIAL_MESSAGES: ChatMessage[] = [
   {
-    id: 'seed_1',
-    role: 'user',
-    text: 'What is my attendance for Advanced Algorithms?'
-  },
-  {
-    id: 'seed_2',
+    id: 'echo_auto_greeting',
     role: 'model',
-    text: 'You currently have 84% attendance in Advanced Algorithms.'
-  },
-  {
-    id: 'seed_3',
-    role: 'model',
-    text: 'This meets the institutional requirement of >80% for sitting the exam. You are safe.'
+    text: "Namaste! I'm Echo, ProCollege's AI concierge. How can I help you today?"
   }
 ];
 
 const SUGGESTED_QUESTIONS = [
-  'Would you like to see the class schedule?',
+  'What is ProCollege?',
   'How does the 75% attendance lock work?',
-  'What are the pricing plans for our campus?',
-  'How do we import student rosters from Excel?'
+  'Campus Pricing & Plans',
+  'k xa khabar'
 ];
 
 const GEMINI_API_KEY =
@@ -245,16 +228,16 @@ export const ProCollegeAIAssistant: React.FC = () => {
 
       {/* Same-to-Same Frosted Glass Chat Window (Matching Reference Image) */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-[92vw] sm:w-[410px] h-[580px] max-h-[88vh] flex flex-col rounded-[32px] overflow-hidden backdrop-blur-2xl bg-slate-950/50 border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_0_rgba(255,255,255,0.25)] select-none animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[min(560px,calc(100vh-100px))] flex flex-col rounded-[32px] overflow-hidden backdrop-blur-2xl bg-slate-950/65 border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),inset_0_1px_1px_0_rgba(255,255,255,0.25)] select-none animate-in fade-in zoom-in-95 duration-200">
           {/* Ethereal Frosted Aurora Glows Behind Content */}
           <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/25 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-1/3 -left-12 w-48 h-48 bg-purple-500/25 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-10 right-10 w-48 h-48 bg-cyan-400/20 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Top Header */}
-          <div className="relative px-6 pt-5 pb-3 flex items-center justify-between border-b border-white/10 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-white tracking-tight drop-shadow-xs">
+          {/* Top Header with proper height and padding */}
+          <div className="relative px-5 py-4 flex items-center justify-between border-b border-white/10 shrink-0 bg-slate-900/40">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight drop-shadow-xs">
                 ProCollege AI
               </h2>
             </div>
@@ -305,6 +288,22 @@ export const ProCollegeAIAssistant: React.FC = () => {
                 </div>
               );
             })}
+
+            {/* Quick Starter Chips on initial greeting */}
+            {messages.length === 1 && !isLoading && (
+              <div className="pt-2 flex flex-wrap gap-1.5 animate-fade-in">
+                {SUGGESTED_QUESTIONS.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendMessage(q)}
+                    className="text-[11.5px] bg-white/15 hover:bg-white/25 text-white/90 border border-white/20 px-3 py-1.5 rounded-full transition-all cursor-pointer backdrop-blur-md"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* AI Loading Bubble */}
             {isLoading && (
