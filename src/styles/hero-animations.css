@@ -148,6 +148,85 @@
 }
 
 /* =====================================
+   CAMPUS ECOSYSTEM 3D MOTION SYSTEM
+===================================== */
+@keyframes globeRotate {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.animate-globe-spin {
+  animation: globeRotate 22s linear infinite;
+  will-change: background-position;
+}
+
+@keyframes hubBob1 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes hubBob2 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes hubBob3 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes hubBob4 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-hub-1 { animation: hubBob1 5.2s ease-in-out infinite; }
+.animate-hub-2 { animation: hubBob2 5.8s ease-in-out infinite 0.8s; }
+.animate-hub-3 { animation: hubBob3 6.4s ease-in-out infinite 1.5s; }
+.animate-hub-4 { animation: hubBob4 5.5s ease-in-out infinite 2.2s; }
+
+@keyframes fiberDash {
+  0% { stroke-dashoffset: 120; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.animate-fiber-pulse {
+  stroke-dasharray: 8 16;
+  animation: fiberDash 3.5s linear infinite;
+}
+
+@keyframes fiberDashRev {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 120; }
+}
+
+.animate-fiber-pulse-rev {
+  stroke-dasharray: 6 14;
+  animation: fiberDashRev 4s linear infinite;
+}
+
+@keyframes orbitalSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes orbitalSpinReverse {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-spin-slow {
+  transform-origin: 415px 355px;
+  animation: orbitalSpin 35s linear infinite;
+}
+
+.animate-spin-reverse {
+  transform-origin: 415px 360px;
+  animation: orbitalSpinReverse 28s linear infinite;
+}
+
+/* =====================================
    HERO 3D ASSET FLOAT & AMBIENT GLOW
 ===================================== */
 @keyframes laptopBob {

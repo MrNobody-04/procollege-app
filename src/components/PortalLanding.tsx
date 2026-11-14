@@ -24,10 +24,12 @@ import {
   ChevronRight,
   GraduationCap,
   Calendar,
-  Award
+  Award,
+  Sparkles
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
+import { CampusEcosystemGraphic } from './CampusEcosystemGraphic';
 import { INITIAL_USERS } from '../data/initialData';
 import type { User, UserRole } from '../types';
 import {
@@ -789,142 +791,98 @@ export const PortalLanding: React.FC = () => {
       </header>
 
       {/* ============================================================== */}
-      {/* 2. HERO SECTION WITH 3D TILT LAPTOP & FLOATING MOTION TILES    */}
+      {/* 2. HERO SECTION - 3D CAMPUS ECOSYSTEM ANIMATION (IMAGE 2 CLONE)*/}
       {/* ============================================================== */}
-      <section className="hero relative bg-gradient-to-b from-[#FAF8FF] via-white to-white pt-10 sm:pt-16 pb-16 sm:pb-24 overflow-hidden" id="home">
+      <section className="hero relative bg-gradient-to-b from-[#FAF8FF] via-white to-white pt-8 sm:pt-14 pb-14 sm:pb-20 overflow-hidden" id="home">
         {/* Subtle Parallax Background Glows */}
         <div className="hero-bg hero-bg-one -top-24 -left-24 w-96 h-96 rounded-full bg-purple-100/50 blur-3xl" />
         <div className="hero-bg hero-bg-two top-1/2 right-0 w-[450px] h-[450px] rounded-full bg-indigo-100/40 blur-3xl" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            {/* Left Column: Heading, Subtext, CTAs, Social Proof */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+            {/* Left Column: 100% Authentic Clone of Image 2 Left Side */}
             <div className="lg:col-span-6 space-y-6 text-left">
-              <h1
+              {/* 3D Chrome Beveled Title with Undulating Liquid Ribbon */}
+              <div
                 data-reveal
                 style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-                className="text-3xl sm:text-5xl lg:text-[58px] font-black tracking-tight text-zinc-950 leading-[1.12]"
+                className="relative select-none max-w-lg"
               >
-                Designed for Modern <br className="hidden sm:inline" />
-                <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#3B82F6] bg-clip-text text-transparent">
-                  Education
-                </span>
-              </h1>
+                <h1 className="sr-only">Designed for Modern Education</h1>
+                <img
+                  src="/hero-title-modern-education.png"
+                  alt="Designed for Modern Education"
+                  className="w-full max-w-[440px] sm:max-w-[490px] h-auto object-contain filter drop-shadow-[0_4px_14px_rgba(79,70,229,0.14)]"
+                />
+              </div>
 
-              <p
+              {/* Subheading Exactly Matched to Image 2 */}
+              <div
                 data-reveal
                 style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                className="text-base sm:text-lg text-zinc-600 max-w-xl leading-relaxed"
+                className="space-y-1.5 pt-0.5"
               >
-                Everything you need to manage, teach, and grow — all in one modern platform.
-              </p>
+                <p className="text-base sm:text-lg font-bold text-zinc-900 tracking-tight">
+                  A Nexus for the Future.
+                </p>
+                <p className="text-sm sm:text-base text-zinc-600 max-w-xl leading-relaxed">
+                  ProSchool is your all-in-one platform to manage, teach, and grow—seamlessly connecting students, faculty, and curriculum.
+                </p>
+              </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: Cosmic Violet Glowing Trial + Brushed Metallic Glass Demo */}
               <div
                 data-reveal
                 style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
-                className="flex flex-wrap items-center gap-3 pt-1"
+                className="flex flex-wrap items-center gap-4 pt-1"
               >
-                <button
-                  onClick={() => setShowRequestModal(true)}
-                  className="hero-button px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white rounded-xl text-sm sm:text-base font-bold shadow-[0_10px_25px_rgba(79,70,229,0.28)] flex items-center gap-2 cursor-pointer transition-all"
-                >
-                  <span>Start Free Trial</span>
-                  <span>→</span>
-                </button>
+                {/* Start Free Trial with Glowing Cosmic Aura & Amber Starburst */}
+                <div className="relative group">
+                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-400/50 via-purple-500/40 to-amber-400/50 blur-md opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <button
+                    onClick={() => setShowRequestModal(true)}
+                    className="relative hero-button px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-[#170C3B] via-[#241355] to-[#170C3B] hover:from-[#241355] hover:to-[#2D186B] text-white rounded-xl text-sm sm:text-base font-bold ring-1 ring-amber-400/50 shadow-[0_0_22px_rgba(251,191,36,0.38),0_10px_25px_rgba(23,12,59,0.5)] flex items-center gap-2.5 cursor-pointer transition-all"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+                    <span>Start Free Trial</span>
+                    <span className="text-amber-200 text-lg leading-none">→</span>
+                  </button>
+                </div>
 
+                {/* Watch Demo with Brushed Silver / Frosted Glass Pill Styling */}
                 <button
                   onClick={() => launchDemoMode('student')}
-                  className="hero-button px-5 sm:px-6 py-3 sm:py-3.5 bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 rounded-xl text-sm sm:text-base font-semibold shadow-xs flex items-center gap-2 cursor-pointer transition-colors"
+                  className="hero-button px-5 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-b from-white via-[#F1F4F9] to-[#DCE3EC] hover:from-white hover:to-[#CFD9E6] text-zinc-800 border border-white/90 rounded-xl text-sm sm:text-base font-bold shadow-[0_4px_14px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center gap-2 cursor-pointer transition-all"
                 >
-                  <Play className="w-4 h-4 text-[#4F46E5] fill-[#4F46E5]" />
+                  <Play className="w-4 h-4 text-[#4F46E5] fill-[#4F46E5] shrink-0" />
                   <span>Watch Demo</span>
                 </button>
               </div>
 
-              {/* Social Proof & Trusted Indicator */}
+              {/* 3D Glass Pedestal Social Proof Turntable (Matches Image 2) */}
               <div
                 data-reveal
                 style={{ '--reveal-delay': '550ms' } as React.CSSProperties}
-                className="flex items-center gap-3.5 pt-3"
+                className="pt-2 select-none"
               >
-                <div className="flex -space-x-2 shrink-0">
+                <div className="relative inline-block w-full max-w-[380px] sm:max-w-[430px] transition-transform duration-300 hover:scale-[1.02]">
                   <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80"
-                    alt="Student"
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
+                    src="/hero-social-pedestal.png"
+                    alt="Trusted by 500+ Schools & Colleges across Nepal & South Asia"
+                    className="w-full h-auto object-contain filter drop-shadow-[0_12px_28px_rgba(0,0,0,0.12)]"
                   />
-                  <img
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80"
-                    alt="Lecturer"
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
-                  />
-                  <img
-                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80"
-                    alt="Student"
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
-                  />
-                  <img
-                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80"
-                    alt="Dean"
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
-                  />
-                </div>
-                <div className="text-xs text-zinc-600">
-                  <p className="font-bold text-zinc-900 leading-tight">
-                    Trusted by 500+ Schools &amp; Colleges
-                  </p>
-                  <p className="text-[11px] text-zinc-500">across Nepal &amp; South Asia</p>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: 3D Laptop with Cap & Floating Motion Tiles (Matches Image 2) */}
+            {/* Right Column: 3D Campus Ecosystem Infrastructure Animation */}
             <div className="lg:col-span-6 relative flex items-center justify-center">
               <div
-                className="hero-dashboard-shell relative w-full max-w-lg lg:max-w-none"
+                className="hero-dashboard-shell relative w-full"
                 data-reveal="right"
                 style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
               >
-                {/* Radial Glow Backdrop */}
-                <div className="absolute inset-0 -m-8 bg-gradient-to-tr from-indigo-200/40 via-purple-100/30 to-blue-200/40 blur-3xl rounded-full hero-glow-pulse pointer-events-none" />
-
-                {/* 3D Laptop & Floating App Tiles Visual */}
-                <div className="relative z-10 hero-laptop-float flex items-center justify-center">
-                  <img
-                    src="/hero-laptop-education.png"
-                    alt="Designed for Modern Education - ProSchool 3D Interactive Platform"
-                    className="w-full max-w-[560px] h-auto object-contain drop-shadow-[0_20px_45px_rgba(79,70,229,0.22)] select-none"
-                  />
-                </div>
-
-                {/* Floating Notification 1: Term Schedule Synced */}
-                <div className="hero-notification -top-3 -right-2 sm:-right-4 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-indigo-100 shadow-[0_12px_28px_rgba(79,70,229,0.18)] flex items-center gap-2.5 text-xs">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-[#4F46E5] shrink-0 font-bold">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900 leading-tight">Term Schedule Synced</p>
-                    <p className="text-[10px] text-zinc-500">Live Campus Routine Active</p>
-                  </div>
-                </div>
-
-                {/* Floating Notification 2: Academic Gatekeeper Safe Standing */}
-                <div className="hero-notification -bottom-4 -left-2 sm:-left-4 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-emerald-100 shadow-[0_12px_28px_rgba(16,185,129,0.18)] flex items-center gap-2.5 text-xs">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0 font-bold">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900 leading-tight">Attendance Standing: Safe</p>
-                    <p className="text-[10px] text-emerald-600 font-semibold">● 92.5% Aggregate • Unlocked</p>
-                  </div>
-                </div>
-
-                {/* Floating Badge 3: Active Classroom */}
-                <div className="hero-notification top-8 -left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-purple-100 shadow-[0_8px_20px_rgba(147,51,234,0.14)] hidden sm:flex items-center gap-2 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-bold text-zinc-800 text-[11px]">Real-Time Classroom</span>
-                </div>
+                <CampusEcosystemGraphic />
               </div>
             </div>
           </div>
