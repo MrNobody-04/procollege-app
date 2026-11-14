@@ -21,9 +21,9 @@ import {
   ChevronUp,
   ChevronRight,
   GraduationCap,
-  Award,
   Megaphone,
-  ClipboardList
+  ClipboardList,
+  Bookmark
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useApp, type ActiveTab } from '../context/AppContext';
@@ -1071,146 +1071,213 @@ export const PortalLanding: React.FC = () => {
       {/* ============================================================== */}
       {/* 5. EMPOWERING EDUCATION, TOGETHER (3 Role Solutions)          */}
       {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-white via-indigo-50/30 to-white" id="solutions">
+      <section className="py-16 sm:py-24 bg-gradient-to-b from-white via-indigo-50/20 to-white" id="solutions">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <span
               data-reveal
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-300/80 text-slate-800 shadow-xs mb-3"
             >
-              <Award className="w-3.5 h-3.5" />
+              <Bookmark className="w-3.5 h-3.5 text-slate-700" />
               <span>Solutions for Every Need</span>
             </span>
             <h2
               data-reveal
               style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-              className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
+              className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight"
             >
-              Empowering Education, Together
+              Empowering{' '}
+              <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
+                Education,
+              </span>{' '}
+              Together
             </h2>
             <p
               data-reveal
               style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-              className="text-sm sm:text-base text-zinc-500 mt-2"
+              className="text-sm sm:text-base text-slate-500 mt-2 font-normal max-w-xl mx-auto"
             >
               Whether you are an administrator, teacher, or student — ProSchool is designed for you.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Persona 1: Administrators */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-              className="feature-card p-6 sm:p-7 bg-white rounded-2xl border border-zinc-200/90 shadow-sm flex flex-col justify-between"
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-7">
+            {/* Persona 1: Administrators (Vibrant 3D Academic Headquarters) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="p-6 sm:p-7 bg-white/95 backdrop-blur-xl rounded-3xl border border-sky-200/90 shadow-[0_10px_35px_rgba(56,189,248,0.08)] flex flex-col justify-between hover:shadow-[0_20px_45px_rgba(56,189,248,0.18)] hover:-translate-y-1 transition-all duration-300 group"
             >
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-[#4F46E5] flex items-center justify-center shadow-2xs">
-                  <Building2 className="w-6 h-6" />
+              <div>
+                {/* 3D Isometric Floating Illustration */}
+                <div className="h-44 sm:h-48 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-sky-50/50 via-blue-50/20 to-transparent">
+                  <motion.img
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.05 }}
+                    src="/role-admin-vibrant.png"
+                    alt="For Administrators"
+                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(56,189,248,0.18)] select-none"
+                  />
                 </div>
-                <h3 className="text-lg font-bold text-zinc-900">For Administrators</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
+
+                <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">For Administrators</h3>
+                <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal mb-5">
                   Manage your institution efficiently with role-based access control, departmental cohort allocation, and automated semester rollovers.
                 </p>
-                <ul className="text-xs text-zinc-600 space-y-1.5 pt-1">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#4F46E5]" />
+
+                <ul className="text-xs sm:text-[13px] text-slate-700 space-y-2.5 pt-1">
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Multi-faculty department management</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#4F46E5]" />
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Granular RBAC access controls</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-[#4F46E5]" />
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Institutional audit trails</span>
                   </li>
                 </ul>
               </div>
-              <button
-                onClick={() => launchDemoMode('admin')}
-                className="mt-6 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
-              >
-                <span>Launch Admin Preview</span>
-                <span>→</span>
-              </button>
-            </div>
 
-            {/* Persona 2: Teachers */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
-              className="feature-card p-6 sm:p-7 bg-white rounded-2xl border border-zinc-200/90 shadow-sm flex flex-col justify-between"
+              <div className="pt-6">
+                <button
+                  onClick={() => launchDemoMode('admin')}
+                  className="text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 cursor-pointer group-hover:translate-x-0.5 transition-all"
+                >
+                  <span>Launch Admin Preview</span>
+                  <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Persona 2: Teachers (3D Smart Classroom Stage) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="p-6 sm:p-7 bg-white/95 backdrop-blur-xl rounded-3xl border border-purple-200/90 shadow-[0_10px_35px_rgba(168,85,247,0.08)] flex flex-col justify-between hover:shadow-[0_20px_45px_rgba(168,85,247,0.18)] hover:-translate-y-1 transition-all duration-300 group"
             >
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-2xs">
-                  <GraduationCap className="w-6 h-6" />
+              <div>
+                {/* 3D Isometric Floating Illustration */}
+                <div className="h-44 sm:h-48 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-purple-50/50 via-pink-50/20 to-transparent">
+                  <motion.img
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.8, delay: 0.5, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.05 }}
+                    src="/role-teacher-clean.png"
+                    alt="For Teachers"
+                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(168,85,247,0.18)] select-none"
+                  />
                 </div>
-                <h3 className="text-lg font-bold text-zinc-900">For Teachers</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
+
+                <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">For Teachers</h3>
+                <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal mb-5">
                   Create engaging classes, track progress, distribute coursework, and grade with SpeedGrader and criterion rubrics in seconds.
                 </p>
-                <ul className="text-xs text-zinc-600 space-y-1.5 pt-1">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-purple-600" />
+
+                <ul className="text-xs sm:text-[13px] text-slate-700 space-y-2.5 pt-1">
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Interactive lecture channels</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-purple-600" />
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>SpeedGrader™ grading workflow</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-purple-600" />
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Direct student &amp; group messaging</span>
                   </li>
                 </ul>
               </div>
-              <button
-                onClick={() => launchDemoMode('professor')}
-                className="mt-6 text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
-              >
-                <span>Launch Teacher Preview</span>
-                <span>→</span>
-              </button>
-            </div>
 
-            {/* Persona 3: Students */}
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
-              className="feature-card p-6 sm:p-7 bg-white rounded-2xl border border-zinc-200/90 shadow-sm flex flex-col justify-between"
+              <div className="pt-6">
+                <button
+                  onClick={() => launchDemoMode('professor')}
+                  className="text-xs sm:text-sm font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1.5 cursor-pointer group-hover:translate-x-0.5 transition-all"
+                >
+                  <span>Launch Teacher Preview</span>
+                  <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Persona 3: Students (3D Collaboration & Calendar Stage) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="p-6 sm:p-7 bg-white/95 backdrop-blur-xl rounded-3xl border border-indigo-200/90 shadow-[0_10px_35px_rgba(99,102,241,0.08)] flex flex-col justify-between hover:shadow-[0_20px_45px_rgba(99,102,241,0.18)] hover:-translate-y-1 transition-all duration-300 group"
             >
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center shadow-2xs">
-                  <Users className="w-6 h-6" />
+              <div>
+                {/* 3D Isometric Floating Illustration */}
+                <div className="h-44 sm:h-48 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-indigo-50/50 via-blue-50/20 to-transparent">
+                  <motion.img
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 5.1, delay: 1, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.05 }}
+                    src="/role-student-clean.png"
+                    alt="For Students"
+                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(99,102,241,0.18)] select-none"
+                  />
                 </div>
-                <h3 className="text-lg font-bold text-zinc-900">For Students</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
+
+                <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">For Students</h3>
+                <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal mb-5">
                   Access course resources, submit homework, collaborate on team assignments, and stay synchronized with deadline calendars.
                 </p>
-                <ul className="text-xs text-zinc-600 space-y-1.5 pt-1">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-blue-600" />
+
+                <ul className="text-xs sm:text-[13px] text-slate-700 space-y-2.5 pt-1">
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Unified class noticeboards</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-blue-600" />
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
                     <span>Instant file preview &amp; uploads</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Timetable &amp; submission alerts</span>
+                  <li className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 rounded-full bg-[#2563EB] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
+                    <span>Timetable &amp; submission alerts.</span>
                   </li>
                 </ul>
               </div>
-              <button
-                onClick={() => launchDemoMode('student')}
-                className="mt-6 text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
-              >
-                <span>Launch Student Preview</span>
-                <span>→</span>
-              </button>
-            </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={() => launchDemoMode('student')}
+                  className="text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 cursor-pointer group-hover:translate-x-0.5 transition-all"
+                >
+                  <span>Launch Student Preview</span>
+                  <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                </button>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
