@@ -1113,14 +1113,14 @@ export const PortalLanding: React.FC = () => {
             >
               <div>
                 {/* 3D Isometric Floating Illustration */}
-                <div className="h-44 sm:h-48 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-sky-50/50 via-blue-50/20 to-transparent">
+                <div className="h-48 sm:h-52 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-sky-50/60 via-blue-50/25 to-transparent">
                   <motion.img
                     animate={{ y: [0, -6, 0] }}
                     transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
                     whileHover={{ scale: 1.05 }}
-                    src="/role-admin-hd.png"
+                    src="/role-admin-ultra-hd.png"
                     alt="For Administrators"
-                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(56,189,248,0.18)] select-none"
+                    className="h-full w-auto max-h-[210px] object-contain filter drop-shadow-[0_14px_28px_rgba(56,189,248,0.22)] select-none"
                   />
                 </div>
 
@@ -1172,14 +1172,14 @@ export const PortalLanding: React.FC = () => {
             >
               <div>
                 {/* 3D Isometric Floating Illustration */}
-                <div className="h-44 sm:h-48 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-purple-50/50 via-pink-50/20 to-transparent">
+                <div className="h-48 sm:h-52 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-purple-50/60 via-pink-50/25 to-transparent">
                   <motion.img
                     animate={{ y: [0, -6, 0] }}
                     transition={{ repeat: Infinity, duration: 4.8, delay: 0.5, ease: "easeInOut" }}
                     whileHover={{ scale: 1.05 }}
-                    src="/role-teacher-hd.png"
+                    src="/role-teacher-ultra-hd.png"
                     alt="For Teachers"
-                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(168,85,247,0.18)] select-none"
+                    className="h-full w-auto max-h-[210px] object-contain filter drop-shadow-[0_14px_28px_rgba(168,85,247,0.22)] select-none"
                   />
                 </div>
 
@@ -1231,14 +1231,14 @@ export const PortalLanding: React.FC = () => {
             >
               <div>
                 {/* 3D Isometric Floating Illustration */}
-                <div className="h-44 sm:h-48 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-indigo-50/50 via-blue-50/20 to-transparent">
+                <div className="h-48 sm:h-52 w-full flex items-center justify-center p-2 mb-4 rounded-2xl overflow-hidden bg-gradient-to-b from-indigo-50/60 via-blue-50/25 to-transparent">
                   <motion.img
                     animate={{ y: [0, -6, 0] }}
                     transition={{ repeat: Infinity, duration: 5.1, delay: 1, ease: "easeInOut" }}
                     whileHover={{ scale: 1.05 }}
-                    src="/role-student-hd.png"
+                    src="/role-student-ultra-hd.png"
                     alt="For Students"
-                    className="max-h-full max-w-full object-contain filter drop-shadow-[0_12px_24px_rgba(99,102,241,0.18)] select-none"
+                    className="h-full w-auto max-h-[210px] object-contain filter drop-shadow-[0_14px_28px_rgba(99,102,241,0.22)] select-none"
                   />
                 </div>
 
@@ -1555,7 +1555,7 @@ export const PortalLanding: React.FC = () => {
                 title="Click to launch interactive teacher demo"
               >
                 <img
-                  src="/workspace-3d-feathered.png"
+                  src="/workspace-3d-ultra-hd.png"
                   alt="ProSchool 3D Glassmorphism Workspace"
                   className="w-full h-auto object-contain drop-shadow-[0_25px_50px_rgba(79,70,229,0.22)] select-none"
                 />
@@ -1664,11 +1664,14 @@ export const PortalLanding: React.FC = () => {
             {/* Right Column: "Need Help?" Card (100% Matched to Image 2) */}
             <div className="lg:col-span-4">
               <div className="bg-[#FAF8FF]/90 border border-purple-100/70 rounded-[32px] p-7 sm:p-9 text-center space-y-4 shadow-[0_14px_40px_rgba(99,102,241,0.07)] flex flex-col items-center">
-                <div className="w-48 max-w-full flex items-center justify-center">
-                  <img
-                    src="/faq-support-robot.png"
+                <div className="w-56 max-w-full flex items-center justify-center">
+                  <motion.img
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.06 }}
+                    src="/faq-support-robot-ultra-hd.png"
                     alt="Need Help Robot Support"
-                    className="w-full h-auto object-contain filter drop-shadow-[0_8px_18px_rgba(79,70,229,0.12)] transform hover:scale-105 transition-transform duration-300"
+                    className="w-full h-auto object-contain filter drop-shadow-[0_12px_24px_rgba(79,70,229,0.18)] select-none cursor-pointer"
                   />
                 </div>
 

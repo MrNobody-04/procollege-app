@@ -3667,7 +3667,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           </span>
                           <button
                             type="button"
-                            onClick={() => setManagingDeptForSubjects(faculty)}
+                            onClick={() => handleOpenEditFaculty(faculty)}
                             className="text-[10px] text-[#26394D] font-bold hover:underline cursor-pointer"
                           >
                             + Manage Subjects
