@@ -51,15 +51,59 @@ const GEMINI_API_KEY =
     ? atob('QVEuQWI4Uk42SzVHamVYZlFWZmV1aEl0U296MmpnZFM0RmhzMGJSN0VVQllncGxXTjFPWXc=')
     : '');
 
-// 3D Holographic Iridescent Orb component matching exact reference image
-const IridescentOrb: React.FC<{ size?: 'sm' | 'md' | 'lg'; isSpeaking?: boolean }> = ({ size = 'md', isSpeaking }) => {
+// Helper to strictly find and lock a consistent natural MALE voice
+function getConsistentMaleVoice(): SpeechSynthesisVoice | null {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  // 1. Prioritize natural male voices (Windows / Edge / Chrome / macOS)
+  const maleKeywords = [
+    'guy online (natural)',
+    'guy',
+    'david desktop',
+    'david',
+    'george',
+    'google us english male',
+    'google uk english male',
+    'daniel',
+    'arthur',
+    'ryan',
+    'aaron'
+  ];
+
+  for (const kw of maleKeywords) {
+    const match = voices.find(v => v.name.toLowerCase().includes(kw));
+    if (match) return match;
+  }
+
+  // 2. Fallback: Any English voice with "Male" in name
+  const femaleKeywords = ['female', 'zira', 'jenny', 'aria', 'hazel', 'susan', 'catherine', 'samantha', 'victoria', 'karen', 'helena', 'linda'];
+  const maleVoice = voices.find(v => {
+    const n = v.name.toLowerCase();
+    const isMale = n.includes('male') || n.includes('guy') || n.includes('david') || n.includes('george');
+    const isNotFemale = !femaleKeywords.some(f => n.includes(f));
+    return v.lang.startsWith('en') && isMale && isNotFemale;
+  });
+  if (maleVoice) return maleVoice;
+
+  // 3. Fallback: English voice that is not explicitly female
+  const neutralVoice = voices.find(v => {
+    const n = v.name.toLowerCase();
+    return v.lang.startsWith('en') && !femaleKeywords.some(f => n.includes(f));
+  });
+  if (neutralVoice) return neutralVoice;
+
+  return voices[0] || null;
+}
+
+// 3D Holographic Iridescent Orb
+const IridescentOrb: React.FC<{ size?: 'sm' | 'md' | 'lg' }> = ({ size = 'md' }) => {
   const dim = size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-10 h-10' : 'w-8 h-8';
 
   return (
     <div
-      className={`relative ${dim} rounded-full overflow-hidden shadow-lg shadow-purple-500/25 shrink-0 select-none ${
-        isSpeaking ? 'scale-110 ring-2 ring-emerald-400/50' : ''
-      } transition-all duration-300`}
+      className={`relative ${dim} rounded-full overflow-hidden shadow-lg shadow-purple-500/25 shrink-0 select-none`}
       title="ProCollege AI Intelligence Orb"
     >
       <div className="absolute inset-0 bg-gradient-to-tr from-[#3b82f6] via-[#a855f7] to-[#ec4899] opacity-95 animate-pulse" />
@@ -78,16 +122,31 @@ export const ProCollegeAIAssistant: React.FC = () => {
   const [inputValue, setInputValue] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasSpokenGreeting = useRef<boolean>(false);
+  const lockedMaleVoice = useRef<SpeechSynthesisVoice | null>(null);
+
+  // Initialize and lock male voice consistently
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const setupVoice = () => {
+      const v = getConsistentMaleVoice();
+      if (v) {
+        lockedMaleVoice.current = v;
+      }
+    };
+
+    setupVoice();
+    window.speechSynthesis.onvoiceschanged = setupVoice;
+  }, []);
 
   const stopSpeaking = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      setIsSpeaking(false);
     }
   };
 
@@ -95,34 +154,35 @@ export const ProCollegeAIAssistant: React.FC = () => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
+
+      // Clean and normalize text for fluent, natural male pronunciation
       const cleanText = text
         .replace(/[*#_`>]/g, '')
         .replace(/\bhttps?:\/\/\S+/gi, '')
+        .replace(/\bLMS\b/g, 'L M S')
+        .replace(/\bAI\b/g, 'A I')
+        .replace(/\bSaaS\b/g, 'SaaS')
+        .replace(/(\d+)%/g, '$1 percent')
+        .replace(/\bNursery-12\b/g, 'Nursery to 12')
         .trim();
 
       if (!cleanText) return;
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.02;
+      utterance.rate = 0.96; // Fluent human pace
+      utterance.pitch = 0.92; // Deep, confident masculine pitch
 
-      const voices = window.speechSynthesis.getVoices();
-      const naturalVoice = voices.find(v =>
-        (v.lang.startsWith('en') || v.lang.startsWith('ne') || v.lang.startsWith('hi')) &&
-        (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Karen'))
-      ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-
-      if (naturalVoice) {
-        utterance.voice = naturalVoice;
+      if (!lockedMaleVoice.current) {
+        lockedMaleVoice.current = getConsistentMaleVoice();
       }
 
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      if (lockedMaleVoice.current) {
+        utterance.voice = lockedMaleVoice.current;
+      }
 
       window.speechSynthesis.speak(utterance);
     } catch {
-      setIsSpeaking(false);
+      // Ignore speech error gracefully
     }
   };
 
@@ -135,13 +195,13 @@ export const ProCollegeAIAssistant: React.FC = () => {
     }
   };
 
-  // Automatic Voice & Chat Greeting when opened
+  // Automatic Voice Greeting when opened for the first time
   useEffect(() => {
     if (isOpen && !hasSpokenGreeting.current) {
       hasSpokenGreeting.current = true;
       const timer = setTimeout(() => {
         speak(INITIAL_MESSAGES[0].text);
-      }, 350);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -150,9 +210,14 @@ export const ProCollegeAIAssistant: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Only scroll down when there are user interactions/subsequent messages
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
+      if (messages.length > 1) {
+        scrollToBottom();
+      } else if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
       setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isOpen, messages, isLoading]);
@@ -257,6 +322,9 @@ export const ProCollegeAIAssistant: React.FC = () => {
   const handleResetChat = () => {
     stopSpeaking();
     setMessages(INITIAL_MESSAGES);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
     speak(INITIAL_MESSAGES[0].text);
   };
 
@@ -267,7 +335,7 @@ export const ProCollegeAIAssistant: React.FC = () => {
         <div className="fixed bottom-6 right-6 z-50 animate-fade-in select-none">
           <button
             onClick={() => setIsOpen(true)}
-            className="group relative flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-950/80 hover:bg-slate-900/95 backdrop-blur-2xl border border-white/25 shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-purple-500/20 cursor-pointer"
+            className="group relative flex items-center gap-3 px-4 py-2.5 rounded-full bg-slate-950/85 hover:bg-slate-900/95 backdrop-blur-2xl border border-white/25 shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-purple-500/20 cursor-pointer"
           >
             <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-30 group-hover:opacity-60 blur-md transition duration-500" />
             <div className="relative flex items-center gap-2.5">
@@ -285,27 +353,25 @@ export const ProCollegeAIAssistant: React.FC = () => {
         </div>
       )}
 
-      {/* Same-to-Same Frosted Glass Chat Window (Never clipped, prominent Close button, Voice enabled) */}
+      {/* Same-to-Same Frosted Glass Chat Window (Crisp Opaque Header, No Bleed, Full Visibility) */}
       {isOpen && (
-        <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-[9999] w-[92vw] sm:w-[395px] h-[520px] max-h-[calc(100vh-5rem)] flex flex-col rounded-[28px] overflow-hidden backdrop-blur-2xl bg-slate-950/75 border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),inset_0_1px_1px_0_rgba(255,255,255,0.25)] select-none animate-in fade-in zoom-in-95 duration-200">
-          {/* Ethereal Frosted Aurora Glows Behind Content */}
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute top-1/3 -left-12 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-10 right-10 w-48 h-48 bg-cyan-400/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-[9999] w-[92vw] sm:w-[395px] h-[520px] max-h-[calc(100vh-4.5rem)] flex flex-col rounded-[28px] overflow-hidden backdrop-blur-2xl bg-[#090D16]/95 border border-white/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),inset_0_1px_1px_0_rgba(255,255,255,0.25)] select-none animate-in fade-in zoom-in-95 duration-200">
+          {/* Subtle Frosted Aurora Highlights Behind Messages */}
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/3 -left-12 w-48 h-48 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Sticky Header with Unmissable Close Button & Voice Controls */}
-          <div className="sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-white/10 shrink-0 bg-slate-900/60 backdrop-blur-md">
+          {/* Opaque Header: Solid Background So No Messages Bleed Behind It */}
+          <div className="relative z-30 px-4 py-3 flex items-center justify-between border-b border-white/10 shrink-0 bg-[#0B1120] shadow-xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-[#141E2B] border border-white/20 flex items-center justify-center p-1 shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#141E2B] border border-white/20 flex items-center justify-center p-1.5 shrink-0 shadow-xs">
                 <ProCollegeLogo size="sm" variant="mark-only" />
               </div>
-              <div>
+              <div className="flex flex-col">
                 <h2 className="text-sm font-bold text-white tracking-tight leading-none">
                   ProCollege AI
                 </h2>
-                <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
-                  <span className={`w-1.5 h-1.5 rounded-full bg-emerald-400 ${isSpeaking ? 'animate-ping' : 'animate-pulse'}`} />
-                  {isSpeaking ? 'Speaking...' : 'Echo Voice Ready'}
+                <span className="text-[10px] text-zinc-400 font-medium mt-0.5">
+                  Official AI Concierge
                 </span>
               </div>
             </div>
@@ -316,11 +382,11 @@ export const ProCollegeAIAssistant: React.FC = () => {
                 type="button"
                 onClick={toggleMute}
                 className={`p-1.5 rounded-full transition-colors cursor-pointer ${
-                  isMuted ? 'text-zinc-400 hover:text-white bg-white/5' : 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30'
+                  isMuted ? 'text-zinc-500 hover:text-white bg-white/5' : 'text-emerald-400 hover:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30'
                 }`}
                 title={isMuted ? 'Unmute voice' : 'Mute voice'}
               >
-                {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
 
               {/* Reset Conversation */}
@@ -349,8 +415,11 @@ export const ProCollegeAIAssistant: React.FC = () => {
             </div>
           </div>
 
-          {/* Chat Messages Body */}
-          <div className="relative flex-1 overflow-y-auto px-4 py-3.5 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+          {/* Chat Messages Body: Ample Top Padding So Initial Message Is 100% Fully Visible */}
+          <div
+            ref={scrollContainerRef}
+            className="relative flex-1 overflow-y-auto px-4 pt-4 pb-3 space-y-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          >
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
 
@@ -366,11 +435,11 @@ export const ProCollegeAIAssistant: React.FC = () => {
 
               // AI (Echo) message bubble with official ProCollege logo badge
               return (
-                <div key={msg.id} className="flex items-end gap-2 max-w-[90%] animate-fade-in">
-                  <div className="w-7 h-7 rounded-full bg-[#141E2B]/90 border border-white/25 flex items-center justify-center p-1 shrink-0 self-end mb-0.5 shadow-xs overflow-hidden">
+                <div key={msg.id} className="flex items-start gap-2.5 max-w-[90%] animate-fade-in">
+                  <div className="w-7 h-7 rounded-full bg-[#141E2B] border border-white/25 flex items-center justify-center p-1 shrink-0 mt-0.5 shadow-xs overflow-hidden">
                     <ProCollegeLogo size="sm" variant="mark-only" />
                   </div>
-                  <div className="bg-white/80 backdrop-blur-md border border-white/40 text-slate-900 font-normal px-4 py-2.5 rounded-2xl rounded-bl-xs shadow-sm text-[13px] leading-relaxed whitespace-pre-line">
+                  <div className="bg-white/85 backdrop-blur-md border border-white/40 text-slate-900 font-normal px-4 py-2.5 rounded-2xl rounded-tl-xs shadow-sm text-[13px] leading-relaxed whitespace-pre-line">
                     {msg.text}
                   </div>
                 </div>
@@ -395,11 +464,11 @@ export const ProCollegeAIAssistant: React.FC = () => {
 
             {/* AI Loading Bubble with Logo Badge */}
             {isLoading && (
-              <div className="flex items-end gap-2 max-w-[85%] animate-fade-in">
-                <div className="w-7 h-7 rounded-full bg-[#141E2B]/90 border border-white/25 flex items-center justify-center p-1 shrink-0 self-end mb-0.5 shadow-xs overflow-hidden">
+              <div className="flex items-start gap-2.5 max-w-[85%] animate-fade-in">
+                <div className="w-7 h-7 rounded-full bg-[#141E2B] border border-white/25 flex items-center justify-center p-1 shrink-0 mt-0.5 shadow-xs overflow-hidden">
                   <ProCollegeLogo size="sm" variant="mark-only" />
                 </div>
-                <div className="bg-white/75 backdrop-blur-md border border-white/40 px-4 py-3 rounded-2xl rounded-bl-xs shadow-sm flex items-center gap-1.5">
+                <div className="bg-white/75 backdrop-blur-md border border-white/40 px-4 py-3 rounded-2xl rounded-tl-xs shadow-sm flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce" style={{ animationDelay: '150ms' }} />
                   <div className="w-1.5 h-1.5 rounded-full bg-slate-600 animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -411,7 +480,7 @@ export const ProCollegeAIAssistant: React.FC = () => {
           </div>
 
           {/* Capsule / Pill Input Bar at Bottom */}
-          <div className="relative px-4 pb-4 pt-1.5 shrink-0">
+          <div className="relative px-4 pb-4 pt-1.5 shrink-0 bg-[#090D16]/90 border-t border-white/5">
             <div className="relative rounded-full bg-white/95 backdrop-blur-md border border-white/70 shadow-lg px-4 py-2.5 flex items-center justify-between gap-2.5">
               <input
                 ref={inputRef}
