@@ -17,6 +17,8 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    max-width: 100%;
+    width: 100%;
   }
 
   body {
@@ -26,6 +28,13 @@
     color: var(--teams-text-primary);
     background-color: #E8E9E2;
     overflow-x: hidden;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  #root {
+    overflow-x: hidden;
+    max-width: 100%;
     width: 100%;
   }
 

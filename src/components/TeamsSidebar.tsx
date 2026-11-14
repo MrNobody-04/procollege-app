@@ -162,7 +162,7 @@ export const TeamsSidebar: React.FC = () => {
             <p className="font-semibold text-zinc-700">No classes found</p>
             <p className="text-[11px]">
               {selectedFacultyFilter !== 'all'
-                ? 'No classes provisioned in this faculty yet.'
+                ? 'No classes provisioned in this department yet.'
                 : 'No classes matched your search filter.'}
             </p>
             {selectedFacultyFilter !== 'all' && (
@@ -170,7 +170,7 @@ export const TeamsSidebar: React.FC = () => {
                 onClick={() => setSelectedFacultyFilter('all')}
                 className="text-xs text-[#26394D] hover:underline font-semibold"
               >
-                View all faculties
+                View all departments
               </button>
             )}
           </div>

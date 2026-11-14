@@ -19,17 +19,17 @@ const MainWorkspace: React.FC = () => {
   const isPlatformDev = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#141E2B] text-zinc-900 select-none">
+    <div className="flex flex-col h-screen w-full max-w-full overflow-x-hidden overflow-y-hidden bg-[#141E2B] text-zinc-900 select-none">
       {/* Top Header with App Launcher and Persona Switcher */}
       <TopHeader />
 
       {/* Main App Workspace */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex w-full max-w-full overflow-hidden">
         {/* Leftmost Navigation Rail */}
         <NavigationRail />
 
         {/* Dynamic Center Work Area */}
-        <main className="flex-1 flex overflow-hidden">
+        <main className="flex-1 flex w-full max-w-full overflow-hidden min-w-0">
           {isPlatformDev ? (
             <AdminCenterView activeDevTab={activeTab} />
           ) : (

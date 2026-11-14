@@ -59,21 +59,21 @@ export const AdminRosterUpload: React.FC = () => {
         Name: 'Aarav Sharma',
         Phone: '+977-9841234567',
         Gmail: 'aarav.sharma@gmail.com',
-        Faculty: targetFaculty?.name || 'Faculty of Information Technology (BIT)',
+        Department: targetFaculty?.name || 'Department of BIT',
         Class: targetCourse?.name || 'BIT 501 - Cloud Computing & Distributed Systems'
       },
       {
         Name: 'Pooja Thapa',
         Phone: '+977-9812345678',
         Gmail: 'pooja.thapa@gmail.com',
-        Faculty: targetFaculty?.name || 'Faculty of Information Technology (BIT)',
+        Department: targetFaculty?.name || 'Department of BIT',
         Class: targetCourse?.name || 'BIT 501 - Cloud Computing & Distributed Systems'
       },
       {
         Name: 'Bikash Adhikari',
         Phone: '+977-9867890123',
         Gmail: 'bikash.adhikari@gmail.com',
-        Faculty: targetFaculty?.name || 'Faculty of Information Technology (BIT)',
+        Department: targetFaculty?.name || 'Department of BIT',
         Class: targetCourse?.name || 'BIT 501 - Cloud Computing & Distributed Systems'
       }
     ];
@@ -113,7 +113,7 @@ export const AdminRosterUpload: React.FC = () => {
           const name = r.Name || r.name || r['Student Name'] || r['Full Name'];
           const phone = r.Phone || r.phone || r['Mobile'] || r['Phone Number'] || '';
           const email = r.Gmail || r.gmail || r.Email || r.email || r['Gmail Address'];
-          const faculty = r.Faculty || r.faculty || targetFaculty?.name || 'General';
+          const faculty = r.Department || r.department || r.Faculty || r.faculty || targetFaculty?.name || 'General';
           const className = r.Class || r.class || r['Class Name'] || targetCourse?.name || 'General';
 
           if (name && email) {
@@ -261,7 +261,7 @@ export const AdminRosterUpload: React.FC = () => {
       {/* Target Class Selection & Template Bar */}
       <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
         <div>
-          <label className="block text-xs font-bold text-zinc-700 mb-1">Target Faculty / Department</label>
+          <label className="block text-xs font-bold text-zinc-700 mb-1">Target Department</label>
           <select
             value={selectedFacultyId}
             onChange={(e) => setSelectedFacultyId(e.target.value)}
@@ -376,7 +376,7 @@ export const AdminRosterUpload: React.FC = () => {
                   <th className="py-2 px-3">Student Name</th>
                   <th className="py-2 px-3">Phone</th>
                   <th className="py-2 px-3">Gmail Address</th>
-                  <th className="py-2 px-3">Faculty</th>
+                  <th className="py-2 px-3">Department</th>
                   <th className="py-2 px-3">Assigned Class</th>
                 </tr>
               </thead>

@@ -1407,9 +1407,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
         {/* Subjects & Dedicated Teachers List */}
         <div className="divide-y divide-zinc-100 pt-1">
-          {displayChannels.map(ch => {
+          {displayChannels.map((ch, chIdx) => {
             const lecturerName = ch.subjectLecturerName || course.instructor?.name || 'Assign Lecturer';
-            const isUnassigned = lecturerName === 'Assign Lecturer';
+            const isUnassigned = !ch.subjectLecturerName && !course.instructor?.name;
+            const isFirstRow = chIdx === 0;
             const isChipStyle = isRightColumn && (ch.name.includes('Science & Technology') || ch.name.includes('SCI-10') || ch.name.includes('Science'));
 
             return (
@@ -1441,10 +1442,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       </button>
                     </div>
                   ) : (
-                    <>
-                      <span className={`text-xs font-medium ${isUnassigned ? 'text-zinc-400 italic' : 'text-zinc-800'}`}>
-                        {lecturerName}
-                      </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="text-right">
+                        {isFirstRow && (
+                          <span className="block text-[10px] text-zinc-400 font-medium leading-none mb-0.5">
+                            Assign Lecturer
+                          </span>
+                        )}
+                        <span className={`text-xs ${isUnassigned ? 'text-zinc-400 italic' : 'text-zinc-800 font-semibold'}`}>
+                          {lecturerName}
+                        </span>
+                      </div>
                       <button
                         onClick={() => {
                           setSelectedCourseForAction(course);
@@ -1459,7 +1467,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

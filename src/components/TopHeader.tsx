@@ -42,15 +42,11 @@ export const TopHeader: React.FC = () => {
   const [showSwitchAccounts, setShowSwitchAccounts] = useState(false);
 
   const currentBadge = useMemo(() => {
-    if (currentUser.role === 'admin') return 'Academic Dean • Admin';
-    if (
-      currentUser.role === 'professor' ||
-      currentUser.role === 'lecturer' ||
-      (currentUser as unknown as { role: string }).role === 'teacher'
-    ) {
-      return 'Faculty Lecturer';
+    if (currentUser.role === 'developer' || currentUser.role === 'platform_admin') return 'Developer Admin';
+    if (currentUser.role === 'admin') return 'Institutional Admin';
+    if (currentUser.role === 'lecturer' || (currentUser as unknown as { role: string }).role === 'professor' || (currentUser as unknown as { role: string }).role === 'teacher') {
+      return 'Campus Lecturer';
     }
-    if (currentUser.role === 'developer') return 'Platform Admin';
     return 'Enrolled Student';
   }, [currentUser.role]);
 

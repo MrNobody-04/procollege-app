@@ -606,7 +606,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new class & channels to live Turso SQL database (R14) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_auth_token');
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch('/api/courses', {
         method: 'POST',
         headers: {
@@ -638,7 +638,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_auth_token');
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch(`/api/courses/${courseId}`, {
         method: 'DELETE',
         headers: {
@@ -680,7 +680,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Enforce deletion in Turso with server protection (R20) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_auth_token');
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch(`/api/courses/${encodeURIComponent(courseId)}/subjects/${encodeURIComponent(channelId)}`, {
         method: 'DELETE',
         headers: {
