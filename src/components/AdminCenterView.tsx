@@ -42,7 +42,7 @@ import { StudentProfileModal } from './StudentProfileModal';
 import { SchoolRollCallModal } from './SchoolRollCallModal';
 import { SubjectRollCallModal } from './SubjectRollCallModal';
 import { useApp, type ActiveTab } from '../context/AppContext';
-import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest, FacultyDepartment } from '../types';
+import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest, FacultyDepartment, EducationLevel } from '../types';
 
 export interface PlatformOrg {
   id: string;
@@ -50,6 +50,7 @@ export interface PlatformOrg {
   code: string;
   status: string;
   billingPlan: string;
+  educationLevel?: EducationLevel;
   studentCount: number;
   facultyCount: number;
   adminCount?: number;
@@ -2079,7 +2080,24 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               </div>
                               <div>
                                 <div className="font-semibold text-zinc-900">{org.name}</div>
-                                <div className="text-[11px] text-zinc-500 font-mono">{org.code || org.id}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[11px] text-zinc-500 font-mono">{org.code || org.id}</span>
+                                  <span
+                                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                                      org.educationLevel === 'school_k10'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : org.educationLevel === 'high_school_11_12'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : 'bg-purple-50 text-purple-700 border-purple-200'
+                                    }`}
+                                  >
+                                    {org.educationLevel === 'school_k10'
+                                      ? '🏫 School (Nursery-10)'
+                                      : org.educationLevel === 'high_school_11_12'
+                                      ? '🎓 High School (11-12)'
+                                      : '🏛️ Bachelor Level'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -2207,8 +2225,25 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               </div>
                               <div>
                                 <div className="font-semibold text-zinc-900">{org.name}</div>
-                                <div className="text-[11px] text-zinc-500 font-mono">
-                                  {org.code ? `${org.code} • ` : ''}ID: {org.id}
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <div className="text-[11px] text-zinc-500 font-mono">
+                                    {org.code ? `${org.code} • ` : ''}ID: {org.id}
+                                  </div>
+                                  <span
+                                    className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                                      org.educationLevel === 'school_k10'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : org.educationLevel === 'high_school_11_12'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : 'bg-purple-50 text-purple-700 border-purple-200'
+                                    }`}
+                                  >
+                                    {org.educationLevel === 'school_k10'
+                                      ? '🏫 School (Nursery-10)'
+                                      : org.educationLevel === 'high_school_11_12'
+                                      ? '🎓 High School (11-12)'
+                                      : '🏛️ Bachelor Level'}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -3621,6 +3656,37 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           <span className="text-[11px] font-medium text-zinc-500">Department Members:</span>
                           <span className="font-semibold text-emerald-700">{memberCount} lecturers</span>
                         </div>
+                      </div>
+
+                      {/* Department Subjects Catalog Block */}
+                      <div className="bg-indigo-50/50 rounded-lg p-2.5 border border-indigo-100 text-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-zinc-800 flex items-center gap-1">
+                            <BookOpen className="w-3 h-3 text-[#26394D]" />
+                            Department Subjects ({faculty.subjects?.length || 0})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setManagingDeptForSubjects(faculty)}
+                            className="text-[10px] text-[#26394D] font-bold hover:underline cursor-pointer"
+                          >
+                            + Manage Subjects
+                          </button>
+                        </div>
+                        {faculty.subjects && faculty.subjects.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                            {faculty.subjects.map((sub, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="text-[10px] bg-white text-zinc-800 font-medium px-2 py-0.5 rounded border border-indigo-200 shadow-2xs"
+                              >
+                                {sub.name} <span className="font-mono text-zinc-500 text-[9px]">({sub.code})</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-zinc-500 italic">No subjects added yet. Click &quot;Manage Subjects&quot; to list department curriculum.</p>
+                        )}
                       </div>
 
                       {associatedClasses.length > 0 && (
