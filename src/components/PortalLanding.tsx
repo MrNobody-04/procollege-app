@@ -24,7 +24,6 @@ import {
   ChevronRight,
   GraduationCap,
   Award,
-  Sparkles,
   Megaphone,
   ClipboardList
 } from 'lucide-react';
@@ -769,10 +768,20 @@ export const PortalLanding: React.FC = () => {
                 className="space-y-1 select-none"
               >
                 <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-black tracking-tight leading-[1.08]">
-                  <span className="block bg-gradient-to-r from-[#2A1654] via-[#482387] to-[#5B21B6] bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(42,22,84,0.18)]">
+                  <span
+                    className="block bg-gradient-to-b from-[#2E1065] via-[#581C87] to-[#7E22CE] bg-clip-text text-transparent"
+                    style={{
+                      textShadow: '0 1px 0 #6b21a8, 0 2px 0 #581c87, 0 3px 0 #3b0764, 0 4px 8px rgba(46,16,101,0.3)'
+                    }}
+                  >
                     Designed for
                   </span>
-                  <span className="block bg-gradient-to-r from-[#312E81] via-[#4F46E5] to-[#2563EB] bg-clip-text text-transparent drop-shadow-[0_3px_10px_rgba(79,70,229,0.22)]">
+                  <span
+                    className="block bg-gradient-to-b from-[#1E3A8A] via-[#2563EB] to-[#38BDF8] bg-clip-text text-transparent"
+                    style={{
+                      textShadow: '0 1px 0 #2563eb, 0 2px 0 #1d4ed8, 0 3px 0 #1e40af, 0 4px 10px rgba(30,58,138,0.35)'
+                    }}
+                  >
                     Modern Education
                   </span>
                 </h1>
@@ -783,7 +792,7 @@ export const PortalLanding: React.FC = () => {
                     viewBox="0 0 450 36"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
-                    className="w-full h-auto filter drop-shadow-[0_4px_8px_rgba(79,70,229,0.18)]"
+                    className="w-full h-auto filter drop-shadow-[0_4px_8px_rgba(79,70,229,0.22)]"
                   >
                     <defs>
                       <linearGradient id="chromeRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -829,52 +838,34 @@ export const PortalLanding: React.FC = () => {
                 </p>
               </motion.div>
 
-              {/* Action Buttons: Cosmic Violet Glowing Trial + Brushed Metallic Glass Demo */}
+              {/* Action Button: Brushed Silver Metallic 3D Glass Pill (Start Free Trial Removed per request) */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                className="flex flex-wrap items-center gap-4 pt-1"
+                className="pt-1"
               >
-                {/* Start Free Trial with Glowing Cosmic Aura & Amber Starburst */}
-                <motion.div
-                  whileHover={{ scale: 1.04, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="relative group cursor-pointer"
-                >
-                  <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-400/60 via-purple-500/50 to-amber-400/60 blur-md opacity-85 group-hover:opacity-100 transition-opacity animate-pulse" />
-                  <button
-                    onClick={() => setShowRequestModal(true)}
-                    className="relative hero-button px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-[#170C3B] via-[#241355] to-[#170C3B] hover:from-[#241355] hover:to-[#2D186B] text-white rounded-xl text-sm sm:text-base font-bold ring-1 ring-amber-400/60 shadow-[0_0_24px_rgba(251,191,36,0.42),0_10px_25px_rgba(23,12,59,0.5)] flex items-center gap-2.5 cursor-pointer transition-all"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
-                    <span>Start Free Trial</span>
-                    <span className="text-amber-200 text-lg leading-none">→</span>
-                  </button>
-                </motion.div>
-
-                {/* Watch Demo with Brushed Silver / Frosted Glass Pill Styling */}
                 <motion.button
-                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => launchDemoMode('student')}
-                  className="hero-button px-5 sm:px-6 py-3 sm:py-3.5 bg-gradient-to-b from-white via-[#F1F4F9] to-[#DCE3EC] hover:from-white hover:to-[#CFD9E6] text-zinc-800 border border-white/90 rounded-xl text-sm sm:text-base font-bold shadow-[0_4px_14px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center gap-2 cursor-pointer transition-all"
+                  className="hero-button px-8 py-3.5 sm:py-4 bg-gradient-to-b from-[#FFFFFF] via-[#F8FAFC] to-[#D5DEE9] hover:from-[#FFFFFF] hover:to-[#CAD5E2] text-zinc-800 border-[1.5px] border-white/95 rounded-2xl text-base font-extrabold shadow-[0_8px_22px_rgba(0,0,0,0.12),0_2px_4px_rgba(0,0,0,0.06),inset_0_1.5px_2px_rgba(255,255,255,1),inset_0_-1.5px_2px_rgba(148,163,184,0.35)] flex items-center justify-center gap-3 cursor-pointer transition-all"
                 >
-                  <Play className="w-4 h-4 text-[#4F46E5] fill-[#4F46E5] shrink-0" />
+                  <Play className="w-5 h-5 text-[#2563EB] fill-[#2563EB] shrink-0" />
                   <span>Watch Demo</span>
                 </motion.button>
               </motion.div>
 
-              {/* Real Native 3D Glass Turntable Pedestal (Interactive Avatars & Glowing Center Orb) */}
+              {/* Real Native 3D Glass Turntable Pedestal (100% Matched to Elliptical 3D Disc) */}
               <motion.div
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="pt-2 select-none"
+                className="pt-4 select-none perspective-[800px]"
               >
-                <div className="relative w-full max-w-[420px] rounded-[32px] p-4 sm:p-5 bg-gradient-to-b from-white/85 via-white/55 to-indigo-50/40 backdrop-blur-xl border border-white/90 shadow-[0_15px_35px_rgba(79,70,229,0.08),inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_6px_rgba(99,102,241,0.08)] transition-all duration-300 hover:shadow-[0_20px_45px_rgba(79,70,229,0.14)]">
-                  {/* Floating Avatars & Glowing Center Orb Row */}
-                  <div className="flex items-center justify-center gap-2.5 sm:gap-3 mb-2.5">
+                <div className="relative w-full max-w-[430px] h-[135px] rounded-[100%] bg-gradient-to-b from-white/95 via-white/50 to-indigo-100/35 backdrop-blur-2xl border-[2.5px] border-white/95 shadow-[0_20px_45px_rgba(79,70,229,0.16),0_4px_12px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_6px_rgba(99,102,241,0.15)] ring-1 ring-slate-300/40 flex flex-col items-center justify-center transition-all duration-300 hover:shadow-[0_24px_50px_rgba(79,70,229,0.22)]">
+                  {/* Floating Avatars & Glowing Center Orb Row along Elliptical Arc */}
+                  <div className="flex items-center justify-center gap-2.5 sm:gap-3 -mt-3 mb-1">
                     {/* Avatar 1 */}
                     <motion.div
                       whileHover={{ scale: 1.25, y: -6 }}
@@ -907,13 +898,13 @@ export const PortalLanding: React.FC = () => {
 
                     {/* Central 3D Glowing Violet ProSchool Orb */}
                     <motion.div
-                      whileHover={{ scale: 1.15, rotate: 10 }}
-                      className="relative mx-1 cursor-pointer"
+                      whileHover={{ scale: 1.18, rotate: 10 }}
+                      className="relative mx-1.5 cursor-pointer"
                     >
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-[#2A1660] via-[#4F2FA5] to-[#7C3AED] flex items-center justify-center text-white shadow-[0_0_22px_rgba(124,58,237,0.55),inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.5)] transform -translate-y-2 ring-2 ring-purple-300/50">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-[#2A1660] via-[#4F2FA5] to-[#7C3AED] flex items-center justify-center text-white shadow-[0_0_24px_rgba(124,58,237,0.6),inset_0_2px_4px_rgba(255,255,255,0.7),inset_0_-3px_6px_rgba(0,0,0,0.5)] transform -translate-y-2 ring-2 ring-purple-300/50">
                         <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white filter drop-shadow-sm" />
                       </div>
-                      <div className="absolute inset-0 rounded-full bg-purple-500/35 blur-md -z-10 animate-pulse" />
+                      <div className="absolute inset-0 rounded-full bg-purple-500/40 blur-md -z-10 animate-pulse" />
                     </motion.div>
 
                     {/* Avatar 3 */}
@@ -947,8 +938,8 @@ export const PortalLanding: React.FC = () => {
                     </motion.div>
                   </div>
 
-                  {/* Real Crisp Vector Text */}
-                  <div className="text-center space-y-0.5">
+                  {/* Real Crisp Vector Text on Disc Face */}
+                  <div className="text-center space-y-0.5 mt-1">
                     <p className="font-extrabold text-zinc-900 text-xs sm:text-[13px] tracking-tight">
                       Trusted by 500+ Schools &amp; Colleges
                     </p>
