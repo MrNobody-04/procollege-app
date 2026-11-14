@@ -62,6 +62,23 @@ export interface PlatformOrg {
   expiryDate?: string;
 }
 
+export const SCHOOL_K10_SUBJECTS = [
+  { name: 'English', code: 'ENG-101', description: 'English Language & Literature' },
+  { name: 'Nepali', code: 'NEP-101', description: 'Nepali Bhasha ra Sahitya' },
+  { name: 'Science', code: 'SCI-101', description: 'General Science & Environmental Studies' },
+  { name: 'Social Studies', code: 'SOC-101', description: 'Social Studies & Civic Education' },
+  { name: 'Health', code: 'HLT-101', description: 'Health, Population & Physical Education' },
+  { name: 'Economics', code: 'ECO-101', description: 'Principles of Economics & Commerce' },
+  { name: 'Mathematics', code: 'MTH-101', description: 'Compulsory General Mathematics' },
+  { name: 'Optional Mathematics', code: 'OPT-101', description: 'Optional Advanced Mathematics' },
+  { name: 'Computer', code: 'COM-101', description: 'Computer Science & Information Technology' }
+];
+
+export const HIGH_SCHOOL_11_12_CORE_SUBJECTS = [
+  { name: 'English', code: 'ENG-110', description: 'Compulsory English (+2 Level)' },
+  { name: 'Nepali', code: 'NEP-110', description: 'Compulsory Nepali (+2 Level)' }
+];
+
 export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ activeDevTab = 'dev-overview' }) => {
   const {
     currentUser,
@@ -101,7 +118,9 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     resetInstitutionAdminPassword,
     removeInstitutionAdmin,
     renameInstitutionAdmin,
-    getStudentOverallAttendance
+    getStudentOverallAttendance,
+    institutionEducationLevel,
+    setInstitutionEducationLevel
   } = useApp();
 
   // Attendance & Gatekeeper Modals State
@@ -276,6 +295,19 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [organizations, setOrganizations] = useState<PlatformOrg[]>([]);
   const [searchOrgQuery, setSearchOrgQuery] = useState('');
   const [newAdminPlan, setNewAdminPlan] = useState<'campus-pro' | 'enterprise'>('campus-pro');
+  const [newAdminEducationLevel, setNewAdminEducationLevel] = useState<EducationLevel>('school_k10');
+  const [newDeptSubName, setNewDeptSubName] = useState('');
+  const [newDeptSubCode, setNewDeptSubCode] = useState('');
+  const [newDeptSubDesc, setNewDeptSubDesc] = useState('');
+  const [managingDeptForSubjects, setManagingDeptForSubjects] = useState<FacultyDepartment | null>(null);
+
+  const currentOrgLevel = organizations.find(o => o.id === selectedInstitution)?.educationLevel;
+  const currentEducationLevel: EducationLevel = (
+    currentOrgLevel ||
+    institutionEducationLevel ||
+    currentUser.educationLevel ||
+    'school_k10'
+  );
   const [backupSnapshot, setBackupSnapshot] = useState<{
     timestamp?: string;
     results?: { colleges?: number; users?: number; courses?: number; course_files?: number };
@@ -852,6 +884,111 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     setShowBatchPasteInput(false);
   };
 
+  const handleUpdateActiveEducationLevel = async (newLevel: EducationLevel) => {
+    setInstitutionEducationLevel(newLevel);
+    try {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const orgId = selectedInstitution || currentUser.collegeId || 'college_1';
+      await fetch(`/api/platform/institutions/${encodeURIComponent(orgId)}/education-level`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ educationLevel: newLevel })
+      });
+      setOrganizations(prev => prev.map(o => o.id === orgId ? { ...o, educationLevel: newLevel } : o));
+      showDialog(
+        `Education tier updated to ${
+          newLevel === 'school_k10'
+            ? 'School (Nursery - Class 10)'
+            : newLevel === 'high_school_11_12'
+            ? 'High School (Class 11 - 12)'
+            : 'Bachelor Level / University'
+        }.`,
+        { type: 'success', title: 'Tier Updated' }
+      );
+    } catch (e) {
+      console.warn('Failed to persist education level to server:', e);
+    }
+  };
+
+  const handleResetToSchoolK10Subjects = () => {
+    const defaultTeacherId = availableUsers.find(u => u.role === 'professor' || u.role === 'lecturer')?.id || availableUsers[1]?.id || availableUsers[0]?.id;
+    setNewClassSubjects(
+      SCHOOL_K10_SUBJECTS.map(s => ({
+        name: s.name,
+        code: s.code,
+        description: s.description,
+        lecturerId: defaultTeacherId
+      }))
+    );
+  };
+
+  const handleResetToHighSchoolCoreSubjects = () => {
+    const defaultTeacherId = availableUsers.find(u => u.role === 'professor' || u.role === 'lecturer')?.id || availableUsers[1]?.id || availableUsers[0]?.id;
+    setNewClassSubjects(
+      HIGH_SCHOOL_11_12_CORE_SUBJECTS.map(s => ({
+        name: s.name,
+        code: s.code,
+        description: s.description,
+        lecturerId: defaultTeacherId
+      }))
+    );
+  };
+
+  const handleOpenNewClassModal = (facultyId?: string) => {
+    const fId = facultyId || faculties[0]?.id || 'fac_cs';
+    setSelectedFacultyId(fId);
+    const defaultTeacherId = availableUsers.find(u => u.role === 'professor' || u.role === 'lecturer')?.id || availableUsers[1]?.id || availableUsers[0]?.id;
+
+    if (currentEducationLevel === 'school_k10') {
+      setNewClassSubjects(
+        SCHOOL_K10_SUBJECTS.map(s => ({
+          name: s.name,
+          code: s.code,
+          description: s.description,
+          lecturerId: defaultTeacherId
+        }))
+      );
+    } else if (currentEducationLevel === 'high_school_11_12') {
+      setNewClassSubjects(
+        HIGH_SCHOOL_11_12_CORE_SUBJECTS.map(s => ({
+          name: s.name,
+          code: s.code,
+          description: s.description,
+          lecturerId: defaultTeacherId
+        }))
+      );
+    } else {
+      // Bachelor level starts empty so institutional admin selects from the department subjects catalog
+      setNewClassSubjects([]);
+    }
+    setShowNewClassModal(true);
+  };
+
+  const handleAddSubjectToDepartment = async (deptId: string, sub: { name: string; code: string; description?: string }) => {
+    const targetFaculty = faculties.find(f => f.id === deptId);
+    if (!targetFaculty) return;
+    const currentSubs = targetFaculty.subjects || [];
+    const updatedSubs = [...currentSubs, { name: sub.name, code: sub.code, description: sub.description || '' }];
+    updateFaculty(deptId, { subjects: updatedSubs });
+    if (managingDeptForSubjects && managingDeptForSubjects.id === deptId) {
+      setManagingDeptForSubjects({ ...managingDeptForSubjects, subjects: updatedSubs });
+    }
+  };
+
+  const handleRemoveSubjectFromDepartment = async (deptId: string, subjectIndex: number) => {
+    const targetFaculty = faculties.find(f => f.id === deptId);
+    if (!targetFaculty) return;
+    const currentSubs = targetFaculty.subjects || [];
+    const updatedSubs = currentSubs.filter((_, idx) => idx !== subjectIndex);
+    updateFaculty(deptId, { subjects: updatedSubs });
+    if (managingDeptForSubjects && managingDeptForSubjects.id === deptId) {
+      setManagingDeptForSubjects({ ...managingDeptForSubjects, subjects: updatedSubs });
+    }
+  };
+
   const handleRegisterUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
@@ -1152,6 +1289,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           email: newAdminEmail.trim().toLowerCase(),
           department: newAdminDept.trim(),
           plan: newAdminPlan,
+          educationLevel: newAdminEducationLevel,
           additionalAdmins: extraOrgAdmins.filter(a => a.name.trim() && a.email.trim())
         })
       });
@@ -1167,7 +1305,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         email: data.admin.email,
         institutionName: data.institution.name,
         department: newAdminDept.trim(),
-        temporaryPassword: data.admin.temporaryPassword
+        temporaryPassword: data.admin.temporaryPassword,
+        educationLevel: newAdminEducationLevel
       });
 
       await fetchOrganizations();
@@ -1832,6 +1971,36 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </div>
 
             <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+              {/* Institution Education Tier Selector */}
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold shadow-2xs ${
+                  currentEducationLevel === 'school_k10'
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                    : currentEducationLevel === 'high_school_11_12'
+                    ? 'bg-blue-50 text-blue-900 border-blue-300'
+                    : 'bg-purple-50 text-purple-900 border-purple-300'
+                }`}
+              >
+                <span className="text-sm">
+                  {currentEducationLevel === 'school_k10'
+                    ? '🏫'
+                    : currentEducationLevel === 'high_school_11_12'
+                    ? '🎓'
+                    : '🏛️'}
+                </span>
+                <span className="text-[11px] font-bold text-zinc-500">Tier:</span>
+                <select
+                  value={currentEducationLevel}
+                  onChange={e => handleUpdateActiveEducationLevel(e.target.value as EducationLevel)}
+                  className="bg-transparent text-xs font-bold focus:outline-none cursor-pointer pr-1"
+                  title="Switch Institution Education Tier"
+                >
+                  <option value="school_k10">School (Nursery - Class 10)</option>
+                  <option value="high_school_11_12">High School (+2 / Class 11-12)</option>
+                  <option value="bachelor">Bachelor Level / University</option>
+                </select>
+              </div>
+
               <button
                 onClick={() => setActiveAdminTab('roster')}
                 className="bg-[#107c41] hover:bg-[#0c6233] text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
@@ -1842,7 +2011,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
 
               <button
-                onClick={() => setShowNewClassModal(true)}
+                onClick={() => handleOpenNewClassModal()}
                 className="bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                 title="Add a new class with subjects and dedicated teachers"
               >
@@ -3143,12 +3312,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </button>
 
                 <button
-                  onClick={() => {
-                    if (faculties.length > 0) {
-                      setSelectedFacultyId(faculties[0].id);
-                    }
-                    setShowNewClassModal(true);
-                  }}
+                  onClick={() => handleOpenNewClassModal(faculties[0]?.id)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
                   title="Create a new class with subjects and dedicated teachers"
                 >
@@ -3230,10 +3394,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       {/* Department Actions */}
                       <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 pt-1 sm:pt-0" onClick={e => e.stopPropagation()}>
                         <button
-                          onClick={() => {
-                            setSelectedFacultyId(dept.id);
-                            setShowNewClassModal(true);
-                          }}
+                          onClick={() => handleOpenNewClassModal(dept.id)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
                           title={`Add a new class to ${dept.name}`}
                         >
@@ -3283,10 +3444,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                                 : `Get started by provisioning the first class under ${dept.name}.`}
                             </p>
                             <button
-                              onClick={() => {
-                                setSelectedFacultyId(dept.id);
-                                setShowNewClassModal(true);
-                              }}
+                              onClick={() => handleOpenNewClassModal(dept.id)}
                               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold rounded-lg cursor-pointer shadow-2xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -3667,7 +3825,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                           </span>
                           <button
                             type="button"
-                            onClick={() => handleOpenEditFaculty(faculty)}
+                            onClick={() => setManagingDeptForSubjects(faculty)}
                             className="text-[10px] text-[#26394D] font-bold hover:underline cursor-pointer"
                           >
                             + Manage Subjects
@@ -3722,10 +3880,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedFacultyId(faculty.id);
-                            setShowNewClassModal(true);
-                          }}
+                          onClick={() => handleOpenNewClassModal(faculty.id)}
                           className="flex-1 py-1.5 px-2 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-medium text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
@@ -4097,6 +4252,75 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </div>
               </div>
 
+              {/* Institution Education Tier Status Banner */}
+              <div
+                className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                  currentEducationLevel === 'school_k10'
+                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                    : currentEducationLevel === 'high_school_11_12'
+                    ? 'bg-blue-50/80 border-blue-200 text-blue-950'
+                    : 'bg-purple-50/80 border-purple-200 text-purple-950'
+                }`}
+              >
+                <div className="flex items-start sm:items-center gap-2">
+                  <span className="text-base shrink-0">
+                    {currentEducationLevel === 'school_k10'
+                      ? '🏫'
+                      : currentEducationLevel === 'high_school_11_12'
+                      ? '🎓'
+                      : '🏛️'}
+                  </span>
+                  <div>
+                    <span className="font-bold block leading-tight">
+                      {currentEducationLevel === 'school_k10'
+                        ? 'School Tier (Nursery to Class 10)'
+                        : currentEducationLevel === 'high_school_11_12'
+                        ? 'High School Tier (+2 / Class 11 - 12)'
+                        : 'Bachelor Level / University Tier'}
+                    </span>
+                    <span className="text-[11px] opacity-80 leading-snug">
+                      {currentEducationLevel === 'school_k10'
+                        ? 'Standard 9 school subjects (English, Nepali, Science, Social Studies, Health, Economics, Mathematics, Optional Mathematics, Computer) auto-loaded. All editable and deletable.'
+                        : currentEducationLevel === 'high_school_11_12'
+                        ? 'Compulsory core subjects (English, Nepali) auto-loaded. Add stream electives as needed.'
+                        : 'Department-driven curriculum. Select subjects from the Department catalog below or add custom modules.'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                  {currentEducationLevel === 'school_k10' && (
+                    <button
+                      type="button"
+                      onClick={handleResetToSchoolK10Subjects}
+                      className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[11px] font-semibold cursor-pointer shadow-2xs"
+                      title="Reload standard 9 school subjects"
+                    >
+                      Reset Standard 9 Subjects
+                    </button>
+                  )}
+                  {currentEducationLevel === 'high_school_11_12' && (
+                    <button
+                      type="button"
+                      onClick={handleResetToHighSchoolCoreSubjects}
+                      className="px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 rounded text-[11px] font-semibold cursor-pointer shadow-2xs"
+                      title="Reload compulsory English and Nepali"
+                    >
+                      Reset Core Subjects
+                    </button>
+                  )}
+                  {newClassSubjects.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setNewClassSubjects([])}
+                      className="px-2 py-1 text-zinc-500 hover:text-rose-600 text-[11px] font-medium hover:underline cursor-pointer"
+                    >
+                      Clear List
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* 1. Default Announcement Section (Not a Subject) */}
               <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 space-y-1.5">
                 <div className="flex items-center gap-2">
@@ -4139,6 +4363,136 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     <span>Add Single Subject</span>
                   </button>
                 </div>
+
+                {/* Department Subjects Catalog (Bachelor Level & All Departments) */}
+                {(() => {
+                  const chosenFaculty = faculties.find(f => f.id === selectedFacultyId) || faculties[0];
+                  const deptSubjects = chosenFaculty?.subjects || [];
+                  return (
+                    <div className="bg-white border border-indigo-200/80 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-[#26394D]" />
+                          <span className="text-xs font-bold text-zinc-900">
+                            {chosenFaculty?.name || 'Department'} Curriculum Catalog ({deptSubjects.length})
+                          </span>
+                          {currentEducationLevel === 'bachelor' && (
+                            <span className="text-[10px] bg-purple-100 text-purple-800 font-semibold px-1.5 py-0.2 rounded">
+                              Bachelor Level
+                            </span>
+                          )}
+                        </div>
+                        {deptSubjects.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const defaultTeacherId = availableUsers.find(u => u.role === 'professor' || u.role === 'lecturer')?.id || availableUsers[1]?.id || availableUsers[0]?.id;
+                              const missing = deptSubjects.filter(ds => !newClassSubjects.some(s => s.name.toLowerCase() === ds.name.toLowerCase()));
+                              if (missing.length === 0) {
+                                setNewClassSubjects(prev => prev.filter(s => !deptSubjects.some(ds => ds.name.toLowerCase() === s.name.toLowerCase())));
+                              } else {
+                                setNewClassSubjects(prev => [
+                                  ...prev,
+                                  ...missing.map(ds => ({
+                                    name: ds.name,
+                                    code: ds.code,
+                                    description: ds.description || `Subject: ${ds.name}`,
+                                    lecturerId: defaultTeacherId
+                                  }))
+                                ]);
+                              }
+                            }}
+                            className="text-[11px] text-[#26394D] font-bold hover:underline cursor-pointer"
+                          >
+                            {deptSubjects.every(ds => newClassSubjects.some(s => s.name.toLowerCase() === ds.name.toLowerCase()))
+                              ? 'Deselect All'
+                              : 'Select All Department Subjects'}
+                          </button>
+                        )}
+                      </div>
+
+                      {deptSubjects.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 bg-zinc-50 rounded-lg border border-zinc-100">
+                          {deptSubjects.map(sub => {
+                            const isAdded = newClassSubjects.some(
+                              s => s.name.toLowerCase() === sub.name.toLowerCase() || (sub.code && s.code.toLowerCase() === sub.code.toLowerCase())
+                            );
+                            const defaultTeacherId = availableUsers.find(u => u.role === 'professor' || u.role === 'lecturer')?.id || availableUsers[1]?.id || availableUsers[0]?.id;
+                            return (
+                              <button
+                                key={sub.code || sub.name}
+                                type="button"
+                                onClick={() => {
+                                  if (isAdded) {
+                                    setNewClassSubjects(prev => prev.filter(s => s.name.toLowerCase() !== sub.name.toLowerCase()));
+                                  } else {
+                                    setNewClassSubjects(prev => [
+                                      ...prev,
+                                      {
+                                        name: sub.name,
+                                        code: sub.code,
+                                        description: sub.description || `Subject: ${sub.name}`,
+                                        lecturerId: defaultTeacherId
+                                      }
+                                    ]);
+                                  }
+                                }}
+                                className={`text-xs px-2.5 py-1 rounded-md border font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                                  isAdded
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                                    : 'bg-white text-zinc-700 border-zinc-200 hover:border-zinc-400 hover:bg-zinc-50'
+                                }`}
+                                title={isAdded ? 'Click to remove from class' : `Add ${sub.name} to class`}
+                              >
+                                {isAdded ? <Check className="w-3 h-3 text-emerald-600" /> : <Plus className="w-3 h-3 text-[#26394D]" />}
+                                <span>{sub.name}</span>
+                                <span className="font-mono text-[9px] text-zinc-500">({sub.code})</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-zinc-500 italic">
+                          No subjects listed under {chosenFaculty?.name || 'this department'} yet. List subjects below to select them.
+                        </p>
+                      )}
+
+                      {/* Inline quick add subject to this department */}
+                      <div className="pt-2 border-t border-zinc-100 flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                        <input
+                          type="text"
+                          placeholder="New Subject Name (e.g. Artificial Intelligence)"
+                          value={newDeptSubName}
+                          onChange={e => setNewDeptSubName(e.target.value)}
+                          className="flex-1 min-w-[140px] bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Code (AI-401)"
+                          value={newDeptSubCode}
+                          onChange={e => setNewDeptSubCode(e.target.value.toUpperCase())}
+                          className="w-24 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 font-mono uppercase focus:outline-none focus:border-[#26394D]"
+                        />
+                        <button
+                          type="button"
+                          disabled={!newDeptSubName.trim()}
+                          onClick={() => {
+                            if (!chosenFaculty || !newDeptSubName.trim()) return;
+                            handleAddSubjectToDepartment(chosenFaculty.id, {
+                              name: newDeptSubName.trim(),
+                              code: newDeptSubCode.trim() || newDeptSubName.trim().slice(0, 4).toUpperCase()
+                            });
+                            setNewDeptSubName('');
+                            setNewDeptSubCode('');
+                          }}
+                          className="px-2.5 py-1 bg-[#26394D] hover:bg-[#141E2B] disabled:opacity-40 text-white rounded text-xs font-semibold cursor-pointer shrink-0"
+                        >
+                          + Save to Dept
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Preset Subject Blocks & Batch Add Buttons */}
                 <div className="space-y-1.5 bg-white p-2.5 rounded-lg border border-zinc-200">
@@ -4222,64 +4576,76 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </datalist>
 
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {newClassSubjects.map((sub, idx) => (
-                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white p-2 rounded-lg border border-zinc-200">
-                      <input
-                        type="text"
-                        list="common-subjects"
-                        value={sub.name}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setNewClassSubjects(prev =>
-                            prev.map((s, i) => (i === idx ? { ...s, name: val } : s))
-                          );
-                        }}
-                        placeholder={`Subject ${idx + 1} Name`}
-                        className="flex-1 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
-                        required
-                      />
-
-                      <input
-                        type="text"
-                        value={sub.code}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setNewClassSubjects(prev =>
-                            prev.map((s, i) => (i === idx ? { ...s, code: val } : s))
-                          );
-                        }}
-                        placeholder="Code (CS-301)"
-                        className="w-full sm:w-28 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
-                      />
-
-                      <select
-                        value={sub.lecturerId}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setNewClassSubjects(prev =>
-                            prev.map((s, i) => (i === idx ? { ...s, lecturerId: val } : s))
-                          );
-                        }}
-                        className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none"
-                        title="Select Dedicated Teacher for this subject"
-                      >
-                        {facultyMembers.map(f => (
-                          <option key={f.id} value={f.id}>
-                            Teacher: {f.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      <button
-                        type="button"
-                        onClick={() => setNewClassSubjects(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-zinc-400 hover:text-rose-600 p-1 self-end sm:self-center cursor-pointer"
-                        title="Remove subject"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                  {newClassSubjects.length === 0 ? (
+                    <div className="text-center py-5 px-3 border-2 border-dashed border-zinc-200 rounded-lg bg-white/70">
+                      <BookOpen className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-zinc-700">No subjects in this class yet</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
+                        {currentEducationLevel === 'bachelor'
+                          ? 'Select subjects from the Department catalog above, pick a Quick Add preset block, or click "Add Single Subject".'
+                          : 'Click Reset above to restore standard subjects or click "Add Single Subject".'}
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    newClassSubjects.map((sub, idx) => (
+                      <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white p-2 rounded-lg border border-zinc-200">
+                        <input
+                          type="text"
+                          list="common-subjects"
+                          value={sub.name}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setNewClassSubjects(prev =>
+                              prev.map((s, i) => (i === idx ? { ...s, name: val } : s))
+                            );
+                          }}
+                          placeholder={`Subject ${idx + 1} Name`}
+                          className="flex-1 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
+                          required
+                        />
+
+                        <input
+                          type="text"
+                          value={sub.code}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setNewClassSubjects(prev =>
+                              prev.map((s, i) => (i === idx ? { ...s, code: val } : s))
+                            );
+                          }}
+                          placeholder="Code (CS-301)"
+                          className="w-full sm:w-28 bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:bg-white"
+                        />
+
+                        <select
+                          value={sub.lecturerId}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setNewClassSubjects(prev =>
+                              prev.map((s, i) => (i === idx ? { ...s, lecturerId: val } : s))
+                            );
+                          }}
+                          className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800 focus:outline-none"
+                          title="Select Dedicated Teacher for this subject"
+                        >
+                          {facultyMembers.map(f => (
+                            <option key={f.id} value={f.id}>
+                              Teacher: {f.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => setNewClassSubjects(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-zinc-400 hover:text-rose-600 p-1 self-end sm:self-center cursor-pointer"
+                          title="Remove subject"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -5486,6 +5852,88 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
 
               <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+                  Education Level / Tier <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <label
+                    className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      newAdminEducationLevel === 'school_k10'
+                        ? 'bg-emerald-50/80 border-emerald-400 ring-1 ring-emerald-400'
+                        : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100/60'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="adminEducationLevel"
+                      value="school_k10"
+                      checked={newAdminEducationLevel === 'school_k10'}
+                      onChange={() => setNewAdminEducationLevel('school_k10')}
+                      className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <span className="font-bold text-xs text-zinc-900 block flex items-center gap-1">
+                        <span>🏫</span> School
+                      </span>
+                      <span className="text-[10px] text-zinc-500 leading-tight block">
+                        Nursery to Class 10 (Auto-loads 9 standard subjects)
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      newAdminEducationLevel === 'high_school_11_12'
+                        ? 'bg-blue-50/80 border-blue-400 ring-1 ring-blue-400'
+                        : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100/60'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="adminEducationLevel"
+                      value="high_school_11_12"
+                      checked={newAdminEducationLevel === 'high_school_11_12'}
+                      onChange={() => setNewAdminEducationLevel('high_school_11_12')}
+                      className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <span className="font-bold text-xs text-zinc-900 block flex items-center gap-1">
+                        <span>🎓</span> High School
+                      </span>
+                      <span className="text-[10px] text-zinc-500 leading-tight block">
+                        Class 11 - 12 / +2 (Auto-loads English & Nepali)
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      newAdminEducationLevel === 'bachelor'
+                        ? 'bg-purple-50/80 border-purple-400 ring-1 ring-purple-400'
+                        : 'bg-zinc-50 border-zinc-200 hover:bg-zinc-100/60'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="adminEducationLevel"
+                      value="bachelor"
+                      checked={newAdminEducationLevel === 'bachelor'}
+                      onChange={() => setNewAdminEducationLevel('bachelor')}
+                      className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div>
+                      <span className="font-bold text-xs text-zinc-900 block flex items-center gap-1">
+                        <span>🏛️</span> Bachelor Level
+                      </span>
+                      <span className="text-[10px] text-zinc-500 leading-tight block">
+                        College / University (Department subjects catalog)
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-semibold text-zinc-700 mb-1">
                   Institutional Plan / Tier
                 </label>
@@ -5576,6 +6024,151 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Department Subjects Management Modal */}
+      {managingDeptForSubjects && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-hidden animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-zinc-200 flex flex-col max-h-[85vh] overflow-hidden">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-[#26394D]" />
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">
+                    Department Subjects: {managingDeptForSubjects.name}
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 font-mono">
+                    Code: {managingDeptForSubjects.code} • {managingDeptForSubjects.subjects?.length || 0} Listed Subjects
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setManagingDeptForSubjects(null);
+                  setNewDeptSubName('');
+                  setNewDeptSubCode('');
+                  setNewDeptSubDesc('');
+                }}
+                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+              {/* Add new subject to department form */}
+              <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3.5 space-y-2.5">
+                <span className="text-xs font-bold text-zinc-900 block">
+                  Add Subject to Department Curriculum
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Subject Name (e.g. Machine Learning)"
+                    value={newDeptSubName}
+                    onChange={e => setNewDeptSubName(e.target.value)}
+                    className="bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Subject Code (e.g. AI-401)"
+                    value={newDeptSubCode}
+                    onChange={e => setNewDeptSubCode(e.target.value.toUpperCase())}
+                    className="bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 font-mono uppercase focus:outline-none focus:border-[#26394D]"
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Short Description (optional)"
+                  value={newDeptSubDesc}
+                  onChange={e => setNewDeptSubDesc(e.target.value)}
+                  className="w-full bg-white border border-zinc-300 rounded px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    disabled={!newDeptSubName.trim()}
+                    onClick={() => {
+                      if (!newDeptSubName.trim()) return;
+                      handleAddSubjectToDepartment(managingDeptForSubjects.id, {
+                        name: newDeptSubName.trim(),
+                        code: newDeptSubCode.trim() || newDeptSubName.trim().slice(0, 4).toUpperCase(),
+                        description: newDeptSubDesc.trim()
+                      });
+                      setNewDeptSubName('');
+                      setNewDeptSubCode('');
+                      setNewDeptSubDesc('');
+                    }}
+                    className="px-3 py-1.5 bg-[#26394D] hover:bg-[#141E2B] disabled:opacity-50 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-2xs"
+                  >
+                    + Add Subject to Department
+                  </button>
+                </div>
+              </div>
+
+              {/* Existing subjects list */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-bold text-zinc-700 block">
+                  Current Listed Subjects ({managingDeptForSubjects.subjects?.length || 0})
+                </span>
+                {managingDeptForSubjects.subjects && managingDeptForSubjects.subjects.length > 0 ? (
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                    {managingDeptForSubjects.subjects.map((sub, sIdx) => (
+                      <div
+                        key={sIdx}
+                        className="flex items-center justify-between p-2.5 bg-zinc-50 hover:bg-zinc-100/80 rounded-lg border border-zinc-200 transition-colors"
+                      >
+                        <div>
+                          <div className="font-semibold text-xs text-zinc-900 flex items-center gap-1.5">
+                            <span>{sub.name}</span>
+                            <span className="font-mono text-[10px] bg-white text-zinc-600 px-1.5 py-0.2 rounded border border-zinc-200">
+                              {sub.code}
+                            </span>
+                          </div>
+                          {sub.description && (
+                            <p className="text-[11px] text-zinc-500 mt-0.5">{sub.description}</p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubjectFromDepartment(managingDeptForSubjects.id, sIdx)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                          title={`Delete ${sub.name}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 border border-dashed border-zinc-200 rounded-xl bg-zinc-50">
+                    <BookOpen className="w-6 h-6 text-zinc-400 mx-auto mb-1" />
+                    <p className="text-xs font-semibold text-zinc-600">No subjects listed yet</p>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      Add subjects above so instructors can select them with one click when creating classes.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-zinc-200 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setManagingDeptForSubjects(null);
+                  setNewDeptSubName('');
+                  setNewDeptSubCode('');
+                  setNewDeptSubDesc('');
+                }}
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
