@@ -84,10 +84,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const {
     currentUser,
     availableUsers,
-    updateUserLicense,
+    updateUserDepartment,
     toggleUserMute,
     courses,
     createCourse,
+    updateCourse,
     deleteCourse,
     setSelectedCourse,
     setSelectedChannel,
@@ -751,6 +752,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const [editUserGuardianPhone, setEditUserGuardianPhone] = useState('');
   const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
 
+  // Edit / Rename Class State
+  const [editingCourse, setEditingCourse] = useState<CourseTeam | null>(null);
+  const [renameCourseName, setRenameCourseName] = useState('');
+  const [renameCourseCode, setRenameCourseCode] = useState('');
+  const [renameCourseDepartment, setRenameCourseDepartment] = useState('');
+  const [renameCourseTerm, setRenameCourseTerm] = useState('');
+  const [isSavingCourseRename, setIsSavingCourseRename] = useState(false);
+
   // New Class Form State (with Faculty Selector)
   const [selectedFacultyId, setSelectedFacultyId] = useState(faculties[0]?.id || 'fac_cs');
   const [courseCode, setCourseCode] = useState('');
@@ -1088,6 +1097,42 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
         }
       }
     );
+  };
+
+  const handleOpenEditCourse = (course: CourseTeam) => {
+    setEditingCourse(course);
+    setRenameCourseName(course.name);
+    setRenameCourseCode(course.code);
+    setRenameCourseDepartment(course.department || faculties[0]?.name || '');
+    setRenameCourseTerm(course.term || 'Fall 2026');
+  };
+
+  const handleSaveCourseRename = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse) return;
+    if (!renameCourseName.trim() || !renameCourseCode.trim()) {
+      showDialog('Class name and course code are required.', { type: 'alert', title: 'Missing Information' });
+      return;
+    }
+    setIsSavingCourseRename(true);
+    try {
+      updateCourse(editingCourse.id, {
+        name: renameCourseName.trim(),
+        code: renameCourseCode.trim(),
+        department: renameCourseDepartment.trim() || undefined,
+        term: renameCourseTerm.trim() || undefined,
+      });
+      showDialog(`Class successfully updated to "${renameCourseCode.trim()} - ${renameCourseName.trim()}".`, {
+        type: 'success',
+        title: 'Class Renamed'
+      });
+      setEditingCourse(null);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      showDialog(message || 'Failed to update class.', { type: 'alert', title: 'Error' });
+    } finally {
+      setIsSavingCourseRename(false);
+    }
   };
 
   const handleProvisionOrgAdmin = (req: InstitutionalRequest) => {
@@ -1589,12 +1634,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     return academicUsers.filter(u => u.role !== 'student' && u.role !== 'developer');
   }, [academicUsers]);
 
-  const licenseOptions: LicenseSku[] = [
-    'ProCollege Verified for Faculty',
-    'ProCollege Verified for Students',
-    'ProCollege Enterprise Platform License'
-  ];
-
   const filteredOrganizations = useMemo(() => {
     if (!searchOrgQuery.trim()) return organizations;
     const q = searchOrgQuery.toLowerCase();
@@ -1687,6 +1726,13 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => handleOpenEditCourse(course)}
+              className="p-1.5 text-zinc-400 hover:text-[#26394D] hover:bg-zinc-100 rounded-lg transition-colors cursor-pointer"
+              title="Rename class and modify department/code"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={() => openRolloverForCourse(course)}
               className="p-1.5 text-zinc-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
@@ -1968,6 +2014,14 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           </div>
 
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleOpenEditCourse(course)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-zinc-700 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-xs font-semibold transition-colors cursor-pointer"
+              title="Rename class or change department"
+            >
+              <Pencil className="w-3.5 h-3.5 text-zinc-500" />
+              <span>Rename</span>
+            </button>
             <button
               onClick={() => openRolloverForCourse(course)}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-semibold transition-colors cursor-pointer"
@@ -3666,7 +3720,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <th className="py-3 px-4">Contact / Guardian</th>
                       <th className="py-3 px-4">Department</th>
                       <th className="py-3 px-4">Attendance</th>
-                      <th className="py-3 px-4">License SKU</th>
                       <th className="py-3 px-4">Mute State</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
@@ -3674,7 +3727,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <tbody className="divide-y divide-zinc-100">
                     {academicUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="py-12 text-center text-zinc-500">
+                        <td colSpan={8} className="py-12 text-center text-zinc-500">
                           <div className="flex flex-col items-center justify-center space-y-2">
                             <Users className="w-8 h-8 text-zinc-300" />
                             <p className="font-semibold text-zinc-700">No campus students or lecturers registered in this institution yet.</p>
@@ -3748,8 +3801,24 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-zinc-600 text-[11px] font-medium max-w-[140px] truncate" title={user.department}>
-                            {user.department || 'General'}
+                          <td className="py-3 px-4">
+                            <select
+                              value={user.department || faculties[0]?.name || ''}
+                              onChange={e => updateUserDepartment(user.id, e.target.value)}
+                              className="bg-zinc-50 hover:bg-white border border-zinc-200 hover:border-zinc-300 rounded-lg px-2.5 py-1 text-xs text-zinc-800 font-medium focus:ring-1 focus:ring-[#26394D] focus:outline-none cursor-pointer max-w-[170px] truncate shadow-2xs"
+                              title="Assign or reassign academic department"
+                            >
+                              {faculties.map(fac => (
+                                <option key={fac.id} value={fac.name}>
+                                  {fac.name} ({fac.code})
+                                </option>
+                              ))}
+                              {faculties.length === 0 && (
+                                <option value={user.department || 'General Academic Department'}>
+                                  {user.department || 'General Academic Department'}
+                                </option>
+                              )}
+                            </select>
                           </td>
                           <td className="py-3 px-4">
                             {user.role === 'student' ? (() => {
@@ -3788,19 +3857,6 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             })() : (
                               <span className="text-zinc-400 text-xs font-mono">—</span>
                             )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <select
-                              value={user.license}
-                              onChange={e => updateUserLicense(user.id, e.target.value as LicenseSku)}
-                              className="bg-zinc-50 border border-zinc-300 rounded px-2 py-1 text-xs text-zinc-800 font-medium focus:ring-1 focus:ring-[#26394D] focus:outline-none"
-                            >
-                              {licenseOptions.map(lic => (
-                                <option key={lic} value={lic}>
-                                  {lic}
-                                </option>
-                              ))}
-                            </select>
                           </td>
                           <td className="py-3 px-4">
                             {user.isMuted ? (
@@ -5097,6 +5153,112 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 2B: RENAME / EDIT CLASS DETAILS                      */}
+      {/* ========================================================= */}
+      {editingCourse && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center font-bold">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-zinc-900">Rename / Edit Class</h3>
+                  <p className="text-xs text-zinc-500">Update class name, code, academic department, and term</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCourse(null)}
+                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCourseRename} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Class Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={renameCourseName}
+                  onChange={e => setRenameCourseName(e.target.value)}
+                  placeholder="e.g. B.Sc. Computer Science - Semester 3 (Section A)"
+                  className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:ring-1 focus:ring-[#26394D]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                    Course / Class Code <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={renameCourseCode}
+                    onChange={e => setRenameCourseCode(e.target.value)}
+                    placeholder="e.g. CS-2026-A"
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:ring-1 focus:ring-[#26394D]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">Academic Term</label>
+                  <input
+                    type="text"
+                    value={renameCourseTerm}
+                    onChange={e => setRenameCourseTerm(e.target.value)}
+                    placeholder="e.g. Fall 2026"
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:ring-1 focus:ring-[#26394D]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Academic Department</label>
+                <select
+                  value={renameCourseDepartment || (faculties[0]?.name || '')}
+                  onChange={e => setRenameCourseDepartment(e.target.value)}
+                  className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D] focus:ring-1 focus:ring-[#26394D] cursor-pointer"
+                >
+                  {faculties.map(fac => (
+                    <option key={fac.id} value={fac.name}>
+                      {fac.name} ({fac.code})
+                    </option>
+                  ))}
+                  {faculties.length === 0 && (
+                    <option value="General Academic Department">General Academic Department</option>
+                  )}
+                </select>
+                <p className="text-[11px] text-zinc-400 mt-1">This class will be organized under this department</p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingCourse(null)}
+                  className="px-3.5 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingCourseRename}
+                  className="px-4 py-2 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] disabled:bg-zinc-400 text-white rounded-lg cursor-pointer shadow-xs"
+                >
+                  {isSavingCourseRename ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
