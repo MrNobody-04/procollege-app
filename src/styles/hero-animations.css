@@ -294,14 +294,6 @@
   }
 }
 
-@keyframes orbitSpin {
-  0% {
-    transform: translate(-50%, -50%) rotate(-25deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(335deg);
-  }
-}
 
 /* Continuous Infinite Sliding Animation from Right to Left */
 @keyframes slideTrackRightToLeft {
