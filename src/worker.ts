@@ -556,6 +556,23 @@ app.get('/api/messages/:channelId', async (c) => {
   }
 });
 
+// Enforce natural, clean formatting without hashtags (#) or asterisks (*)
+function cleanNaturalResponse(text: string): string {
+  if (!text) return '';
+  return text
+    // 1. Remove markdown headings (e.g. "### 1. Title" -> "1. Title", "# Heading" -> "Heading")
+    .replace(/^#{1,6}\s*(.*)$/gm, '$1')
+    // 2. Remove all bold/italic markdown asterisks (e.g. "**Word:**" -> "Word:", "*Word*" -> "Word")
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+    // 3. Convert markdown bullet asterisks or multiple bullet chars cleanly to simple "- "
+    .replace(/^\s*[\*\-•]+\s*/gm, '- ')
+    // 4. Strip any residual stray asterisks or hashtag symbols
+    .replace(/[\*#]/g, '')
+    // 5. Clean up multiple empty lines
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // Intelligent offline ProCollege answer generator (zero-latency fallback)
 function getOfflineProCollegeReply(query: string): string {
   const q = query.toLowerCase().trim();
@@ -574,8 +591,8 @@ function getOfflineProCollegeReply(query: string): string {
   if (/\b(attendance|75%?|lock|gatekeeper|absent|roll[\s-]?call|minimum)\b/i.test(q)) {
     return `ProCollege features a smart, automated Attendance Gatekeeper:
 
-• **School Level (Nursery to Class 12):** Daily bulk roll-call managed by Class Heads with automated aggregate percentage tracking.
-• **University Level (Bachelor's):** Granular per-subject attendance calculated from conducted lecture sessions. If a student's attendance drops below 75%, their LMS assignment submission portal is automatically locked until the course lecturer grants a manual override.
+- School Level (Nursery to Class 12): Daily bulk roll-call managed by Class Heads with automated aggregate percentage tracking.
+- University Level (Bachelor's): Granular per-subject attendance calculated from conducted lecture sessions. If a student's attendance drops below 75%, their LMS assignment submission portal is automatically locked until the course lecturer grants a manual override.
 
 Would you like to know how lecturers can configure or override attendance limits?`;
   }
@@ -584,9 +601,9 @@ Would you like to know how lecturers can configure or override attendance limits
   if (/\b(price|pricing|cost|plan|plans|free|tier|subscription|how\s*much)\b/i.test(q)) {
     return `ProCollege offers three flexible institutional tiers:
 
-• **Starter (Free):** Up to 100 users, core collaboration channels, and shared campus workspaces — ideal for clubs and small academic departments.
-• **Campus Pro ($6/student/mo):** Full ProCollege Teams experience, HD virtual lectures (Meet), unified LMS workflows, and AI study assistance.
-• **Enterprise University (Custom Pricing):** Multi-campus governance, SIS integrations, Cloudflare D1 backup vaults, and dedicated SLA support.
+- Starter (Free): Up to 100 users, core collaboration channels, and shared campus workspaces — ideal for clubs and small academic departments.
+- Campus Pro ($6/student/mo): Full ProCollege Teams experience, HD virtual lectures (Meet), unified LMS workflows, and AI study assistance.
+- Enterprise University (Custom Pricing): Multi-campus governance, SIS integrations, Cloudflare D1 backup vaults, and dedicated SLA support.
 
 Would you like help choosing the best plan for your campus?`;
   }
@@ -596,10 +613,10 @@ Would you like help choosing the best plan for your campus?`;
     return `ProCollege is a cloud-native campus SaaS ecosystem designed for schools (Nursery to Class 12) and universities (Bachelor's programs).
 
 It unifies daily campus operations into four core modules:
-• **ProCollege Teams:** Real-time chat, student discussions, and departmental channels.
-• **ProCollege Meet:** Built-in HD virtual lectures with calendar synchronization.
-• **ProCollege LMS:** Assignment pipelines, automated grading, and our 75% attendance gatekeeper.
-• **ProCollege Cloud:** Centralized repository for syllabi, study materials, and institutional records.
+- ProCollege Teams: Real-time chat, student discussions, and departmental channels.
+- ProCollege Meet: Built-in HD virtual lectures with calendar synchronization.
+- ProCollege LMS: Assignment pipelines, automated grading, and our 75% attendance gatekeeper.
+- ProCollege Cloud: Centralized repository for syllabi, study materials, and institutional records.
 
 Powered by edge SQLite (Turso) and Cloudflare Workers, ProCollege provides instant sub-second performance with zero complex IT overhead. What specific area of campus management would you like to explore?`;
   }
@@ -608,10 +625,10 @@ Powered by edge SQLite (Turso) and Cloudflare Workers, ProCollege provides insta
   if (/\b(tech\s*stack|architecture|database|turso|cloudflare|ably|cloudinary|speed|edge|security)\b/i.test(q)) {
     return `ProCollege is built on a high-performance, zero-budget edge architecture:
 
-• **Edge Database:** Distributed SQLite via Turso for single-digit millisecond latency worldwide.
-• **Compute & CDN:** Cloudflare Workers & Pages for serverless scalability.
-• **Real-Time Layer:** Ably WebSockets for instantaneous messaging and lecture handshakes.
-• **Media & Vaults:** Cloudinary for media assets with Cloudflare D1 backup vaults.
+- Edge Database: Distributed SQLite via Turso for single-digit millisecond latency worldwide.
+- Compute & CDN: Cloudflare Workers & Pages for serverless scalability.
+- Real-Time Layer: Ably WebSockets for instantaneous messaging and lecture handshakes.
+- Media & Vaults: Cloudinary for media assets with Cloudflare D1 backup vaults.
 
 This guarantees sub-second responsiveness, bank-grade tenant isolation, and zero server maintenance. Would you like to dive deeper into our multi-tenant data architecture?`;
   }
@@ -642,6 +659,17 @@ app.post('/api/ai/chat', async (c) => {
 
     const systemInstruction = `You are Echo, the charismatic, highly intelligent, and articulate AI concierge for ProCollege (procollege-app.sujan-bit-n2024.workers.dev).
 ProCollege is a cloud-native campus SaaS ecosystem built for schools (Nursery-12) and universities (Bachelor's programs).
+
+CRITICAL FORMATTING MANDATE (NATURAL CONVERSATION ONLY):
+- NEVER use hashtags (#, ##, ###) anywhere! Do NOT format section titles with # or ## or ###.
+- NEVER use asterisks (*, **) anywhere! Do NOT use asterisks for bolding words or list bullets.
+- For numbered sections, simply write clean numbers like:
+  1. The Core Ecosystem
+  2. The Smart Attendance Gatekeeper
+- For bulleted lists, use a standard hyphen with space:
+  - ProCollege Teams: A centralized hub for class chat.
+  - ProCollege Meet: Virtual classrooms and lectures.
+- Write naturally, cleanly, and conversationally like a human professional writing a message.
 
 Guidelines:
 1. For casual greetings or small-talk (e.g., 'hi', 'k xa khabar', 'namaste'):
@@ -702,7 +730,10 @@ Guidelines:
       replyText = getOfflineProCollegeReply(userQueryText);
     }
 
-    return c.json({ reply: replyText });
+    // Sanitize any residual markdown symbols to guarantee 100% natural conversational display
+    const finalCleanReply = cleanNaturalResponse(replyText);
+
+    return c.json({ reply: finalCleanReply });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
