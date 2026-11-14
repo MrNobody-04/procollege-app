@@ -10,7 +10,10 @@ import {
   ChevronRight,
   FileCode,
   FileText,
-  Download
+  Download,
+  ShieldAlert,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import type { Assignment, AssignmentSubmission } from '../types';
@@ -30,7 +33,15 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
   isOpen,
   onClose
 }) => {
-  const { availableUsers, returnAssignment, returnForRevision, showDialog } = useApp();
+  const {
+    availableUsers,
+    returnAssignment,
+    returnForRevision,
+    showDialog,
+    getStudentSubjectAttendance,
+    attendanceOverrides,
+    toggleAttendanceOverride
+  } = useApp();
 
   const students = availableUsers.filter(u => u.role === 'student');
   const [currentStudentIndex, setCurrentStudentIndex] = useState(() => {
@@ -60,6 +71,27 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
 
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [previewFile, setPreviewFile] = useState<{ name: string; url?: string; mimeType?: string; size?: string } | null>(null);
+
+  // Subject Attendance & Lecturer Override Logic (Requirement B)
+  const subjectId = assignment.channelId || assignment.targetChannelId || '';
+  const attendanceStats = getStudentSubjectAttendance(student.id, subjectId);
+  const threshold = attendanceStats.threshold;
+  const isLowAttendance = threshold.percentage < 75;
+
+  const hasException = Boolean(
+    attendanceOverrides.some(o => o.assignmentId === assignment.id && o.studentId === student.id && o.active)
+  );
+
+  const handleToggleException = () => {
+    const nextState = !hasException;
+    toggleAttendanceOverride(assignment.id, student.id, nextState);
+    showDialog(
+      nextState
+        ? `One-Time Exception granted for ${student.name}! Assignment submission lock has been bypassed.`
+        : `One-Time Exception revoked for ${student.name}. Submission gatekeeper is now active.`,
+      { type: nextState ? 'success' : 'info', title: 'Attendance Gatekeeper Override' }
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -135,6 +167,10 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
           <div className="flex items-center gap-2 bg-zinc-800/90 px-3 py-1 rounded-lg border border-zinc-700">
             <img src={student.avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
             <span className="text-xs font-bold text-white">{student.name}</span>
+            <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold border ${threshold.badgeClass}`}>
+              <span>{threshold.icon}</span>
+              <span>{threshold.percentage}%</span>
+            </span>
             <span className="text-[10px] text-zinc-400">
               ({currentStudentIndex + 1} of {students.length})
             </span>
@@ -344,6 +380,81 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Attendance Standing & Gatekeeper Exception Switch (Requirement B) */}
+            <div className={`p-3 rounded-lg border space-y-2.5 ${
+              isLowAttendance ? 'bg-rose-50/80 border-rose-200' : 'bg-zinc-50 border-zinc-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs text-zinc-900 flex items-center gap-1.5">
+                  <ShieldAlert className={`w-3.5 h-3.5 ${isLowAttendance ? 'text-rose-600' : 'text-zinc-600'}`} />
+                  Subject Attendance Standing
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${threshold.badgeClass}`}>
+                  <span>{threshold.icon}</span>
+                  <span>{threshold.label} ({threshold.percentage}%)</span>
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs text-zinc-600">
+                <span>Sessions Attended:</span>
+                <span className="font-mono font-bold text-zinc-900">
+                  {attendanceStats.presentCount} / {attendanceStats.totalSessions} classes ({threshold.percentage}%)
+                </span>
+              </div>
+
+              {/* Requirement B: Flagged low-attendance students display [ Grant One-Time Exception ] toggle switch */}
+              {isLowAttendance ? (
+                <div className="pt-2 border-t border-rose-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-rose-950 block">Grant One-Time Exception</span>
+                      <p className="text-[10px] text-rose-800">
+                        Bypasses the automatic submission lock for {student.name.split(' ')[0]}.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleException}
+                      className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        hasException ? 'bg-emerald-600' : 'bg-zinc-300'
+                      }`}
+                      title={hasException ? 'Click to revoke exception' : 'Click to grant exception'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          hasException ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className={`p-2 rounded text-[11px] font-medium flex items-center gap-1.5 ${
+                    hasException
+                      ? 'bg-emerald-100/80 text-emerald-900 border border-emerald-300'
+                      : 'bg-rose-100/70 text-rose-900 border border-rose-300'
+                  }`}>
+                    {hasException ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                        <span>Exception active: Student can submit this assignment.</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-700 shrink-0" />
+                        <span>Submissions locked automatically (&lt; 75% attendance).</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-1 text-[11px] text-zinc-500 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Student meets the 75% minimum attendance requirement.</span>
+                </div>
+              )}
             </div>
 
             {/* Rubric Evaluation Matrix */}

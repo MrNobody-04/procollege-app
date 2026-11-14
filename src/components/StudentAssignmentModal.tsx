@@ -41,7 +41,8 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
     removeStudentFile,
     turnInAssignment,
     undoTurnIn,
-    showDialog
+    showDialog,
+    isStudentLockedFromAssignment
   } = useApp();
 
   const [newFileName, setNewFileName] = useState('');
@@ -54,6 +55,10 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
     category?: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Subject Attendance & Submission Gatekeeper Check (< 75% Locks Submission)
+  const targetSubjectId = assignment.channelId || assignment.targetChannelId || '';
+  const attendanceLock = isStudentLockedFromAssignment(assignment.id, currentUser.id, targetSubjectId);
 
   // Find student submission
   const submission = assignment.submissions.find(s => s.studentId === currentUser.id);
@@ -151,6 +156,14 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
   };
 
   const handleTurnIn = () => {
+    if (attendanceLock.isLocked) {
+      showDialog(attendanceLock.message || `Assignment submission restricted due to low attendance (${attendanceLock.percentage}%). Contact your lecturer for manual override permission to submit.`, {
+        type: 'warning',
+        title: 'Attendance Gatekeeper Lock'
+      });
+      return;
+    }
+
     if (isDeadlinePassed && !isRevisionRequested) {
       showDialog('The deadline has passed. Submissions are closed.', { type: 'warning', title: 'Deadline Closed' });
       return;
@@ -230,6 +243,43 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
             ✕
           </button>
         </div>
+
+        {/* Attendance Gatekeeper Status Banner */}
+        {attendanceLock.isLocked && !isSubmitted && (
+          <div className="mt-3 bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-start gap-3 text-xs text-rose-900 shadow-2xs">
+            <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 text-rose-600 mt-0.5">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-rose-950">Assignment Submission Restricted</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-200 text-rose-900">
+                  Attendance: {attendanceLock.percentage}%
+                </span>
+              </div>
+              <p className="text-rose-800 mt-0.5 leading-relaxed">
+                Assignment submission restricted due to low attendance ({attendanceLock.percentage}%). Contact your lecturer for manual override permission to submit.
+              </p>
+              <p className="text-[11px] text-rose-700 mt-1">
+                You may still read and review the assignment instructions, rubric, and reference materials below.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {attendanceLock.hasOverride && !isSubmitted && (
+          <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-3 text-xs text-emerald-900 shadow-2xs">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 mt-0.5">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-emerald-950">Lecturer Exception Active</span>
+              <p className="text-emerald-800 mt-0.5">
+                Your lecturer has granted an attendance exception for this assignment. Submission portal is active.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Action / Notification Banner */}
         {actionNotification && (
@@ -599,12 +649,22 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
                     </span>
                   ) : null}
                 </>
+              ) : attendanceLock.isLocked ? (
+                <button
+                  type="button"
+                  disabled
+                  className="bg-rose-50 text-rose-700 border border-rose-300 px-4 py-2 rounded font-semibold text-xs flex items-center gap-1.5 cursor-not-allowed opacity-90 shadow-2xs"
+                  title={`Assignment submission restricted due to low attendance (${attendanceLock.percentage}%). Contact your lecturer for manual override permission to submit.`}
+                >
+                  <Lock className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Submission Locked ({attendanceLock.percentage}% Attendance)</span>
+                </button>
               ) : (
                 /* Before deadline or revision requested: Turn In */
                 <button
                   type="button"
                   onClick={handleTurnIn}
-                  className="bg-[#26394D] hover:bg-[#141E2B] text-white px-5 py-2 rounded font-semibold text-xs transition-colors flex items-center gap-1.5"
+                  className="bg-[#26394D] hover:bg-[#141E2B] text-white px-5 py-2 rounded font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{isRevisionRequested ? 'Turn In Revised Work' : 'Turn In'}</span>

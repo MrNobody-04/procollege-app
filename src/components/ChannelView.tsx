@@ -25,6 +25,8 @@ import { CreateAssignmentModal } from './CreateAssignmentModal';
 import { SpeedGraderModal } from './SpeedGraderModal';
 import { StudentAssignmentModal } from './StudentAssignmentModal';
 import { FilePreviewModal } from './FilePreviewModal';
+import { SchoolRollCallModal } from './SchoolRollCallModal';
+import { SubjectRollCallModal } from './SubjectRollCallModal';
 import { downloadFile, readFileAsDataUrl, getFileType } from '../utils/fileManager';
 import type { Assignment, PostCategory, Attachment, CourseFile } from '../types';
 
@@ -47,8 +49,12 @@ export const ChannelView: React.FC = () => {
     mobileSidebarOpen,
     setMobileSidebarOpen,
     showDialog,
-    setActiveTab
+    setActiveTab,
+    getStudentSubjectAttendance
   } = useApp();
+
+  const [showSchoolRollCallModal, setShowSchoolRollCallModal] = useState(false);
+  const [showSubjectRollCallModal, setShowSubjectRollCallModal] = useState(false);
 
   const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');

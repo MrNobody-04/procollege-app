@@ -36,6 +36,9 @@ import {
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
+import { StudentProfileModal } from './StudentProfileModal';
+import { SchoolRollCallModal } from './SchoolRollCallModal';
+import { SubjectRollCallModal } from './SubjectRollCallModal';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest, FacultyDepartment } from '../types';
 
@@ -92,8 +95,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     fetchInstitutionAdmins,
     appointInstitutionAdmin,
     resetInstitutionAdminPassword,
-    removeInstitutionAdmin
+    removeInstitutionAdmin,
+    getStudentOverallAttendance
   } = useApp();
+
+  // Attendance & Gatekeeper Modals State
+  const [showSchoolRollCallModal, setShowSchoolRollCallModal] = useState(false);
+  const [showSubjectRollCallModal, setShowSubjectRollCallModal] = useState(false);
+  const [showStudentProfileModal, setShowStudentProfileModal] = useState(false);
+  const [selectedSubjectForAttendance, setSelectedSubjectForAttendance] = useState<Channel | null>(null);
+  const [selectedStudentForProfile, setSelectedStudentForProfile] = useState<User | null>(null);
+  const [selectedCourseForProfile, setSelectedCourseForProfile] = useState<CourseTeam | null>(null);
 
   const isDeveloper = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
   const isDeveloperOrAdmin = isDeveloper || currentUser.role === 'admin';
@@ -1361,31 +1373,57 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <span className="text-xs font-bold text-zinc-700">
               Enrolled Students ({enrolled.length})
             </span>
-            <button
-              onClick={() => {
-                setSelectedCourseForAction(course);
-                setShowManageStudentsModal(true);
-              }}
-              className="text-[11px] text-[#26394D] hover:underline font-semibold cursor-pointer"
-            >
-              Manage Students
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCourseForAction(course);
+                  setShowSchoolRollCallModal(true);
+                }}
+                className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-semibold cursor-pointer flex items-center gap-1 transition-colors"
+                title="Take daily bulk roll-call for this class"
+              >
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>Daily Roll-Call</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedCourseForAction(course);
+                  setShowManageStudentsModal(true);
+                }}
+                className="text-[11px] text-[#26394D] hover:underline font-semibold cursor-pointer"
+              >
+                Manage Students
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {enrolled.map((student: any) => (
-              <span
-                key={student.id || student.name}
-                className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs"
-              >
-                <img
-                  src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
-                  alt={student.name}
-                  className="w-4 h-4 rounded-full object-cover shrink-0"
-                />
-                <span className="font-medium text-[11px] truncate max-w-[120px]">{student.name}</span>
-              </span>
-            ))}
+            {enrolled.map((student: any) => {
+              const att = getStudentOverallAttendance(student.id);
+              const t = att.threshold;
+              return (
+                <button
+                  type="button"
+                  key={student.id || student.name}
+                  onClick={() => {
+                    setSelectedStudentForProfile(student);
+                    setSelectedCourseForProfile(course);
+                    setShowStudentProfileModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 hover:border-zinc-300 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+                  title={`View Student Profile & Attendance (${t.percentage}% - ${t.label})`}
+                >
+                  <img
+                    src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                    alt={student.name}
+                    className="w-4 h-4 rounded-full object-cover shrink-0"
+                  />
+                  <span className="font-medium text-[11px] truncate max-w-[120px]">{student.name}</span>
+                  <span className="text-[10px]" title={`Attendance: ${t.percentage}% (${t.label})`}>{t.icon}</span>
+                </button>
+              );
+            })}
             {enrolled.length === 0 && (
               <span className="text-xs text-zinc-400 italic">No students enrolled yet</span>
             )}
@@ -1467,6 +1505,18 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             <option key={f.id} value={f.id}>{f.name}</option>
                           ))}
                         </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCourseForAction(course);
+                            setSelectedSubjectForAttendance(ch);
+                            setShowSubjectRollCallModal(true);
+                          }}
+                          className="p-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors cursor-pointer"
+                          title={`Take Subject Attendance for ${ch.name}`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+                        </button>
                         <button
                           onClick={() => {
                             showDialog(`Delete subject module "${ch.name}" from ${course.name}?`, {
@@ -3156,6 +3206,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <th className="py-3 px-4">User</th>
                       <th className="py-3 px-4">Role</th>
                       <th className="py-3 px-4">Login ID</th>
+                      <th className="py-3 px-4">Attendance Standing</th>
                       <th className="py-3 px-4">License SKU</th>
                       <th className="py-3 px-4">Mute State</th>
                       <th className="py-3 px-4 text-right">Actions</th>
@@ -3164,7 +3215,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <tbody className="divide-y divide-zinc-100">
                     {academicUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-zinc-500">
+                        <td colSpan={7} className="py-12 text-center text-zinc-500">
                           <div className="flex flex-col items-center justify-center space-y-2">
                             <Users className="w-8 h-8 text-zinc-300" />
                             <p className="font-semibold text-zinc-700">No campus students or lecturers registered in this institution yet.</p>
@@ -3187,7 +3238,15 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       .map(user => (
                         <tr key={user.id} className="hover:bg-zinc-50/80 transition-colors">
                           <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
+                            <div
+                              onClick={() => {
+                                if (user.role === 'student') {
+                                  setSelectedStudentForProfile(user);
+                                  setShowStudentProfileModal(true);
+                                }
+                              }}
+                              className={`flex items-center gap-3 ${user.role === 'student' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                            >
                               <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
                               <div>
                                 <p className="font-bold text-zinc-900">{user.name}</p>
@@ -3209,6 +3268,28 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             </span>
                           </td>
                           <td className="py-3 px-4 font-mono font-medium text-zinc-700">{user.loginId || 'N/A'}</td>
+                          <td className="py-3 px-4">
+                            {user.role === 'student' ? (() => {
+                              const att = getStudentOverallAttendance(user.id);
+                              const t = att.threshold;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedStudentForProfile(user);
+                                    setShowStudentProfileModal(true);
+                                  }}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${t.badgeClass} hover:opacity-80 cursor-pointer transition-opacity`}
+                                  title={`Click to view detailed attendance history (${t.percentage}% - ${t.label})`}
+                                >
+                                  <span>{t.icon}</span>
+                                  <span>{t.percentage}% {t.label}</span>
+                                </button>
+                              );
+                            })() : (
+                              <span className="text-zinc-400 text-xs font-mono">—</span>
+                            )}
+                          </td>
                           <td className="py-3 px-4">
                             <select
                               value={user.license}
@@ -5628,6 +5709,40 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             </div>
           </div>
         </div>
+      )}
+
+      {/* Attendance & Profile Modals */}
+      {showSchoolRollCallModal && selectedCourseForAction && (
+        <SchoolRollCallModal
+          course={selectedCourseForAction}
+          isOpen={showSchoolRollCallModal}
+          onClose={() => setShowSchoolRollCallModal(false)}
+        />
+      )}
+
+      {showSubjectRollCallModal && selectedCourseForAction && selectedSubjectForAttendance && (
+        <SubjectRollCallModal
+          course={selectedCourseForAction}
+          subject={selectedSubjectForAttendance}
+          isOpen={showSubjectRollCallModal}
+          onClose={() => {
+            setShowSubjectRollCallModal(false);
+            setSelectedSubjectForAttendance(null);
+          }}
+        />
+      )}
+
+      {showStudentProfileModal && selectedStudentForProfile && (
+        <StudentProfileModal
+          student={selectedStudentForProfile}
+          course={selectedCourseForProfile || undefined}
+          isOpen={showStudentProfileModal}
+          onClose={() => {
+            setShowStudentProfileModal(false);
+            setSelectedStudentForProfile(null);
+            setSelectedCourseForProfile(null);
+          }}
+        />
       )}
     </div>
   );

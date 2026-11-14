@@ -2588,6 +2588,18 @@ app.get('/api/workspace/bootstrap', async (c) => {
       });
     }
 
+    // Attendance & Overrides Query (School & University)
+    let schoolAttRes, subjectAttRes, overridesRes;
+    try {
+      schoolAttRes = await db.execute("SELECT * FROM school_attendance ORDER BY date DESC, created_at DESC;");
+      subjectAttRes = await db.execute("SELECT * FROM subject_attendance ORDER BY date DESC, created_at DESC;");
+      overridesRes = await db.execute("SELECT * FROM assignment_attendance_overrides WHERE active = 1;");
+    } catch {
+      schoolAttRes = { rows: [] };
+      subjectAttRes = { rows: [] };
+      overridesRes = { rows: [] };
+    }
+
     // Map channels to courses
     const allChannels = channelsRes.rows.map(ch => ({
       id: String(ch.id),
@@ -2792,6 +2804,37 @@ app.get('/api/workspace/bootstrap', async (c) => {
       files: allFiles,
       notices: noticesRes.rows,
       users: allUsers,
+      schoolAttendance: (schoolAttRes?.rows || []).map(r => ({
+        id: String(r.id),
+        sessionId: String(r.session_id),
+        collegeId: r.college_id ? String(r.college_id) : undefined,
+        classId: String(r.class_id),
+        studentId: String(r.student_id),
+        date: String(r.date),
+        status: String(r.status),
+        takenByUserId: String(r.taken_by_user_id),
+        createdAt: String(r.created_at || ''),
+      })),
+      subjectAttendance: (subjectAttRes?.rows || []).map(r => ({
+        id: String(r.id),
+        sessionId: String(r.session_id),
+        collegeId: r.college_id ? String(r.college_id) : undefined,
+        courseId: String(r.course_id || ''),
+        subjectId: String(r.subject_id),
+        studentId: String(r.student_id),
+        date: String(r.date),
+        status: String(r.status),
+        takenByUserId: String(r.taken_by_user_id),
+        createdAt: String(r.created_at || ''),
+      })),
+      attendanceOverrides: (overridesRes?.rows || []).map(r => ({
+        id: String(r.id),
+        assignmentId: String(r.assignment_id),
+        studentId: String(r.student_id),
+        overriddenBy: String(r.overridden_by),
+        overriddenAt: String(r.overridden_at || ''),
+        active: Boolean(r.active),
+      })),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -3292,7 +3335,7 @@ app.post('/api/assignments/:id/submit', async (c) => {
 
     // Verify Assignment & Enforce Server-Side Deadline Lock
     const asgnRes = await db.execute({
-      sql: 'SELECT id, due_at, due_timestamp FROM assignments WHERE id = ?;',
+      sql: 'SELECT id, due_at, due_timestamp, channel_id FROM assignments WHERE id = ?;',
       args: [assignmentId],
     });
 
@@ -3302,6 +3345,32 @@ app.post('/api/assignments/:id/submit', async (c) => {
       const dueTs = asgn.due_timestamp ? Number(asgn.due_timestamp) : (asgn.due_at ? new Date(String(asgn.due_at)).getTime() : 0);
       if (dueTs > 0 && now > dueTs) {
         return c.json({ error: 'Submission Closed — Deadline Passed' }, 403);
+      }
+
+      // University Level Gatekeeper: Check per-subject attendance percentage (< 75% restricts submission)
+      const channelId = asgn.channel_id ? String(asgn.channel_id) : '';
+      if (channelId) {
+        const attRows = await db.execute({
+          sql: 'SELECT status FROM subject_attendance WHERE subject_id = ? AND student_id = ?;',
+          args: [channelId, studentId],
+        });
+        if (attRows.rows.length > 0) {
+          const totalSessions = attRows.rows.length;
+          const presentCount = attRows.rows.filter(r => r.status === 'present').length;
+          const pct = (presentCount / totalSessions) * 100;
+          if (pct < 75) {
+            // Check if lecturer granted one-time exception
+            const ovrRes = await db.execute({
+              sql: 'SELECT active FROM assignment_attendance_overrides WHERE assignment_id = ? AND student_id = ? AND active = 1 LIMIT 1;',
+              args: [assignmentId, studentId],
+            });
+            if (ovrRes.rows.length === 0) {
+              return c.json({
+                error: `Assignment submission restricted due to low attendance (${Math.round(pct)}%). Contact your lecturer for manual override permission to submit.`
+              }, 403);
+            }
+          }
+        }
       }
     }
 
@@ -3364,6 +3433,198 @@ app.post('/api/assignments/:id/undo', async (c) => {
     return c.json({ error: message }, 500);
   }
 });
+
+// --- Attendance & Assignment Access Gatekeeper Module ---
+
+// 1. School Level Daily Attendance (Nursery to Class 12)
+app.get('/api/attendance/school/:classId', async (c) => {
+  const classId = c.req.param('classId');
+  try {
+    const db = getDb(c);
+    const res = await db.execute({
+      sql: 'SELECT * FROM school_attendance WHERE class_id = ? ORDER BY date DESC, created_at DESC;',
+      args: [classId],
+    });
+    return c.json({
+      success: true,
+      records: res.rows.map(r => ({
+        id: String(r.id),
+        sessionId: String(r.session_id),
+        collegeId: r.college_id ? String(r.college_id) : undefined,
+        classId: String(r.class_id),
+        studentId: String(r.student_id),
+        date: String(r.date),
+        status: String(r.status),
+        takenByUserId: String(r.taken_by_user_id),
+        createdAt: String(r.created_at || ''),
+      }))
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+app.post('/api/attendance/school/bulk', async (c) => {
+  try {
+    const body = await c.req.json();
+    const db = getDb(c);
+    const classId = body.classId || body.class_id;
+    const date = body.date || new Date().toISOString().split('T')[0];
+    const takenByUserId = body.takenByUserId || body.taken_by_user_id || 'admin';
+    const collegeId = body.collegeId || body.college_id || null;
+    const records = body.records || [];
+
+    if (!classId || !Array.isArray(records)) {
+      return c.json({ error: 'Missing required classId or records' }, 400);
+    }
+    const sessionId = body.sessionId || `sch_sess_${classId}_${date.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    for (const r of records) {
+      const studentId = r.studentId || r.student_id;
+      const status = r.status || 'present';
+      const recId = `sch_att_${sessionId}_${studentId}`;
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO school_attendance (id, session_id, college_id, class_id, student_id, date, status, taken_by_user_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+        args: [recId, sessionId, collegeId, classId, studentId, date, status, takenByUserId],
+      });
+    }
+
+    return c.json({ success: true, count: records.length, sessionId, date });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 2. University Level Granular Per-Subject Attendance (Bachelor's)
+app.get('/api/attendance/subject/:courseId/:subjectId', async (c) => {
+  const courseId = c.req.param('courseId');
+  const subjectId = c.req.param('subjectId');
+  try {
+    const db = getDb(c);
+    const res = await db.execute({
+      sql: 'SELECT * FROM subject_attendance WHERE subject_id = ? OR (course_id = ? AND subject_id = ?) ORDER BY date DESC, created_at DESC;',
+      args: [subjectId, courseId, subjectId],
+    });
+    return c.json({
+      success: true,
+      records: res.rows.map(r => ({
+        id: String(r.id),
+        sessionId: String(r.session_id),
+        collegeId: r.college_id ? String(r.college_id) : undefined,
+        courseId: String(r.course_id || ''),
+        subjectId: String(r.subject_id),
+        studentId: String(r.student_id),
+        date: String(r.date),
+        status: String(r.status),
+        takenByUserId: String(r.taken_by_user_id),
+        createdAt: String(r.created_at || ''),
+      }))
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+app.post('/api/attendance/subject/bulk', async (c) => {
+  try {
+    const body = await c.req.json();
+    const db = getDb(c);
+    const courseId = body.courseId || body.course_id || '';
+    const subjectId = body.subjectId || body.subject_id;
+    const date = body.date || new Date().toISOString().split('T')[0];
+    const takenByUserId = body.takenByUserId || body.taken_by_user_id || 'lecturer';
+    const collegeId = body.collegeId || body.college_id || null;
+    const records = body.records || [];
+
+    if (!subjectId || !Array.isArray(records)) {
+      return c.json({ error: 'Missing required subjectId or records' }, 400);
+    }
+    const sessionId = body.sessionId || `sub_sess_${subjectId}_${date.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    for (const r of records) {
+      const studentId = r.studentId || r.student_id;
+      const status = r.status || 'present';
+      const recId = `sub_att_${sessionId}_${studentId}`;
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO subject_attendance (id, session_id, college_id, course_id, subject_id, student_id, date, status, taken_by_user_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        args: [recId, sessionId, collegeId, courseId, subjectId, studentId, date, status, takenByUserId],
+      });
+    }
+
+    return c.json({ success: true, count: records.length, sessionId, date });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+// 3. Attendance Overrides (Lecturer One-Time Exception)
+app.get('/api/assignments/:id/overrides', async (c) => {
+  const assignmentId = c.req.param('id');
+  try {
+    const db = getDb(c);
+    const res = await db.execute({
+      sql: 'SELECT * FROM assignment_attendance_overrides WHERE assignment_id = ? AND active = 1;',
+      args: [assignmentId],
+    });
+    return c.json({
+      success: true,
+      overrides: res.rows.map(r => ({
+        id: String(r.id),
+        assignmentId: String(r.assignment_id),
+        studentId: String(r.student_id),
+        overriddenBy: String(r.overridden_by),
+        overriddenAt: String(r.overridden_at || ''),
+        active: Boolean(r.active)
+      }))
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+app.post('/api/assignments/:id/overrides', async (c) => {
+  const assignmentId = c.req.param('id');
+  try {
+    const body = await c.req.json();
+    const db = getDb(c);
+    const studentId = body.studentId || body.student_id;
+    const active = body.active !== undefined ? (body.active ? 1 : 0) : 1;
+    const overriddenBy = body.overriddenBy || body.overridden_by || 'Lecturer';
+
+    if (!studentId) {
+      return c.json({ error: 'studentId is required' }, 400);
+    }
+    const id = `ovr_${assignmentId}_${studentId}`;
+
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO assignment_attendance_overrides (id, assignment_id, student_id, overridden_by, overridden_at, active)
+            VALUES (?, ?, ?, ?, datetime('now'), ?);`,
+      args: [id, assignmentId, studentId, overriddenBy, active],
+    });
+
+    return c.json({
+      success: true,
+      override: {
+        id,
+        assignmentId,
+        studentId,
+        overriddenBy,
+        active: Boolean(active)
+      }
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
 
 // 14. Get live campus access requests for Admin Center
 app.get('/api/colleges/requests', async (c) => {

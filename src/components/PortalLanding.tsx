@@ -22,17 +22,22 @@ import {
   BarChart2,
   Shield,
   ChevronDown,
+  ChevronUp,
+  ChevronRight,
   GraduationCap,
   Calendar,
   Sparkles,
   Award,
-  Smartphone,
-  HelpCircle,
   Megaphone,
   BookOpen,
   Compass,
   Headphones,
-  Star
+  Star,
+  QrCode,
+  Bell,
+  Home,
+  User as UserIcon,
+  Laptop
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -1105,7 +1110,7 @@ export const PortalLanding: React.FC = () => {
                 style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
                 className="text-sm sm:text-base text-zinc-500 mt-2"
               >
-                Everything you need to manage, teach, and grow — all in one modern platform.
+                Everything you need to manage courses, teach, and collaborate across campus.
               </p>
             </div>
           </div>
@@ -1413,14 +1418,6 @@ export const PortalLanding: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Left Content */}
             <div className="lg:col-span-5 space-y-6 text-left">
-              <span
-                data-reveal
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>All-in-One Education Platform</span>
-              </span>
-
               <h2
                 data-reveal
                 style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
@@ -1649,132 +1646,7 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 8. LEARN. COLLABORATE. ACHIEVE ANYWHERE. (Mobile Experience)   */}
-      {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-white border-t border-zinc-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Smartphone Mockup */}
-            <div className="lg:col-span-6 flex justify-center" data-reveal="left">
-              <div className="w-72 sm:w-80 bg-zinc-900 p-3 rounded-[40px] shadow-[0_25px_60px_rgba(79,70,229,0.15)] border-4 border-zinc-800">
-                {/* Phone Screen */}
-                <div className="bg-white rounded-[32px] overflow-hidden p-4 space-y-4">
-                  {/* Status Bar */}
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-bold px-1">
-                    <span>9:41</span>
-                    <div className="flex items-center gap-1">
-                      <span>5G</span>
-                      <div className="w-4 h-2 bg-zinc-800 rounded-sm" />
-                    </div>
-                  </div>
-
-                  {/* App Bar */}
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-sm text-[#4F46E5]">ProSchool</span>
-                    <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center text-[10px] font-bold text-indigo-700">
-                      AJ
-                    </div>
-                  </div>
-
-                  {/* My Classes */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-zinc-900 block">My Classes</span>
-                    <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-xs text-indigo-950">Computer Science</p>
-                        <p className="text-[10px] text-indigo-600">Today, 10:00 AM</p>
-                      </div>
-                      <span className="px-2 py-1 bg-[#4F46E5] text-white rounded-lg text-[10px] font-bold">
-                        Join
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Assignments */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-bold text-zinc-900 block">Assignments</span>
-                    <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80">
-                      <p className="font-bold text-xs text-zinc-900">DSA Assignment 3</p>
-                      <p className="text-[10px] text-rose-600 font-semibold mt-0.5">Due: Aug 15, 2026</p>
-                    </div>
-                  </div>
-
-                  {/* Notifications */}
-                  <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100 flex items-center gap-2">
-                    <Megaphone className="w-3.5 h-3.5 text-purple-600" />
-                    <span className="text-[10px] text-purple-900 font-medium">2 new class announcements</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Text & Feature Checks */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              <span
-                data-reveal
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>On the Go</span>
-              </span>
-
-              <h2
-                data-reveal
-                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight"
-              >
-                Learn. Collaborate. <br />
-                <span className="text-[#4F46E5]">Achieve Anywhere.</span>
-              </h2>
-
-              <p
-                data-reveal
-                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                className="text-sm sm:text-base text-zinc-600 leading-relaxed"
-              >
-                Access ProSchool from any device, anytime, and stay connected with your campus community.
-              </p>
-
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
-                className="space-y-3 text-xs sm:text-sm text-zinc-700"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Mobile Friendly for iOS &amp; Android devices</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Real-time push notifications for exams &amp; meetings</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span>Seamless offline-first synchronized experience</span>
-                </div>
-              </div>
-
-              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
-                <button
-                  onClick={() => launchDemoMode('student')}
-                  className="px-6 py-3 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-colors cursor-pointer"
-                >
-                  Download App →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 9. OUR HAPPY COMMUNITY (Partner Logos Strip)                   */}
+      {/* 8. OUR HAPPY COMMUNITY (Partner Logos Strip)                   */}
       {/* ============================================================== */}
       <section className="py-14 bg-zinc-50/70 border-y border-zinc-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
@@ -1811,7 +1683,7 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 10. WHAT OUR PARTNERS SAY (Testimonial & Metrics)               */}
+      {/* 9. WHAT OUR PARTNERS SAY (Testimonial & Metrics)               */}
       {/* ============================================================== */}
       <section className="py-16 sm:py-24 bg-white" id="testimonials">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1901,9 +1773,176 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
+      {/* 10. ON THE GO (Mobile Experience - Pixel-Matched to Spec)       */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-white border-t border-zinc-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Realistic Smartphone Mockup */}
+            <div className="lg:col-span-6 flex justify-center" data-reveal="left">
+              <div className="w-72 sm:w-80 bg-zinc-950 p-3 sm:p-3.5 rounded-[44px] shadow-[0_25px_60px_-15px_rgba(99,102,241,0.25)] border-4 border-zinc-800">
+                {/* Phone Screen */}
+                <div className="bg-white rounded-[34px] overflow-hidden p-4 space-y-3.5 select-none">
+                  {/* Status Bar */}
+                  <div className="flex items-center justify-between text-[11px] text-zinc-900 font-bold px-1">
+                    <span>9:41</span>
+                    {/* Dynamic Island Notch */}
+                    <div className="w-16 h-3.5 bg-zinc-900 rounded-full mx-auto" />
+                    <div className="flex items-center gap-1.5 text-zinc-800 text-[10px]">
+                      <span>5G</span>
+                      <div className="w-4 h-2.5 bg-zinc-900 rounded-xs" />
+                    </div>
+                  </div>
+
+                  {/* App Header with Back Arrow, ProSchool, and Qr Scanner */}
+                  <div className="flex items-center justify-between pt-1 pb-1 px-0.5">
+                    <ArrowLeft className="w-4 h-4 text-zinc-800 cursor-pointer" />
+                    <span className="font-extrabold text-sm text-zinc-900 tracking-tight">ProSchool</span>
+                    <QrCode className="w-4 h-4 text-zinc-800 cursor-pointer" />
+                  </div>
+
+                  {/* My Classes */}
+                  <div className="space-y-2 text-left">
+                    <span className="text-xs font-bold text-zinc-900 block">My Classes</span>
+                    <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between shadow-2xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                          <Laptop className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs text-zinc-900">Computer Science</p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">Today, 10:00 AM</p>
+                        </div>
+                      </div>
+                      <button className="px-3 py-1 bg-[#4F46E5] text-white rounded-full text-[10px] font-bold shadow-xs">
+                        Join
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Assignments */}
+                  <div className="space-y-2 text-left">
+                    <span className="text-xs font-bold text-zinc-900 block">Assignments</span>
+                    <div className="p-3 rounded-2xl bg-zinc-50/80 border border-zinc-200/80 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs text-zinc-900">DSA Assignment</p>
+                          <p className="text-[10px] text-rose-600 font-semibold mt-0.5">Due: Aug 15, 2025</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-zinc-50/80 border border-zinc-200/80 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                          <Bell className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs text-zinc-900">Notifications</p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">2 new messages</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+                    </div>
+                  </div>
+
+                  {/* Phone Bottom Nav (Home, Classes, Messages, Profile) */}
+                  <div className="pt-2 border-t border-zinc-100 grid grid-cols-4 gap-1 text-center">
+                    <div className="flex flex-col items-center gap-0.5 text-[#4F46E5]">
+                      <Home className="w-4 h-4" />
+                      <span className="text-[9px] font-bold">Home</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-zinc-400">
+                      <GraduationCap className="w-4 h-4" />
+                      <span className="text-[9px] font-medium">Classes</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-zinc-400">
+                      <MessageSquare className="w-4 h-4" />
+                      <span className="text-[9px] font-medium">Messages</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-zinc-400">
+                      <UserIcon className="w-4 h-4" />
+                      <span className="text-[9px] font-medium">Profile</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Text & Feature Checks */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              <span
+                data-reveal
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>On the Go</span>
+              </span>
+
+              <h2
+                data-reveal
+                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111827] tracking-tight leading-tight"
+              >
+                Learn. Collaborate. <br />
+                Achieve Anywhere.
+              </h2>
+
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-sm sm:text-base text-zinc-600 leading-relaxed max-w-lg"
+              >
+                Access ProSchool from any device, anytime, and stay connected with your campus community.
+              </p>
+
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
+                className="space-y-3.5 text-sm sm:text-base text-zinc-800 font-medium"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Mobile Friendly</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Real-time Notifications</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Seamless Experience</span>
+                </div>
+              </div>
+
+              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
+                <button
+                  onClick={() => launchDemoMode('student')}
+                  className="px-7 py-3.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-full text-sm font-bold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                >
+                  <span>Download App</span>
+                  <span>→</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
       {/* 11. FREQUENTLY ASKED QUESTIONS (Accordion & Support Card)       */}
       {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-[#FAF8FF] border-t border-zinc-100" id="faq">
+      <section className="py-16 sm:py-24 bg-[#FAF9FF]" id="faq">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
             {/* Left FAQ Accordion */}
@@ -1911,15 +1950,15 @@ export const PortalLanding: React.FC = () => {
               <div>
                 <span
                   data-reveal
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 mb-3"
                 >
-                  <HelpCircle className="w-3.5 h-3.5" />
+                  <Sparkles className="w-3.5 h-3.5" />
                   <span>FAQ</span>
                 </span>
                 <h2
                   data-reveal
                   style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                  className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
+                  className="text-2xl sm:text-4xl font-extrabold text-[#111827] tracking-tight"
                 >
                   Frequently Asked Questions
                 </h2>
@@ -1936,38 +1975,38 @@ export const PortalLanding: React.FC = () => {
                 {[
                   {
                     q: 'Is ProSchool free for educational institutions?',
-                    a: 'Yes! We offer a generous free trial and deeply discounted, affordable subscription plans tailored specifically for schools, colleges, and university departments across Nepal and South Asia.'
+                    a: 'Yes! We offer a free trial and affordable plans for schools and colleges.'
                   },
                   {
-                    q: 'Can I use ProSchool on mobile devices?',
-                    a: 'Absolutely. ProSchool works smoothly across all modern web browsers on smartphones, tablets, laptops, and desktops with an adaptive, responsive mobile interface.'
+                    q: 'Can I use ProSchool on mobile?',
+                    a: 'Yes, ProSchool is fully optimized for mobile devices with an intuitive touch-first interface and instant sync.'
                   },
                   {
-                    q: 'Is our student and academic data secure?',
-                    a: 'Yes. All messages, student records, assignments, and exam grades are protected with end-to-end encrypted transport, multi-tenant database isolation, and role-based permissions.'
+                    q: 'Is my data secure?',
+                    a: 'All academic records, communication, and grades are secured with enterprise-grade encryption and multi-tenant isolation.'
                   },
                   {
-                    q: 'How do we request onboarding or support?',
-                    a: 'You can submit an institutional inquiry via the Request Campus Deployment button, and our deployment engineers will set up your college workspace within 24 hours.'
+                    q: 'How do I get support?',
+                    a: 'Our support team is available 24/7 to assist teachers, administrators, and students with onboarding and technical questions.'
                   }
                 ].map((item, idx) => (
                   <div
                     key={idx}
-                    className="bg-white border border-zinc-200/90 rounded-2xl overflow-hidden transition-all shadow-2xs"
+                    className="bg-white border border-purple-100/70 rounded-2xl overflow-hidden transition-all shadow-[0_2px_12px_rgba(0,0,0,0.02)]"
                   >
                     <button
                       onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                      className="w-full p-4 sm:p-5 text-left font-bold text-xs sm:text-sm text-zinc-900 flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-50"
+                      className="w-full p-4 sm:p-5 text-left font-bold text-xs sm:text-sm text-zinc-900 flex items-center justify-between gap-4 cursor-pointer hover:bg-purple-50/30 transition-colors"
                     >
                       <span>{item.q}</span>
-                      <ChevronDown
-                        className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${
-                          activeFaq === idx ? 'rotate-180 text-[#4F46E5]' : ''
-                        }`}
-                      />
+                      {activeFaq === idx ? (
+                        <ChevronUp className="w-4 h-4 text-[#6366F1] shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />
+                      )}
                     </button>
                     {activeFaq === idx && (
-                      <div className="px-4 sm:px-5 pb-5 text-xs text-zinc-600 leading-relaxed border-t border-zinc-100 pt-3">
+                      <div className="px-4 sm:px-5 pb-5 text-xs text-zinc-600 leading-relaxed border-t border-purple-50 pt-3">
                         {item.a}
                       </div>
                     )}
@@ -1978,17 +2017,17 @@ export const PortalLanding: React.FC = () => {
 
             {/* Right Need Help Card */}
             <div className="lg:col-span-4" data-reveal="right">
-              <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-sm">
-                <div className="w-14 h-14 rounded-full bg-purple-50 text-[#4F46E5] flex items-center justify-center mx-auto border border-purple-100">
-                  <Headphones className="w-7 h-7" />
+              <div className="bg-white border border-purple-100/80 rounded-3xl p-6 sm:p-8 text-center flex flex-col items-center justify-center space-y-4 shadow-[0_4px_24px_rgba(99,102,241,0.06)]">
+                <div className="w-16 h-16 rounded-full bg-purple-100 text-[#6366F1] flex items-center justify-center ring-8 ring-purple-50 shadow-inner">
+                  <Headphones className="w-8 h-8" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Need Help?</h3>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  Our dedicated educational support team is here to assist your administrators and educators 24/7.
+                <h3 className="font-extrabold text-base sm:text-lg text-zinc-900">Need Help?</h3>
+                <p className="text-xs text-zinc-500 leading-relaxed max-w-xs">
+                  Our support team is here to help you 24/7.
                 </p>
                 <button
                   onClick={() => setShowRequestModal(true)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-[#4F46E5] text-[#4F46E5] hover:bg-indigo-50 font-bold text-xs transition-colors cursor-pointer"
+                  className="w-full py-2.5 px-6 rounded-full border border-purple-200 text-[#4F46E5] hover:bg-purple-50 font-bold text-xs transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                 >
                   Contact Support →
                 </button>
@@ -1999,103 +2038,155 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 12. LET'S BUILD A SMARTER LEARNING COMMUNITY (CTA Banner)      */}
+      {/* 12. CURVED WAVE TRANSITION + DEEP DARK NAVY FOOTER              */}
       {/* ============================================================== */}
-      <section className="py-14 sm:py-20 bg-white" id="pricing">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div
-            data-reveal
-            className="rounded-3xl bg-gradient-to-r from-[#4F46E5] via-[#5B4FF5] to-[#3730A3] text-white p-8 sm:p-14 text-center relative overflow-hidden shadow-2xl space-y-6"
-          >
-            {/* Background Accent Wave */}
-            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-900/40 blur-2xl pointer-events-none" />
+      {/* Organic Curved Wave Divider */}
+      <div className="relative w-full overflow-hidden leading-none bg-[#FAF9FF] -mb-1">
+        <svg
+          className="relative block w-full h-16 sm:h-24 md:h-32 text-[#111827]"
+          viewBox="0 0 1440 160"
+          preserveAspectRatio="none"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Background translucent wave */}
+          <path
+            d="M0,40 C320,110 440,20 720,65 C1000,110 1140,25 1440,70 L1440,160 L0,160 Z"
+            fill="#6366F1"
+            fillOpacity="0.45"
+          />
+          {/* Deep dark navy front wave */}
+          <path
+            d="M0,75 C360,135 520,35 820,90 C1120,140 1260,55 1440,95 L1440,160 L0,160 Z"
+            fill="#111827"
+          />
+        </svg>
+      </div>
 
-            <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-              <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
-                Let's Build a Smarter <br />
-                Learning Community Together
-              </h2>
-              <p className="text-xs sm:text-base text-indigo-100 leading-relaxed">
-                Get started today and empower your campus with ProSchool.
-              </p>
-              <div className="pt-2">
-                <button
-                  onClick={() => setShowRequestModal(true)}
-                  className="px-7 sm:px-8 py-3.5 sm:py-4 bg-white text-[#4F46E5] hover:bg-zinc-50 rounded-xl font-bold text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  Get Started Free →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 13. FOOTER (Professional Clean SaaS Footer)                    */}
-      {/* ============================================================== */}
-      <footer className="bg-white border-t border-zinc-200/80 pt-14 pb-8 text-zinc-600 text-xs">
+      <footer className="bg-[#111827] text-zinc-400 pt-8 sm:pt-12 pb-10 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-            {/* Col 1: Brand & Tagline */}
-            <div className="col-span-2 space-y-3">
-              <ProCollegeLogo size="md" brandName="ProSchool" showSlogan={true} />
-              <p className="text-xs text-zinc-500 max-w-sm leading-relaxed mt-2">
-                ProSchool is the premier education management and classroom collaboration platform engineered for colleges, universities, and schools.
-              </p>
+            {/* Col 1: Brand Logo & Social Icons */}
+            <div className="col-span-2 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300">
+                  <GraduationCap className="w-6 h-6 text-[#A5B4FC]" />
+                </div>
+                <div>
+                  <span className="font-extrabold text-lg text-white tracking-tight block">ProSchool</span>
+                  <span className="text-[9px] font-bold text-zinc-500 tracking-widest uppercase block">
+                    LEARN · COLLABORATE · EXCEL
+                  </span>
+                </div>
+              </div>
+
+              {/* Social Icon Row: YouTube, LinkedIn, Discord, X, Facebook */}
               <div className="flex items-center gap-3 pt-2 text-zinc-400">
-                <span className="hover:text-[#4F46E5] cursor-pointer">LinkedIn</span>
-                <span>•</span>
-                <span className="hover:text-[#4F46E5] cursor-pointer">Discord</span>
-                <span>•</span>
-                <span className="hover:text-[#4F46E5] cursor-pointer">X</span>
-                <span>•</span>
-                <span className="hover:text-[#4F46E5] cursor-pointer">Facebook</span>
+                {/* YouTube */}
+                <a
+                  href="https://youtube.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="YouTube"
+                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                </a>
+
+                {/* LinkedIn */}
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="LinkedIn"
+                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                  </svg>
+                </a>
+
+                {/* Discord */}
+                <a
+                  href="https://discord.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Discord"
+                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                  </svg>
+                </a>
+
+                {/* X (formerly Twitter) */}
+                <a
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="X"
+                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
+
+                {/* Facebook */}
+                <a
+                  href="https://facebook.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Facebook"
+                  className="w-8 h-8 rounded-lg bg-zinc-800/80 hover:bg-[#6366F1] hover:text-white flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                </a>
               </div>
             </div>
 
             {/* Col 2: Product */}
-            <div className="space-y-2.5">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900">Product</h4>
-              <ul className="space-y-2 text-zinc-500">
-                <li><button onClick={() => scrollTo('features')} className="hover:text-[#4F46E5]">Features</button></li>
-                <li><button onClick={() => scrollTo('solutions')} className="hover:text-[#4F46E5]">Solutions</button></li>
-                <li><button onClick={() => scrollTo('pricing')} className="hover:text-[#4F46E5]">Pricing</button></li>
-                <li><button onClick={() => launchDemoMode('student')} className="hover:text-[#4F46E5]">Live Demo</button></li>
+            <div className="space-y-3">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Product</h4>
+              <ul className="space-y-2 text-zinc-400">
+                <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Features</button></li>
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Pricing</button></li>
+                <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors cursor-pointer">Changelog</button></li>
               </ul>
             </div>
 
             {/* Col 3: Resources */}
-            <div className="space-y-2.5">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900">Resources</h4>
-              <ul className="space-y-2 text-zinc-500">
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-[#4F46E5]">Documentation</button></li>
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-[#4F46E5]">Help Center</button></li>
-                <li><button onClick={() => scrollTo('testimonials')} className="hover:text-[#4F46E5]">Community</button></li>
-                <li><button onClick={() => scrollTo('faq')} className="hover:text-[#4F46E5]">FAQs</button></li>
+            <div className="space-y-3">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Resources</h4>
+              <ul className="space-y-2 text-zinc-400">
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Documentation</button></li>
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Blog</button></li>
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors cursor-pointer">Help Center</button></li>
               </ul>
             </div>
 
             {/* Col 4: Company */}
-            <div className="space-y-2.5">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900">Company</h4>
-              <ul className="space-y-2 text-zinc-500">
-                <li><button onClick={() => scrollTo('home')} className="hover:text-[#4F46E5]">About Us</button></li>
-                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-[#4F46E5]">Contact</button></li>
-                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-[#4F46E5]">Campus Deployments</button></li>
-                <li><button onClick={() => setShowSignInModal(true)} className="hover:text-[#4F46E5]">Portal Access</button></li>
+            <div className="space-y-3">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-white">Company</h4>
+              <ul className="space-y-2 text-zinc-400">
+                <li><button onClick={() => scrollTo('home')} className="hover:text-white transition-colors cursor-pointer">About Us</button></li>
+                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Careers</button></li>
+                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-white transition-colors cursor-pointer">Contact</button></li>
               </ul>
             </div>
           </div>
 
-          {/* Bottom Copyright & Legal */}
-          <div className="pt-8 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-400">
-            <p>© 2026 ProSchool. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <span className="hover:text-zinc-600 cursor-pointer">Privacy Policy</span>
-              <span className="hover:text-zinc-600 cursor-pointer">Terms of Service</span>
-              <span className="hover:text-zinc-600 cursor-pointer">Security Overview</span>
+          {/* Bottom Bar: Copyright & Legal */}
+          <div className="pt-8 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500">
+            <p>© 2025 ProSchool. All rights reserved.</p>
+            <div className="flex items-center gap-6">
+              <span className="hover:text-zinc-300 transition-colors cursor-pointer">Privacy Policy</span>
+              <span className="text-zinc-700">|</span>
+              <span className="hover:text-zinc-300 transition-colors cursor-pointer">Terms of Service</span>
             </div>
           </div>
         </div>

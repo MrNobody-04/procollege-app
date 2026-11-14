@@ -297,3 +297,44 @@ export interface DialogState {
   onConfirm?: () => void;
   onCancel?: () => void;
 }
+
+// Attendance & Gatekeeper Types
+export type AttendanceStatus = 'present' | 'absent' | 'late';
+export type AttendanceTier = 'school' | 'university';
+
+export interface SchoolAttendanceRecord {
+  id: string;
+  sessionId: string;
+  collegeId?: string;
+  classId: string;
+  studentId: string;
+  studentName?: string;
+  date: string;
+  status: AttendanceStatus;
+  takenByUserId: string;
+  createdAt?: string;
+}
+
+export interface SubjectAttendanceRecord {
+  id: string;
+  sessionId: string;
+  collegeId?: string;
+  courseId: string;
+  subjectId: string; // channel_id
+  studentId: string;
+  studentName?: string;
+  date: string;
+  status: AttendanceStatus;
+  takenByUserId: string;
+  createdAt?: string;
+}
+
+export interface AssignmentAttendanceOverride {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  overriddenBy: string;
+  overriddenAt?: string;
+  active: boolean;
+}
+

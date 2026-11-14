@@ -395,6 +395,66 @@ async function init() {
     `);
     console.log('   ✔ Table `email_logs` created / verified');
 
+    // 16. school_attendance (Daily bulk roll-call for School level: Nursery to Class 12)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS school_attendance (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        college_id TEXT,
+        class_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        status TEXT NOT NULL,
+        taken_by_user_id TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    await ensureColumn('school_attendance', 'college_id', 'TEXT');
+    await ensureColumn('school_attendance', 'class_id', 'TEXT');
+    await ensureColumn('school_attendance', 'student_id', 'TEXT');
+    await ensureColumn('school_attendance', 'date', 'TEXT');
+    await ensureColumn('school_attendance', 'status', 'TEXT');
+    await ensureColumn('school_attendance', 'taken_by_user_id', 'TEXT');
+    console.log('   ✔ Table `school_attendance` created / verified');
+
+    // 17. subject_attendance (Granular per-subject attendance for University / Bachelor level)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS subject_attendance (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        college_id TEXT,
+        course_id TEXT NOT NULL,
+        subject_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        status TEXT NOT NULL,
+        taken_by_user_id TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+    `);
+    await ensureColumn('subject_attendance', 'college_id', 'TEXT');
+    await ensureColumn('subject_attendance', 'course_id', 'TEXT');
+    await ensureColumn('subject_attendance', 'subject_id', 'TEXT');
+    await ensureColumn('subject_attendance', 'student_id', 'TEXT');
+    await ensureColumn('subject_attendance', 'date', 'TEXT');
+    await ensureColumn('subject_attendance', 'status', 'TEXT');
+    await ensureColumn('subject_attendance', 'taken_by_user_id', 'TEXT');
+    console.log('   ✔ Table `subject_attendance` created / verified');
+
+    // 18. assignment_attendance_overrides (Lecturer One-Time Exception for low attendance lock)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS assignment_attendance_overrides (
+        id TEXT PRIMARY KEY,
+        assignment_id TEXT NOT NULL,
+        student_id TEXT NOT NULL,
+        overridden_by TEXT NOT NULL,
+        overridden_at TEXT DEFAULT (datetime('now')),
+        active INTEGER DEFAULT 1
+      );
+    `);
+    await ensureColumn('assignment_attendance_overrides', 'active', 'INTEGER DEFAULT 1');
+    console.log('   ✔ Table `assignment_attendance_overrides` created / verified');
+
     console.log('\n🔍 2. Creating Composite & Foreign Key Indexes...');
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_messages_channel_time ON messages(channel_id, created_at);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_notices_college_time ON notices(college_id, created_at);`);
@@ -405,6 +465,11 @@ async function init() {
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_faculties_inst ON faculties(institution_name);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_assignments_inst ON assignments(institution_name);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_sub_asgn_stu ON assignment_submissions(assignment_id, student_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_sch_att_cls_date ON school_attendance(class_id, date);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_sch_att_stu ON school_attendance(student_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_sub_att_sub_date ON subject_attendance(subject_id, date);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_sub_att_stu ON subject_attendance(student_id);`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS idx_asgn_ovr_asgn_stu ON assignment_attendance_overrides(assignment_id, student_id);`);
 
     // Always ensure platform_root exists for developer account
     await db.execute(`

@@ -21,8 +21,19 @@ import type {
   DialogState,
   DialogOptions,
   DialogType,
-  Attachment
+  Attachment,
+  AttendanceStatus,
+  SchoolAttendanceRecord,
+  SubjectAttendanceRecord,
+  AssignmentAttendanceOverride
 } from '../types';
+import {
+  getAttendanceThreshold,
+  calculateSchoolAttendance,
+  calculateSubjectAttendance,
+  isAssignmentSubmissionLocked,
+  type AttendanceThreshold
+} from '../utils/attendance';
 import {
   INITIAL_USERS,
   INITIAL_COURSES,
@@ -221,6 +232,18 @@ interface AppContextType {
   dialog: DialogState | null;
   showDialog: (message: string, options?: DialogOptions | string) => void;
   closeDialog: () => void;
+
+  // Attendance & Assignment Gatekeeper
+  schoolAttendance: SchoolAttendanceRecord[];
+  subjectAttendance: SubjectAttendanceRecord[];
+  attendanceOverrides: AssignmentAttendanceOverride[];
+  saveSchoolRollCall: (classId: string, date: string, records: { studentId: string; status: AttendanceStatus }[]) => Promise<void>;
+  saveSubjectRollCall: (courseId: string, subjectId: string, date: string, records: { studentId: string; status: AttendanceStatus }[]) => Promise<void>;
+  toggleAttendanceOverride: (assignmentId: string, studentId: string, active: boolean) => Promise<void>;
+  getStudentSchoolAttendance: (studentId: string, classId?: string) => { totalSessions: number; presentCount: number; absentCount: number; lateCount: number; percentage: number; threshold: AttendanceThreshold };
+  getStudentSubjectAttendance: (studentId: string, subjectId: string) => { totalSessions: number; presentCount: number; absentCount: number; lateCount: number; percentage: number; threshold: AttendanceThreshold };
+  getStudentOverallAttendance: (studentId: string) => { totalSessions: number; presentCount: number; absentCount: number; lateCount: number; percentage: number; threshold: AttendanceThreshold };
+  isStudentLockedFromAssignment: (assignmentId: string, studentId: string, subjectId: string) => { isLocked: boolean; percentage: number; hasOverride: boolean; message?: string };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -260,6 +283,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [institutionalRequests, setInstitutionalRequests] = useState<InstitutionalRequest[]>(INITIAL_INSTITUTIONAL_REQUESTS);
   const [faculties, setFaculties] = useState<FacultyDepartment[]>(INITIAL_FACULTIES);
   const [selectedInstitution, setSelectedInstitution] = useState<string>('ProCollege University Network');
+
+  // Attendance & Gatekeeper State
+  const [schoolAttendance, setSchoolAttendance] = useState<SchoolAttendanceRecord[]>([]);
+  const [subjectAttendance, setSubjectAttendance] = useState<SubjectAttendanceRecord[]>([]);
+  const [attendanceOverrides, setAttendanceOverrides] = useState<AssignmentAttendanceOverride[]>([]);
 
   // Restore authenticated Turso session on refresh if present
   useEffect(() => {
@@ -402,6 +430,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setNotifications(prev => prev.filter(n => !n.isDemo && n.institutionName !== 'ProCollege University Network'));
           setCalendarEvents(prev => prev.filter(e => !e.isDemo && e.institutionName !== 'ProCollege University Network'));
           setConversations(prev => prev.filter(c => !c.isDemo && c.institutionName !== 'ProCollege University Network'));
+        }
+
+        // 7. Attendance & Gatekeeper Hydration
+        if (Array.isArray(data.schoolAttendance)) {
+          setSchoolAttendance(data.schoolAttendance);
+        }
+        if (Array.isArray(data.subjectAttendance)) {
+          setSubjectAttendance(data.subjectAttendance);
+        }
+        if (Array.isArray(data.attendanceOverrides)) {
+          setAttendanceOverrides(data.attendanceOverrides);
         }
       }
     } catch (err) {
@@ -1430,6 +1469,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'The deadline for this assignment has passed. Submissions are closed.' };
     }
 
+    // Strict attendance gatekeeper check: attendance < 75% in this subject locks submission unless overridden
+    const subjectId = targetAsgn.channelId || targetAsgn.targetChannelId;
+    if (subjectId) {
+      const lockStatus = isStudentLockedFromAssignment(asgnId, studentId, subjectId);
+      if (lockStatus.isLocked) {
+        showDialog(lockStatus.message || 'Assignment submission restricted due to low attendance.', {
+          type: 'warning',
+          title: 'Assignment Access Gatekeeper'
+        });
+        return {
+          success: false,
+          message: lockStatus.message || 'Assignment submission restricted due to low attendance.'
+        };
+      }
+    }
+
     const serverTimestamp = `Turned in ${new Date().toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
@@ -1625,6 +1680,193 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setNotifications(prev => [notif, ...prev]);
   };
+
+  // ==========================================
+  // ATTENDANCE & ASSIGNMENT GATEKEEPER MODULE
+  // ==========================================
+
+  const getStudentSchoolAttendance = useCallback((studentId: string, classId?: string) => {
+    const studentRecords = schoolAttendance.filter(r => {
+      if (r.studentId !== studentId) return false;
+      if (classId && r.classId !== classId) return false;
+      return true;
+    });
+    return calculateSchoolAttendance(studentRecords);
+  }, [schoolAttendance]);
+
+  const getStudentSubjectAttendance = useCallback((studentId: string, subjectId: string) => {
+    const studentRecords = subjectAttendance.filter(r => r.studentId === studentId && r.subjectId === subjectId);
+    return calculateSubjectAttendance(studentRecords);
+  }, [subjectAttendance]);
+
+  const getStudentOverallAttendance = useCallback((studentId: string) => {
+    const subRecords = subjectAttendance.filter(r => r.studentId === studentId);
+    if (subRecords.length > 0) {
+      return calculateSubjectAttendance(subRecords);
+    }
+    const schRecords = schoolAttendance.filter(r => r.studentId === studentId);
+    if (schRecords.length > 0) {
+      return calculateSchoolAttendance(schRecords);
+    }
+    return {
+      totalSessions: 0,
+      presentCount: 0,
+      absentCount: 0,
+      lateCount: 0,
+      percentage: 100,
+      threshold: getAttendanceThreshold(100)
+    };
+  }, [subjectAttendance, schoolAttendance]);
+
+  const isStudentLockedFromAssignment = useCallback((assignmentId: string, studentId: string, subjectId: string) => {
+    const { percentage } = getStudentSubjectAttendance(studentId, subjectId);
+    const hasOverride = attendanceOverrides.some(o => o.assignmentId === assignmentId && o.studentId === studentId && o.active);
+    return isAssignmentSubmissionLocked(percentage, hasOverride);
+  }, [getStudentSubjectAttendance, attendanceOverrides]);
+
+  const saveSchoolRollCall = useCallback(async (
+    classId: string,
+    date: string,
+    records: { studentId: string; status: AttendanceStatus }[]
+  ) => {
+    const sessionId = `sch_sess_${classId}_${date.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const takenByUserId = currentUser.id || 'admin';
+    const collegeId = currentUser.collegeId || currentUser.institutionId;
+
+    const newRecords: SchoolAttendanceRecord[] = records.map(r => ({
+      id: `sch_att_${sessionId}_${r.studentId}`,
+      sessionId,
+      collegeId,
+      classId,
+      studentId: r.studentId,
+      date,
+      status: r.status,
+      takenByUserId,
+      createdAt: new Date().toISOString()
+    }));
+
+    setSchoolAttendance(prev => {
+      const filtered = prev.filter(p => !(p.classId === classId && p.date === date));
+      return [...newRecords, ...filtered];
+    });
+
+    if (!isDemoMode) {
+      try {
+        const token = localStorage.getItem('procollege_token') || '';
+        await fetch('/api/attendance/school/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            classId,
+            sessionId,
+            date,
+            collegeId,
+            takenByUserId,
+            records
+          })
+        });
+      } catch (err) {
+        console.error('Failed to sync school attendance to backend:', err);
+      }
+    }
+  }, [currentUser, isDemoMode]);
+
+  const saveSubjectRollCall = useCallback(async (
+    courseId: string,
+    subjectId: string,
+    date: string,
+    records: { studentId: string; status: AttendanceStatus }[]
+  ) => {
+    const sessionId = `sub_sess_${subjectId}_${date.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const takenByUserId = currentUser.id || 'lecturer';
+    const collegeId = currentUser.collegeId || currentUser.institutionId;
+
+    const newRecords: SubjectAttendanceRecord[] = records.map(r => ({
+      id: `sub_att_${sessionId}_${r.studentId}`,
+      sessionId,
+      collegeId,
+      courseId,
+      subjectId,
+      studentId: r.studentId,
+      date,
+      status: r.status,
+      takenByUserId,
+      createdAt: new Date().toISOString()
+    }));
+
+    setSubjectAttendance(prev => {
+      const filtered = prev.filter(p => !(p.subjectId === subjectId && p.date === date));
+      return [...newRecords, ...filtered];
+    });
+
+    if (!isDemoMode) {
+      try {
+        const token = localStorage.getItem('procollege_token') || '';
+        await fetch('/api/attendance/subject/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            courseId,
+            subjectId,
+            sessionId,
+            date,
+            collegeId,
+            takenByUserId,
+            records
+          })
+        });
+      } catch (err) {
+        console.error('Failed to sync subject attendance to backend:', err);
+      }
+    }
+  }, [currentUser, isDemoMode]);
+
+  const toggleAttendanceOverride = useCallback(async (
+    assignmentId: string,
+    studentId: string,
+    active: boolean
+  ) => {
+    const overriddenBy = currentUser.name || 'Lecturer';
+    const newOverride: AssignmentAttendanceOverride = {
+      id: `ovr_${assignmentId}_${studentId}`,
+      assignmentId,
+      studentId,
+      overriddenBy,
+      overriddenAt: new Date().toISOString(),
+      active
+    };
+
+    setAttendanceOverrides(prev => {
+      const filtered = prev.filter(o => !(o.assignmentId === assignmentId && o.studentId === studentId));
+      return active ? [...filtered, newOverride] : filtered;
+    });
+
+    if (!isDemoMode) {
+      try {
+        const token = localStorage.getItem('procollege_token') || '';
+        await fetch(`/api/assignments/${encodeURIComponent(assignmentId)}/overrides`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            studentId,
+            active,
+            overriddenBy
+          })
+        });
+      } catch (err) {
+        console.error('Failed to sync override to backend:', err);
+      }
+    }
+  }, [currentUser, isDemoMode]);
 
   // ==========================================
   // FILES REPOSITORY (Phase 2 & Read-Only)
@@ -2391,7 +2633,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         dialog,
         showDialog,
-        closeDialog
+        closeDialog,
+
+        // Attendance & Gatekeeper
+        schoolAttendance,
+        subjectAttendance,
+        attendanceOverrides,
+        saveSchoolRollCall,
+        saveSubjectRollCall,
+        toggleAttendanceOverride,
+        getStudentSchoolAttendance,
+        getStudentSubjectAttendance,
+        getStudentOverallAttendance,
+        isStudentLockedFromAssignment
       }}
     >
       {children}
