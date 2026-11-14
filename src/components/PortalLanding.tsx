@@ -27,6 +27,7 @@ import {
   HelpCircle,
   Landmark,
   Smartphone,
+  ShieldCheck,
   Headphones,
   Sparkles
 } from 'lucide-react';
@@ -71,7 +72,6 @@ export const PortalLanding: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState<boolean>(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
-  const [activeFeatureTab, setActiveFeatureTab] = useState<'live' | 'resources' | 'assignments' | 'communicate'>('live');
 
   // Sign In & Password Reset Modal State
   const [authStep, setAuthStep] = useState<
@@ -1287,9 +1287,9 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 6. EVERYTHING YOU NEED IN ONE PLACE (Optimized Mobile & Desktop) */}
+      {/* 6. EVERYTHING YOU NEED IN ONE PLACE (Matches Image 2 & Motion) */}
       {/* ============================================================== */}
-      <section className="py-12 sm:py-18 lg:py-20 bg-gradient-to-b from-white via-[#FAF5FF]/30 to-white border-t border-zinc-100 overflow-hidden relative">
+      <section className="py-16 sm:py-24 bg-gradient-to-b from-white via-[#FAF5FF]/30 to-white border-t border-zinc-100 overflow-hidden relative">
         {/* Continuous ambient blur light on top-right */}
         <motion.div
           animate={{
@@ -1301,18 +1301,18 @@ export const PortalLanding: React.FC = () => {
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
             
-            {/* Left Column Content & Interactive Feature Tabs */}
+            {/* Left Column Content & 4 Connected Badges */}
             <motion.div
               initial={{ opacity: 0, x: -25 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-              className="lg:col-span-5 xl:col-span-5 space-y-4 sm:space-y-6 text-left"
+              className="lg:col-span-5 space-y-6 text-left"
             >
               {/* Heading: Exact match with Image 2 */}
-              <h2 className="text-2xl sm:text-3xl lg:text-[40px] xl:text-[44px] font-black text-slate-900 tracking-tight leading-[1.12]">
+              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-slate-900 tracking-tight leading-[1.12]">
                 Everything You <br className="hidden sm:inline" />
                 Need in{' '}
                 <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#7C3AED] bg-clip-text text-transparent">
@@ -1321,143 +1321,136 @@ export const PortalLanding: React.FC = () => {
               </h2>
 
               {/* Subtitle */}
-              <p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed font-normal max-w-md">
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal max-w-md">
                 From virtual classrooms to student management, ProSchool helps you work smarter, not harder.
               </p>
 
-              {/* Connected Feature Tabs (Single vertical stack: perfect on phone, tablet & laptop) */}
-              <div className="relative pt-1 sm:pt-2">
-                {/* Subtle Fluid Glow Connector backdrop */}
+              {/* 4 Connected Glassmorphism Badges (2x2 Grid) with Organic Fluid Backdrop */}
+              <div className="relative pt-2">
+                {/* Organic Fluid Glow Connector linking badges to the CTA button with continuous breathing */}
                 <motion.div
                   animate={{
                     scale: [0.98, 1.05, 0.98],
-                    opacity: [0.35, 0.65, 0.35]
+                    opacity: [0.4, 0.7, 0.4]
                   }}
                   transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-                  className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-indigo-100/40 via-purple-50/50 to-blue-50/30 blur-xl pointer-events-none"
+                  className="absolute -inset-2 -z-10 rounded-3xl bg-gradient-to-br from-indigo-100/50 via-purple-50/60 to-blue-50/40 blur-xl pointer-events-none"
                 />
 
-                <div className="flex flex-col gap-2.5 sm:gap-3 w-full max-w-[340px] sm:max-w-[400px] lg:max-w-[420px] mx-auto lg:mx-0">
-                  {/* Tab 1: Live & Recorded Classes */}
-                  <motion.button
-                    onClick={() => setActiveFeatureTab('live')}
-                    whileHover={{ scale: 1.02, x: 2 }}
+                {/* Playful Curved Pointer Arrow pointing up & right towards the 3D workspace with continuous pointing pulse */}
+                <motion.div
+                  animate={{
+                    x: [0, 5, 0],
+                    y: [0, -5, 0],
+                    rotate: [0, 2, 0]
+                  }}
+                  transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
+                  className="absolute -top-10 right-2 hidden sm:block pointer-events-none select-none z-20"
+                >
+                  <svg width="60" height="50" viewBox="0 0 60 50" fill="none" className="text-purple-500/85 filter drop-shadow-[0_2px_6px_rgba(124,58,237,0.2)]">
+                    <path
+                      d="M 10 44 C 18 20, 32 10, 50 14"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                    <path
+                      d="M 43 7 L 51 14 L 41 21"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                  </svg>
+                </motion.div>
+
+                {/* 2x2 Grid of Badges with continuous subtle organic floating wave */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Badge 1: Top-Left (Deep Indigo Gradient with continuous pulse & shimmer) */}
+                  <motion.div
+                    animate={{
+                      y: [0, -4, 0],
+                      boxShadow: [
+                        "0 8px 20px rgba(30,27,75,0.25)",
+                        "0 12px 28px rgba(79,70,229,0.38)",
+                        "0 8px 20px rgba(30,27,75,0.25)"
+                      ]
+                    }}
+                    transition={{ repeat: Infinity, duration: 4.2, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -3 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full transition-all duration-300 text-left cursor-pointer border ${
-                      activeFeatureTab === 'live'
-                        ? 'bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white border-indigo-400/30 shadow-[0_8px_24px_rgba(30,27,75,0.28)]'
-                        : 'bg-white/85 hover:bg-white text-slate-800 border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-md'
-                    }`}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white border border-indigo-500/20 cursor-pointer group transition-all"
                   >
-                    <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
-                        activeFeatureTab === 'live'
-                          ? 'bg-white/10 text-white border-white/20'
-                          : 'bg-indigo-100/80 text-[#4F46E5] border-transparent'
-                      }`}
+                    <motion.div
+                      animate={{ scale: [1, 1.08, 1] }}
+                      transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+                      className="w-9 h-9 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 text-white shadow-inner group-hover:scale-105 transition-transform"
                     >
                       <Video className="w-4 h-4 stroke-[2.2]" />
+                    </motion.div>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-white tracking-tight">Conduct live &amp;</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-white/90 tracking-tight">recorded classes</span>
                     </div>
-                    <span
-                      className={`text-xs sm:text-[13px] font-bold tracking-tight truncate ${
-                        activeFeatureTab === 'live' ? 'text-white' : 'text-slate-800'
-                      }`}
-                    >
-                      Conduct live &amp; recorded classes
-                    </span>
-                  </motion.button>
+                  </motion.div>
 
-                  {/* Tab 2: Share Resources */}
-                  <motion.button
-                    onClick={() => setActiveFeatureTab('resources')}
-                    whileHover={{ scale: 1.02, x: 2 }}
+                  {/* Badge 2: Top-Right (Frosted Glass with Megaphone & continuous gentle bobbing) */}
+                  <motion.div
+                    animate={{ y: [0, 4, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.8, delay: 0.5, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full transition-all duration-300 text-left cursor-pointer border ${
-                      activeFeatureTab === 'resources'
-                        ? 'bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white border-indigo-400/30 shadow-[0_8px_24px_rgba(30,27,75,0.28)]'
-                        : 'bg-white/85 hover:bg-white text-slate-800 border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-md'
-                    }`}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
                   >
-                    <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
-                        activeFeatureTab === 'resources'
-                          ? 'bg-white/10 text-white border-white/20'
-                          : 'bg-purple-100/80 text-[#7C3AED] border-transparent'
-                      }`}
-                    >
+                    <div className="w-9 h-9 rounded-xl bg-purple-100/90 text-[#7C3AED] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                       <Megaphone className="w-4 h-4 stroke-[2.2]" />
                     </div>
-                    <span
-                      className={`text-xs sm:text-[13px] font-bold tracking-tight truncate ${
-                        activeFeatureTab === 'resources' ? 'text-white' : 'text-slate-800'
-                      }`}
-                    >
-                      Share resources &amp; announcements
-                    </span>
-                  </motion.button>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-800 tracking-tight">Share resources &amp;</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-700 tracking-tight">announcements</span>
+                    </div>
+                  </motion.div>
 
-                  {/* Tab 3: Manage Assignments */}
-                  <motion.button
-                    onClick={() => setActiveFeatureTab('assignments')}
-                    whileHover={{ scale: 1.02, x: 2 }}
+                  {/* Badge 3: Bottom-Left (Frosted Glass with Clipboard & continuous gentle bobbing) */}
+                  <motion.div
+                    animate={{ y: [0, -3.5, 0] }}
+                    transition={{ repeat: Infinity, duration: 5.2, delay: 1, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full transition-all duration-300 text-left cursor-pointer border ${
-                      activeFeatureTab === 'assignments'
-                        ? 'bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white border-indigo-400/30 shadow-[0_8px_24px_rgba(30,27,75,0.28)]'
-                        : 'bg-white/85 hover:bg-white text-slate-800 border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-md'
-                    }`}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
                   >
-                    <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
-                        activeFeatureTab === 'assignments'
-                          ? 'bg-white/10 text-white border-white/20'
-                          : 'bg-blue-100/80 text-[#2563EB] border-transparent'
-                      }`}
-                    >
+                    <div className="w-9 h-9 rounded-xl bg-blue-100/90 text-[#2563EB] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                       <ClipboardList className="w-4 h-4 stroke-[2.2]" />
                     </div>
-                    <span
-                      className={`text-xs sm:text-[13px] font-bold tracking-tight truncate ${
-                        activeFeatureTab === 'assignments' ? 'text-white' : 'text-slate-800'
-                      }`}
-                    >
-                      Manage assignments &amp; deadlines
-                    </span>
-                  </motion.button>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-800 tracking-tight">Manage assignments</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-700 tracking-tight">&amp; deadlines</span>
+                    </div>
+                  </motion.div>
 
-                  {/* Tab 4: Communicate */}
-                  <motion.button
-                    onClick={() => setActiveFeatureTab('communicate')}
-                    whileHover={{ scale: 1.02, x: 2 }}
+                  {/* Badge 4: Bottom-Right (Frosted Glass with Chat & continuous gentle bobbing) */}
+                  <motion.div
+                    animate={{ y: [0, 3.5, 0] }}
+                    transition={{ repeat: Infinity, duration: 4.6, delay: 1.5, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.04, y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-full transition-all duration-300 text-left cursor-pointer border ${
-                      activeFeatureTab === 'communicate'
-                        ? 'bg-gradient-to-r from-[#171c4c] via-[#201c64] to-[#2e267d] text-white border-indigo-400/30 shadow-[0_8px_24px_rgba(30,27,75,0.28)]'
-                        : 'bg-white/85 hover:bg-white text-slate-800 border-white/90 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:shadow-md'
-                    }`}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-white text-slate-800 shadow-[0_8px_25px_rgba(0,0,0,0.04)] cursor-pointer group hover:bg-white transition-all"
                   >
-                    <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
-                        activeFeatureTab === 'communicate'
-                          ? 'bg-white/10 text-white border-white/20'
-                          : 'bg-sky-100/80 text-[#0284C7] border-transparent'
-                      }`}
-                    >
+                    <div className="w-9 h-9 rounded-xl bg-sky-100/90 text-[#0284C7] flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                       <MessageSquare className="w-4 h-4 stroke-[2.2]" />
                     </div>
-                    <span
-                      className={`text-xs sm:text-[13px] font-bold tracking-tight truncate ${
-                        activeFeatureTab === 'communicate' ? 'text-white' : 'text-slate-800'
-                      }`}
-                    >
-                      Communicate with students &amp; parents
-                    </span>
-                  </motion.button>
+                    <div className="text-left leading-tight">
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-800 tracking-tight">Communicate with</span>
+                      <span className="block text-xs sm:text-[13px] font-semibold text-slate-700 tracking-tight">students &amp; parents</span>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
 
-              {/* Glowing CTA Button */}
-              <div className="pt-2 flex justify-start">
+              {/* Glowing CTA Button with continuous subtle pulsing glow */}
+              <div className="pt-2">
                 <motion.button
                   animate={{
                     boxShadow: [
@@ -1467,10 +1460,10 @@ export const PortalLanding: React.FC = () => {
                     ]
                   }}
                   transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.06 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => setShowRequestModal(true)}
-                  className="inline-flex items-center gap-2.5 px-7 py-3 sm:px-8 sm:py-3.5 rounded-full bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] hover:from-[#2563EB] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold cursor-pointer transition-transform duration-300 group"
+                  className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#7C3AED] hover:from-[#2563EB] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold cursor-pointer transition-transform duration-300 group"
                 >
                   <span>Explore All Features</span>
                   <motion.span
@@ -1484,25 +1477,25 @@ export const PortalLanding: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Right Column: 3D Isometric Glassmorphism Workspace Showcase (Optimized Mobile Scale & Desktop Crispness) */}
+            {/* Right Column: 3D Isometric Glassmorphism Workspace Showcase */}
             <motion.div
               initial={{ opacity: 0, x: 25 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="lg:col-span-7 xl:col-span-7 relative flex items-center justify-center mt-6 lg:mt-0"
+              className="lg:col-span-7 relative flex items-center justify-center"
             >
-              {/* Atmospheric Background Nebula Glow */}
+              {/* Atmospheric Background Nebula Glow with continuous breathing */}
               <motion.div
                 animate={{
                   scale: [0.94, 1.12, 0.94],
                   opacity: [0.45, 0.85, 0.45]
                 }}
                 transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut" }}
-                className="absolute -inset-4 sm:-inset-6 bg-gradient-to-br from-indigo-500/22 via-purple-500/18 to-transparent blur-3xl rounded-full pointer-events-none"
+                className="absolute -inset-6 bg-gradient-to-br from-indigo-500/22 via-purple-500/18 to-transparent blur-3xl rounded-full pointer-events-none"
               />
 
-              {/* Floating Animated Stars / Sparkles */}
+              {/* Floating Animated Stars / Sparkles with continuous twinkle & drift */}
               <motion.div
                 animate={{
                   scale: [0.8, 1.4, 0.8],
@@ -1511,7 +1504,7 @@ export const PortalLanding: React.FC = () => {
                   y: [0, -6, 0]
                 }}
                 transition={{ repeat: Infinity, duration: 3.6, ease: "easeInOut" }}
-                className="absolute top-2 right-6 sm:right-8 text-purple-400 text-sm sm:text-lg pointer-events-none select-none z-20"
+                className="absolute top-2 right-8 text-purple-400 text-lg pointer-events-none select-none z-20"
               >
                 ✦
               </motion.div>
@@ -1523,7 +1516,7 @@ export const PortalLanding: React.FC = () => {
                   y: [0, 6, 0]
                 }}
                 transition={{ repeat: Infinity, duration: 4.2, delay: 0.7, ease: "easeInOut" }}
-                className="absolute bottom-4 right-10 sm:right-16 text-indigo-400 text-xs sm:text-base pointer-events-none select-none z-20"
+                className="absolute bottom-6 right-16 text-indigo-400 text-base pointer-events-none select-none z-20"
               >
                 ✦
               </motion.div>
@@ -1535,33 +1528,39 @@ export const PortalLanding: React.FC = () => {
                   x: [0, 4, 0]
                 }}
                 transition={{ repeat: Infinity, duration: 4.8, delay: 1.4, ease: "easeInOut" }}
-                className="absolute top-1/2 right-2 text-purple-300 text-xs sm:text-sm pointer-events-none select-none z-20"
+                className="absolute top-1/2 right-3 text-purple-300 text-sm pointer-events-none select-none z-20"
+              >
+                ✦
+              </motion.div>
+              <motion.div
+                animate={{
+                  scale: [0.85, 1.35, 0.85],
+                  opacity: [0.3, 0.85, 0.3],
+                  rotate: [0, 45, 0],
+                  y: [-4, 4, -4]
+                }}
+                transition={{ repeat: Infinity, duration: 3.2, delay: 0.3, ease: "easeInOut" }}
+                className="absolute top-6 left-12 text-indigo-300 text-sm pointer-events-none select-none z-20"
               >
                 ✦
               </motion.div>
 
-              {/* Main 3D Floating Isometric Canvas (Responsive on Phone & 2x HD on Laptop/Desktop) */}
+              {/* Main 3D Floating Isometric Canvas with continuous gentle floating & tilt */}
               <motion.div
                 animate={{
-                  y: [-6, 6, -6],
-                  rotateZ: [-0.5, 0.5, -0.5]
+                  y: [-7, 7, -7],
+                  rotateZ: [-0.6, 0.6, -0.6]
                 }}
                 transition={{ repeat: Infinity, duration: 5.8, ease: "easeInOut" }}
                 whileHover={{ scale: 1.03 }}
-                className="relative w-full max-w-[320px] sm:max-w-[440px] md:max-w-[500px] lg:max-w-[580px] transition-transform duration-500 cursor-pointer group select-none"
+                className="relative w-full max-w-[620px] transition-transform duration-500 cursor-pointer group"
                 onClick={() => launchDemoMode('professor')}
                 title="Click to launch interactive teacher demo"
               >
                 <img
-                  src="/workspace-3d-feathered-hd.png"
-                  srcSet="/workspace-3d-feathered-hd.png 2x, /workspace-3d-feathered.png 1x"
+                  src="/workspace-3d-feathered.png"
                   alt="ProSchool 3D Glassmorphism Workspace"
-                  className="w-full h-auto object-contain pointer-events-none drop-shadow-[0_20px_45px_rgba(79,70,229,0.22)]"
-                  style={{
-                    imageRendering: '-webkit-optimize-contrast',
-                    filter: 'contrast(1.04) saturate(1.08) brightness(1.01)'
-                  }}
-                  draggable={false}
+                  className="w-full h-auto object-contain drop-shadow-[0_25px_50px_rgba(79,70,229,0.22)] select-none"
                 />
               </motion.div>
             </motion.div>
@@ -1732,7 +1731,7 @@ export const PortalLanding: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => setShowRequestModal(true)}
+                  onClick={() => setShowAIAssistant(true)}
                   className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] hover:from-[#4338CA] hover:to-[#6D28D9] active:scale-95 text-white font-extrabold text-xs sm:text-sm px-6 py-3 rounded-full shadow-[0_6px_20px_rgba(79,70,229,0.35)] hover:shadow-[0_10px_25px_rgba(79,70,229,0.45)] transition-all cursor-pointer"
                 >
                   <Headphones className="w-4 h-4" />
