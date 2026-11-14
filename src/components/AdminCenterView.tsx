@@ -1803,11 +1803,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
                 <div className="flex items-center justify-between text-zinc-500 mb-2">
-                  <span className="text-xs font-medium text-zinc-500">Faculties & Departments</span>
+                  <span className="text-xs font-medium text-zinc-500">Academic Departments</span>
                   <FolderTree className="w-4 h-4 text-zinc-400" />
                 </div>
                 <div className="text-2xl font-bold text-zinc-900">{faculties.length}</div>
-                <p className="text-[11px] text-zinc-500 mt-1">Academic faculties configured</p>
+                <p className="text-[11px] text-zinc-500 mt-1">Academic departments configured</p>
               </div>
 
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs">
@@ -1844,7 +1844,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <th className="py-3 px-4">Organization</th>
                       <th className="py-3 px-4">Administrator</th>
                       <th className="py-3 px-4 text-center">Students</th>
-                      <th className="py-3 px-4 text-center">Faculties</th>
+                      <th className="py-3 px-4 text-center">Departments</th>
                       <th className="py-3 px-4">Plan</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Actions</th>
@@ -3183,10 +3183,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div>
                 <h2 className="text-base font-bold text-zinc-900 flex items-center gap-2">
                   <FolderTree className="w-4 h-4 text-[#26394D]" />
-                  <span>Academic Faculties & Departments</span>
+                  <span>Academic Departments</span>
                 </h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Establish collegiate faculties, appoint academic deans, and organize degree classes and subject modules under each department.
+                  Establish collegiate departments, appoint department heads, and organize degree classes and subject modules under each department.
                 </p>
               </div>
 
@@ -3195,7 +3195,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
               >
                 <Plus className="w-4 h-4" />
-                <span>Create Faculty</span>
+                <span>Create Department</span>
               </button>
             </div>
 
@@ -3247,16 +3247,16 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
                       <div className="bg-zinc-50 rounded-lg p-2.5 border border-zinc-100 text-xs space-y-1.5">
                         <div className="flex items-center justify-between text-zinc-600">
-                          <span className="text-[11px] font-medium text-zinc-500">Appointed Dean:</span>
-                          <span className="font-semibold text-zinc-800">{faculty.deanName || 'Academic Dean'}</span>
+                          <span className="text-[11px] font-medium text-zinc-500">Department Head:</span>
+                          <span className="font-semibold text-zinc-800">{faculty.deanName || 'Department Head'}</span>
                         </div>
                         <div className="flex items-center justify-between text-zinc-600">
                           <span className="text-[11px] font-medium text-zinc-500">Active Classes:</span>
                           <span className="font-bold text-[#26394D]">{associatedClasses.length} {associatedClasses.length === 1 ? 'class' : 'classes'}</span>
                         </div>
                         <div className="flex items-center justify-between text-zinc-600">
-                          <span className="text-[11px] font-medium text-zinc-500">Faculty Members:</span>
-                          <span className="font-semibold text-emerald-700">{memberCount} teachers</span>
+                          <span className="text-[11px] font-medium text-zinc-500">Department Members:</span>
+                          <span className="font-semibold text-emerald-700">{memberCount} lecturers</span>
                         </div>
                       </div>
 
@@ -3435,8 +3435,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
               <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-zinc-900">Professor / Lecturer</span>
-                  <span className="text-[11px] font-medium text-blue-700">Faculty</span>
+                  <span className="font-bold text-sm text-zinc-900">Lecturer</span>
+                  <span className="text-[11px] font-medium text-blue-700">Teaching Staff</span>
                 </div>
                 <p className="text-xs text-zinc-600 leading-relaxed">
                   Course instructors. Post class announcements, upload syllabus and lecture resources, publish assignments, and grade submissions.
@@ -3466,7 +3466,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <thead>
                     <tr className="bg-zinc-50/50 border-b border-zinc-200 font-semibold text-zinc-700">
                       <th className="py-2.5 px-3">Role</th>
-                      <th className="py-2.5 px-3">Faculties & Classes</th>
+                      <th className="py-2.5 px-3">Departments & Classes</th>
                       <th className="py-2.5 px-3">Assign Lecturers</th>
                       <th className="py-2.5 px-3">Announcements</th>
                       <th className="py-2.5 px-3">Assignments & Grading</th>
@@ -4405,7 +4405,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-[#26394D]" />
                 <div>
-                  <h3 className="font-bold text-sm text-zinc-900">Manage Faculty Members</h3>
+                  <h3 className="font-bold text-sm text-zinc-900">Manage Department Members</h3>
                   <p className="text-[11px] text-zinc-500">
                     {selectedFacultyForMembers.name} ({selectedFacultyForMembers.code})
                   </p>
@@ -4421,9 +4421,9 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100 text-xs space-y-1">
-                <p className="font-semibold text-zinc-900">Department / Faculty Assignment</p>
+                <p className="font-semibold text-zinc-900">Department Assignment</p>
                 <p className="text-zinc-600 text-[11px] leading-relaxed">
-                  Select professors, lecturers, and teaching assistants to assign to <strong>{selectedFacultyForMembers.name}</strong>. Assigned members can lead classes and instruct subjects within this faculty.
+                  Select lecturers and teaching staff to assign to <strong>{selectedFacultyForMembers.name}</strong>. Assigned members can lead classes and instruct subjects within this department.
                 </p>
               </div>
 

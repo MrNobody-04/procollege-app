@@ -1,0 +1,172 @@
+/* =====================================
+   PROSCHOOL HERO MOTION SYSTEM
+===================================== */
+
+.hero {
+  --hero-scroll: 0px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Background movement */
+.hero-bg {
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  will-change: transform;
+}
+
+.hero-bg-one {
+  transform: translate3d(0, calc(var(--hero-scroll) * -0.5), 0);
+}
+
+.hero-bg-two {
+  transform: translate3d(0, var(--hero-scroll), 0);
+}
+
+/* =====================================
+   STAGGERED ENTRANCE
+===================================== */
+[data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 800ms ease,
+    transform 800ms cubic-bezier(.2, .7, .2, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+[data-reveal="left"] {
+  transform: translate3d(-35px, 0, 0);
+}
+
+[data-reveal="right"] {
+  transform: translate3d(35px, 0, 0);
+}
+
+[data-reveal="left"].is-visible,
+[data-reveal="right"].is-visible {
+  transform: translate3d(0, 0, 0);
+}
+
+/* =====================================
+   DASHBOARD 3D EFFECT
+===================================== */
+.hero-dashboard-shell {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+  transform:
+    rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transition: transform 350ms ease-out;
+  will-change: transform;
+}
+
+.hero-dashboard {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e8e4f5;
+  border-radius: 20px;
+  box-shadow:
+    0 25px 70px rgba(58, 43, 130, .13),
+    0 5px 20px rgba(58, 43, 130, .06);
+  overflow: hidden;
+  animation: dashboardFloat 6s ease-in-out infinite;
+}
+
+@keyframes dashboardFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+/* =====================================
+   FLOATING NOTIFICATIONS
+===================================== */
+.hero-notification {
+  position: absolute;
+  z-index: 10;
+  animation: notificationFloat 5s ease-in-out infinite;
+}
+
+.hero-notification:nth-child(2) {
+  animation-delay: -2.5s;
+}
+
+.hero-notification:nth-child(3) {
+  animation-delay: -1.25s;
+}
+
+.hero-notification:nth-child(4) {
+  animation-delay: -3.75s;
+}
+
+@keyframes notificationFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/* =====================================
+   HOVER EFFECTS
+===================================== */
+.hero-button {
+  transition:
+    transform 250ms ease,
+    box-shadow 250ms ease;
+}
+
+.hero-button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(88, 56, 220, .2);
+}
+
+.feature-card {
+  transition:
+    transform 300ms ease,
+    box-shadow 300ms ease,
+    border-color 300ms ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  border-color: #d8ccff;
+  box-shadow: 0 15px 35px rgba(65, 45, 130, .09);
+}
+
+/* =====================================
+   ACCESSIBILITY & MOBILE
+===================================== */
+@media (max-width: 950px) {
+  .hero-dashboard-shell {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

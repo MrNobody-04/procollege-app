@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Users,
   Video,
-  FileCheck,
-  FolderOpen,
-  ArrowRight,
-  LogIn,
   Check,
   X,
   Building2,
@@ -13,14 +9,30 @@ import {
   CheckCircle2,
   Menu,
   Mail,
-  Phone,
   MessageSquare,
   Loader2,
   ShieldCheck,
   Lock,
   ArrowLeft,
   KeyRound,
-  RotateCcw
+  RotateCcw,
+  Play,
+  FileText,
+  FolderOpen,
+  BarChart2,
+  Shield,
+  ChevronDown,
+  GraduationCap,
+  Calendar,
+  Sparkles,
+  Award,
+  Smartphone,
+  HelpCircle,
+  Megaphone,
+  BookOpen,
+  Compass,
+  Headphones,
+  Star
 } from 'lucide-react';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import { ProCollegeLogo } from './ProCollegeLogo';
@@ -32,6 +44,7 @@ import {
   saveDeviceToken,
   getDeviceDisplayName
 } from '../utils/deviceFingerprint';
+import { initHeroAnimations } from '../utils/heroAnimations';
 
 export const PortalLanding: React.FC = () => {
   const {
@@ -46,16 +59,27 @@ export const PortalLanding: React.FC = () => {
     setSelectedChannel
   } = useApp();
 
+  // Initialize the ProSchool Hero & Scroll Motion System
+  useEffect(() => {
+    const cleanup = initHeroAnimations();
+    return cleanup;
+  }, []);
+
   const [showSignInModal, setShowSignInModal] = useState<boolean>(false);
   const [showRequestModal, setShowRequestModal] = useState<boolean>(false);
   const [requestSubmitted, setRequestSubmitted] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState<boolean>(false);
+  const [activeFaq, setActiveFaq] = useState<number | null>(0);
 
   // Sign In & Password Reset Modal State
-  const [authStep, setAuthStep] = useState<'credentials' | 'otp' | 'change-password' | 'forgot-password-request' | 'forgot-password-verify'>('credentials');
+  const [authStep, setAuthStep] = useState<
+    'credentials' | 'otp' | 'change-password' | 'forgot-password-request' | 'forgot-password-verify'
+  >('credentials');
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
   // OTP State (Login 2FA)
   const [otpEmail, setOtpEmail] = useState<string>('');
@@ -101,13 +125,15 @@ export const PortalLanding: React.FC = () => {
     notes: ''
   });
   const [phoneCountryCode, setPhoneCountryCode] = useState<string>('+977');
-
-  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState<boolean>(false);
 
   const resetAuthModal = () => {
     setShowSignInModal(false);
     setAuthStep('credentials');
     setLoginError('');
+    setResendMessage('');
+    setLoginEmail('');
+    setLoginPassword('');
     setOtpCode('');
     setOtpEmail('');
     setNewPassword('');
@@ -120,12 +146,7 @@ export const PortalLanding: React.FC = () => {
   };
 
   const finishLoginSession = (data: any) => {
-    // Store credentials in localStorage with robust institution name preservation
-    const instName = data.college?.name || data.user?.institution_name || data.user?.institutionName || 'Academic Institution';
-    if (data.user) {
-      data.user.institution_name = instName;
-      data.user.institutionName = instName;
-    }
+    const instName = data.college?.name || data.user.institutionName || 'ProSchool Campus';
     localStorage.setItem('procollege_token', data.token);
     localStorage.setItem('procollege_user', JSON.stringify(data.user));
     localStorage.setItem('procollege_college', JSON.stringify(data.college || { name: instName }));
@@ -134,7 +155,6 @@ export const PortalLanding: React.FC = () => {
       saveDeviceToken(data.deviceToken);
     }
 
-    // Strict 4-Tier Role Architecture Enforcement: developer | admin | lecturer | student
     const roleStr = String(data.user.role || '').toLowerCase();
     const mappedRole: UserRole =
       roleStr === 'developer' || roleStr === 'platform_admin'
@@ -147,7 +167,8 @@ export const PortalLanding: React.FC = () => {
 
     const appUser: User = {
       id: data.user.id,
-      name: data.user.full_name || data.user.name,
+      loginId: data.user.loginId || data.user.email,
+      name: data.user.name,
       email: data.user.email,
       role: mappedRole,
       license:
@@ -166,25 +187,32 @@ export const PortalLanding: React.FC = () => {
             : String(data.user.department || 'Academic Department'),
       institutionName:
         mappedRole === 'developer'
-          ? 'ProCollege Platform Operations'
+          ? 'ProSchool Platform Operations'
           : instName,
-      avatar: data.user.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      institutionId: data.college?.id || 'inst_active',
+      collegeId: data.college?.id || 'inst_active',
+      collegeName: instName,
+      avatar:
+        data.user.avatar ||
+        `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80`,
       status: 'available',
+      statusMessage: 'Signed into ProSchool Campus',
+      isDemo: false
     };
 
     setIsDemoMode(false);
     setCurrentUser(appUser);
+    setActiveTab(mappedRole === 'developer' || mappedRole === 'admin' ? 'admin' : 'teams');
+
     resetAuthModal();
     setShowRequestModal(false);
     setMobileMenuOpen(false);
     setViewMode('app');
   };
 
-  const performLogin = async (emailToUse: string, passwordToUse: string) => {
+  const performLogin = async (email: string, pass: string) => {
     setIsLoggingIn(true);
     setLoginError('');
-    setResendMessage('');
-
     try {
       const deviceHash = getOrCreateDeviceHash();
       const deviceToken = getStoredDeviceToken();
@@ -195,34 +223,29 @@ export const PortalLanding: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
           'x-device-hash': deviceHash,
-          'x-device-token': deviceToken,
+          ...(deviceToken ? { 'x-device-token': deviceToken } : {})
         },
-        body: JSON.stringify({
-          email: emailToUse,
-          password: passwordToUse,
-          deviceHash,
-          deviceToken,
-          deviceName,
-        }),
+        body: JSON.stringify({ email, password: pass, deviceHash, deviceName }),
       });
 
       const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Invalid credentials.');
+      }
 
-      // Check requireOtp FIRST: triggers 2FA flow for student/admin only if device is NOT recognized
       if (data.requireOtp) {
-        setAuthStep('otp');
-        setOtpEmail(data.email || emailToUse);
-        setOtpCode(''); // Blank code input - user must enter from email
+        setOtpEmail(data.email || email);
+        setOtpCode('');
         setResendCooldown(60);
+        setResendMessage(data.message || `A 6-digit security code has been sent to ${email}.`);
+        setAuthStep('otp');
         return;
       }
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Login failed. Please check your credentials.');
-      }
-
-      if (data.deviceToken) {
-        saveDeviceToken(data.deviceToken);
+      if (data.mustChangePassword) {
+        setPendingAuthResponse(data);
+        setAuthStep('change-password');
+        return;
       }
 
       finishLoginSession(data);
@@ -237,7 +260,6 @@ export const PortalLanding: React.FC = () => {
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || isResending) return;
     setIsResending(true);
-    setResendMessage('');
     setLoginError('');
     try {
       const targetEmail = authStep === 'forgot-password-verify' ? resetEmail : otpEmail;
@@ -270,7 +292,7 @@ export const PortalLanding: React.FC = () => {
     setLoginError('');
     const code = otpCode.trim();
     if (!code || code.length !== 6) {
-      setLoginError('Please enter a valid 6-digit OTP code.');
+      setLoginError('Please enter the 6-digit code sent to your email.');
       return;
     }
 
@@ -309,14 +331,13 @@ export const PortalLanding: React.FC = () => {
 
       finishLoginSession(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : 'Error verifying security code';
       setLoginError(message);
     } finally {
       setIsVerifyingOtp(false);
     }
   };
 
-  // Secure OTP-Based Password Recovery (Forgot Password Flow)
   const handleRequestPasswordResetOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -399,7 +420,6 @@ export const PortalLanding: React.FC = () => {
         saveDeviceToken(data.deviceToken);
       }
 
-      // Automatically log the user in immediately!
       finishLoginSession(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error resetting password.';
@@ -448,10 +468,7 @@ export const PortalLanding: React.FC = () => {
     }
   };
 
-  const [isSubmittingRequest, setIsSubmittingRequest] = useState<boolean>(false);
-
   const launchDemoMode = (targetRoleOrUser: 'student' | 'professor' | 'admin' | typeof availableUsers[0] = 'student') => {
-    // 1. NEVER SAVE DEMO CREDENTIALS: Purge any stored tokens, credentials, or sessions
     try {
       localStorage.removeItem('procollege_token');
       localStorage.removeItem('procollege_user');
@@ -461,10 +478,7 @@ export const PortalLanding: React.FC = () => {
       // ignore
     }
 
-    // 2. Set demo mode to true (Strict Zero Database Writes Sandbox)
     setIsDemoMode(true);
-
-    // 3. Resolve role and target persona with guaranteed fallback to canonical initial users
     const allUsers = [...availableUsers, ...INITIAL_USERS];
     let demoUser: User;
     let targetTab: ActiveTab = 'teams';
@@ -477,26 +491,24 @@ export const PortalLanding: React.FC = () => {
         allUsers.find(u => u.id === 'user_org_admin') ||
         allUsers.find(u => u.role === 'admin') ||
         INITIAL_USERS[1];
-      targetTab = 'admin'; // Open directly into Campus Administration Center
+      targetTab = 'admin';
     } else if (targetRoleOrUser === 'professor') {
       demoUser =
         allUsers.find(u => u.id === 'user_alan') ||
         allUsers.find(u => u.role === 'professor' || u.role === 'lecturer' || (u as unknown as { role: string }).role === 'teacher') ||
         INITIAL_USERS[0];
-      targetTab = 'teams'; // Open into Professor teaching & grading workflow
+      targetTab = 'teams';
     } else {
-      // default: 'student'
       demoUser =
         allUsers.find(u => u.id === 'user_alex') ||
         allUsers.find(u => u.role === 'student') ||
         INITIAL_USERS[2];
-      targetTab = 'teams'; // Open into Student classroom & assignments workflow
+      targetTab = 'teams';
     }
 
     setCurrentUser(demoUser);
     setActiveTab(targetTab);
 
-    // Ensure initial course and channel are selected
     if (courses && courses.length > 0) {
       const matchCourse = courses.find(c => c.institutionName === demoUser.institutionName) || courses[0];
       setSelectedCourse(matchCourse);
@@ -505,7 +517,6 @@ export const PortalLanding: React.FC = () => {
       }
     }
 
-    // 4. Close any open dialogs and navigate to the application workspace
     setShowSignInModal(false);
     setShowRequestModal(false);
     setMobileMenuOpen(false);
@@ -557,7 +568,7 @@ export const PortalLanding: React.FC = () => {
         body: JSON.stringify(payload)
       });
     } catch (err) {
-      console.warn('Could not post inquiry to live Turso backend:', err);
+      console.warn('Could not post inquiry to live backend:', err);
     } finally {
       setIsSubmittingRequest(false);
     }
@@ -572,219 +583,416 @@ export const PortalLanding: React.FC = () => {
       el.scrollIntoView({ behavior: 'smooth' });
     }
     setMobileMenuOpen(false);
+    setSolutionsDropdownOpen(false);
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#080808] text-[#CDCBCA] font-dmsans selection:bg-[#D41514] selection:text-white antialiased overflow-x-hidden relative">
-      {/* 1. Header Navigation Bar (header-surface: obsidian #080808 with chrome border) */}
-      <header className="sticky top-0 z-40 bg-[#080808]/92 backdrop-blur-md border-b border-[#CDCBCA]/15 transition-all">
-        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-3">
-          {/* Brand Logo & Name */}
+    <div className="min-h-screen w-full bg-white text-zinc-900 font-sans selection:bg-[#4F46E5] selection:text-white antialiased overflow-x-hidden relative">
+      {/* ============================================================== */}
+      {/* 1. TOP NAVIGATION BAR (Approved ProSchool Styling)             */}
+      {/* ============================================================== */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-zinc-100 transition-all">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+          {/* ProSchool Brand Logo */}
           <div
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none shrink-0"
+            className="flex items-center gap-2 cursor-pointer group select-none shrink-0"
           >
-            <ProCollegeLogo size="sm" variant="crimson-text" className="sm:hidden" />
-            <ProCollegeLogo size="md" variant="crimson-text" className="hidden sm:flex" />
+            <ProCollegeLogo size="md" brandName="ProSchool" showSlogan={false} />
           </div>
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-9 text-[15px] lg:text-[16px] font-medium text-[#CDCBCA]">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-7 text-[14px] font-semibold text-zinc-600">
             <button
-              onClick={() => scrollTo('solutions')}
-              className="hover:text-[#D41514] transition-colors cursor-pointer"
+              onClick={() => scrollTo('home')}
+              className="hover:text-[#4F46E5] transition-colors cursor-pointer text-zinc-900 font-bold"
             >
-              Solutions
+              Home
             </button>
             <button
               onClick={() => scrollTo('features')}
-              className="hover:text-[#D41514] transition-colors cursor-pointer"
+              className="hover:text-[#4F46E5] transition-colors cursor-pointer"
             >
               Features
             </button>
-            <button
-              onClick={() => scrollTo('perspectives')}
-              className="hover:text-[#D41514] transition-colors cursor-pointer"
-            >
-              Perspectives
-            </button>
+
+            {/* Solutions with Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setSolutionsDropdownOpen(!solutionsDropdownOpen)}
+                onBlur={() => setTimeout(() => setSolutionsDropdownOpen(false), 200)}
+                className="hover:text-[#4F46E5] transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <span>Solutions</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {solutionsDropdownOpen && (
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-zinc-100 rounded-xl shadow-xl py-2 z-50 text-xs">
+                  <button
+                    onClick={() => scrollTo('solutions')}
+                    className="w-full px-4 py-2 text-left hover:bg-indigo-50 hover:text-[#4F46E5] flex items-center gap-2"
+                  >
+                    <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>For Administrators</span>
+                  </button>
+                  <button
+                    onClick={() => scrollTo('solutions')}
+                    className="w-full px-4 py-2 text-left hover:bg-indigo-50 hover:text-[#4F46E5] flex items-center gap-2"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5 text-purple-500" />
+                    <span>For Teachers</span>
+                  </button>
+                  <button
+                    onClick={() => scrollTo('solutions')}
+                    className="w-full px-4 py-2 text-left hover:bg-indigo-50 hover:text-[#4F46E5] flex items-center gap-2"
+                  >
+                    <Users className="w-3.5 h-3.5 text-blue-500" />
+                    <span>For Students</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => scrollTo('pricing')}
-              className="hover:text-[#D41514] transition-colors cursor-pointer"
+              className="hover:text-[#4F46E5] transition-colors cursor-pointer"
             >
               Pricing
+            </button>
+            <button
+              onClick={() => scrollTo('faq')}
+              className="hover:text-[#4F46E5] transition-colors cursor-pointer"
+            >
+              Resources
             </button>
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <button
-              onClick={() => {
-                setShowSignInModal(true);
-              }}
-              className="text-xs sm:text-sm md:text-[15px] font-bold text-[#CDCBCA] hover:text-white px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full border border-[#CDCBCA]/20 hover:border-[#CDCBCA]/50 hover:bg-[#141416] active:scale-95 transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0"
+              onClick={() => setShowSignInModal(true)}
+              className="text-xs sm:text-sm font-bold text-zinc-700 hover:text-[#4F46E5] px-3.5 sm:px-4 py-2 rounded-xl border border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all cursor-pointer"
             >
-              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D41514] shrink-0" />
-              <span>Sign In</span>
+              Sign In
             </button>
 
             <button
-              onClick={() => scrollTo('pricing')}
-              className="btn-hive-crimson bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-xs sm:text-sm md:text-[15px] font-black px-3.5 xs:px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-full border border-[#D41514]/50 shadow-[0_0_20px_rgba(212,21,20,0.45)] hover:shadow-[0_0_30px_rgba(212,21,20,0.65)] flex items-center gap-1.5 cursor-pointer leading-none shrink-0 group"
+              onClick={() => setShowRequestModal(true)}
+              className="hero-button bg-gradient-to-r from-[#4F46E5] via-[#5B4FF5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-[0_4px_16px_rgba(79,70,229,0.28)] flex items-center gap-1.5 cursor-pointer transition-all"
             >
-              <span className="hidden xs:inline tracking-tight">Explore plans</span>
-              <span className="xs:hidden tracking-tight">Plans</span>
-              <span className="text-xs sm:text-sm font-bold transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
+              <span>Get Started Free</span>
+              <span className="text-xs font-bold">→</span>
             </button>
 
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 sm:p-2 rounded-lg text-[#CDCBCA] hover:text-white hover:bg-[#141416] border border-[#CDCBCA]/20 transition-colors cursor-pointer shrink-0"
+              className="md:hidden p-2 rounded-lg text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 border border-zinc-200 transition-colors"
               aria-label="Toggle Navigation Menu"
             >
-              {mobileMenuOpen ? (
-                <X className="w-5 h-5 text-white" />
-              ) : (
-                <Menu className="w-5 h-5 text-white" />
-              )}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-[#0c0c0e]/98 backdrop-blur-md border-b border-[#CDCBCA]/20 px-5 py-4 space-y-3 animate-in slide-in-from-top-2 shadow-2xl">
-            <div className="flex flex-col space-y-1 text-base font-medium text-[#CDCBCA]">
+          <div className="md:hidden bg-white/98 border-b border-zinc-200 px-6 py-5 space-y-3 shadow-lg">
+            <div className="flex flex-col space-y-2 text-sm font-semibold text-zinc-700">
               <button
-                onClick={() => scrollTo('solutions')}
-                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
+                onClick={() => scrollTo('home')}
+                className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
               >
-                Solutions
+                Home
               </button>
               <button
                 onClick={() => scrollTo('features')}
-                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
+                className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
               >
                 Features
               </button>
               <button
-                onClick={() => scrollTo('perspectives')}
-                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
+                onClick={() => scrollTo('solutions')}
+                className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
               >
-                Perspectives
+                Solutions
               </button>
               <button
                 onClick={() => scrollTo('pricing')}
-                className="w-full text-left py-2 px-2 hover:bg-[#141416] rounded-lg hover:text-[#D41514] transition-colors"
+                className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
               >
                 Pricing
               </button>
+              <button
+                onClick={() => scrollTo('faq')}
+                className="w-full text-left py-2 hover:text-[#4F46E5] transition-colors"
+              >
+                Resources & FAQ
+              </button>
             </div>
 
-            <div className="pt-3 border-t border-[#CDCBCA]/15 flex flex-col gap-2.5">
+            <div className="pt-3 border-t border-zinc-100 flex flex-col gap-2">
               <button
-                onClick={() => launchDemoMode()}
-                className="btn-hive-crimson w-full bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white py-3 px-4 rounded-xl font-bold text-sm text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#D41514]/40"
+                onClick={() => launchDemoMode('student')}
+                className="w-full py-2.5 px-4 rounded-xl bg-indigo-50 text-[#4F46E5] font-bold text-xs text-center border border-indigo-200 cursor-pointer"
               >
-                <span>Explore the platform</span>
-                <span>→</span>
+                Explore Live Demo
               </button>
               <button
                 onClick={() => {
                   setShowRequestModal(true);
                   setMobileMenuOpen(false);
                 }}
-                className="w-full bg-[#121215] hover:bg-[#18181c] border-2 border-[#CDCBCA]/30 text-[#CDCBCA] hover:text-white py-3 px-4 rounded-xl font-bold text-sm text-center transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                className="w-full bg-[#4F46E5] text-white py-2.5 px-4 rounded-xl font-bold text-xs text-center shadow-md cursor-pointer"
               >
-                <Building2 className="w-4 h-4 text-[#D41514]" />
-                <span>Request Campus Access</span>
+                Request Campus Deployment →
               </button>
             </div>
           </div>
         )}
       </header>
 
-      {/* 2. Hero Section (hero-surface: obsidian #080808 with atmospheric crimson & silver glow) */}
-      <section
-        id="solutions"
-        className="relative overflow-hidden pt-8 pb-12 sm:pt-14 sm:pb-18 lg:pt-20 lg:pb-24 border-b border-[#CDCBCA]/15"
-        style={{
-          background: 'radial-gradient(ellipse 70% 60% at 75% 25%, rgba(212, 21, 20, 0.12), transparent), radial-gradient(ellipse 50% 50% at 20% 75%, rgba(205, 203, 202, 0.05), transparent), #080808'
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 xl:gap-12 items-center">
-            {/* Left Content Column */}
-            <div className="lg:col-span-7 space-y-3.5 sm:space-y-6 text-left">
-              {/* Eyebrow (hero-eyebrow) */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/35 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase shadow-[0_0_16px_rgba(212,21,20,0.25)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D41514] animate-pulse" />
-                <span>THE CAMPUS MANAGEMENT SYSTEM</span>
-              </div>
+      {/* ============================================================== */}
+      {/* 2. HERO SECTION WITH 3D TILT DASHBOARD & FLOATING NOTIFICATIONS */}
+      {/* ============================================================== */}
+      <section className="hero relative bg-gradient-to-b from-[#FAF8FF] via-white to-white pt-10 sm:pt-16 pb-16 sm:pb-24 overflow-hidden" id="home">
+        {/* Subtle Parallax Background Glows */}
+        <div className="hero-bg hero-bg-one -top-24 -left-24 w-96 h-96 rounded-full bg-purple-100/50 blur-3xl" />
+        <div className="hero-bg hero-bg-two top-1/2 right-0 w-[450px] h-[450px] rounded-full bg-indigo-100/40 blur-3xl" />
 
-              {/* Title (hero-title) */}
-              <h1 className="font-fraunces font-bold text-white text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-[54px] xl:text-[62px] leading-[1.12] tracking-tight break-words">
-                A more connected way to <span className="bg-gradient-to-r from-white via-[#CDCBCA] to-[#CDCBCA] bg-clip-text text-transparent">campus.</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            {/* Left Column: Heading, Subtext, CTAs, Social Proof */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              <h1
+                data-reveal
+                style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
+                className="text-3xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-zinc-950 leading-[1.12]"
+              >
+                Build a Smarter <br className="hidden sm:inline" />
+                <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#4338CA] bg-clip-text text-transparent">
+                  Campus Experience
+                </span>
               </h1>
 
-              {/* Description (hero-description) */}
-              <p className="text-[#CDCBCA] text-sm sm:text-base md:text-lg lg:text-[19px] leading-relaxed max-w-xl">
-                Bring conversations, classrooms, coursework, and campus resources together in one
-                thoughtfully designed experience.
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-base sm:text-lg text-zinc-600 max-w-xl leading-relaxed"
+              >
+                ProSchool brings your college or school community together in one powerful platform — just like Teams, but built for education.
               </p>
 
-              {/* Action Buttons (hero-primary & hero-secondary) */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:max-w-xl">
-                <button
-                  onClick={() => launchDemoMode()}
-                  className="btn-hive-crimson w-full sm:w-auto bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white text-sm sm:text-[16px] font-black px-7 sm:px-9 py-3.5 sm:py-4 rounded-full shadow-[0_0_28px_rgba(212,21,20,0.55)] hover:shadow-[0_0_40px_rgba(212,21,20,0.75)] border border-[#D41514]/60 transition-all flex items-center justify-center gap-2.5 group cursor-pointer text-center"
-                >
-                  <span>Explore the platform</span>
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300 group-hover:translate-x-1.5" />
-                </button>
-
+              {/* Action Buttons */}
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
+                className="flex flex-wrap items-center gap-3 pt-1"
+              >
                 <button
                   onClick={() => setShowRequestModal(true)}
-                  className="w-full sm:w-auto bg-[#121214] hover:bg-[#1a1a1d] border-2 border-[#CDCBCA]/30 hover:border-[#CDCBCA]/80 text-[#CDCBCA] hover:text-white text-sm sm:text-[16px] font-black px-6 sm:px-8 py-3.5 sm:py-4 rounded-full shadow-[0_0_20px_rgba(205,203,202,0.08)] hover:shadow-[0_0_25px_rgba(205,203,202,0.18)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer text-center"
+                  className="hero-button px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white rounded-xl text-sm sm:text-base font-bold shadow-[0_10px_25px_rgba(79,70,229,0.28)] flex items-center gap-2 cursor-pointer transition-all"
                 >
-                  <Building2 className="w-4 h-4 text-[#D41514] group-hover:scale-110 transition-transform duration-300" />
-                  <span>Request Campus Access</span>
+                  <span>Start Free Trial</span>
+                  <span>→</span>
+                </button>
+
+                <button
+                  onClick={() => launchDemoMode('student')}
+                  className="hero-button px-5 sm:px-6 py-3 sm:py-3.5 bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 rounded-xl text-sm sm:text-base font-semibold shadow-xs flex items-center gap-2 cursor-pointer transition-colors"
+                >
+                  <Play className="w-4 h-4 text-[#4F46E5] fill-[#4F46E5]" />
+                  <span>Watch Demo</span>
                 </button>
               </div>
 
-              {/* Note below buttons (hero-note) */}
-              <p className="text-[#8E8C8B] text-xs sm:text-[13px] pt-1">
-                One place for the moments that move learning forward.
-              </p>
-            </div>
-
-            {/* Right Media Column */}
-            <div className="lg:col-span-5 relative mt-4 lg:mt-0">
-              {/* Main Photo Card with Caption */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_12px_45px_rgba(0,0,0,0.8)] border-2 sm:border-4 border-[#CDCBCA]/30 group">
-                <img
-                  src="https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=1280"
-                  alt="Students gathered on a university campus"
-                  className="w-full h-[210px] xs:h-[260px] sm:h-[320px] md:h-[380px] lg:h-[420px] object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-90 contrast-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-3 left-4 right-4 sm:bottom-4 sm:left-5 sm:right-5 text-[#CDCBCA] font-dmsans font-bold text-xs sm:text-[14px]">
-                  A campus experience that feels connected.
+              {/* Social Proof & Trusted Indicator */}
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '550ms' } as React.CSSProperties}
+                className="flex items-center gap-3.5 pt-3"
+              >
+                <div className="flex -space-x-2 shrink-0">
+                  <img
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80"
+                    alt="Student"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=128&q=80"
+                    alt="Lecturer"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=128&q=80"
+                    alt="Student"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=128&q=80"
+                    alt="Dean"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white object-cover"
+                  />
+                </div>
+                <div className="text-xs text-zinc-600">
+                  <p className="font-bold text-zinc-900 leading-tight">
+                    Trusted by 500+ Schools &amp; Colleges
+                  </p>
+                  <p className="text-[11px] text-zinc-500">across Nepal &amp; South Asia</p>
                 </div>
               </div>
+            </div>
 
-              {/* Floating Campus Overview Preview Card */}
-              <div className="relative sm:absolute mt-3 sm:mt-0 sm:-bottom-6 sm:-left-6 lg:-left-8 bg-[#0e0e11]/95 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-[0_12px_40px_rgba(0,0,0,0.8)] border border-[#CDCBCA]/30 max-w-full sm:max-w-[260px] animate-in fade-in slide-in-from-bottom-3 duration-300">
-                <div className="text-[10px] sm:text-[11px] font-bold text-[#D41514] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#D41514]" />
-                  <span>CAMPUS OVERVIEW</span>
+            {/* Right Column: Realistic 3D Tilt Floating Dashboard & Floating Notifications */}
+            <div className="lg:col-span-6 relative">
+              <div
+                className="hero-dashboard-shell relative"
+                data-reveal="right"
+                style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+              >
+                {/* Main 3D Floating Dashboard Card */}
+                <div className="hero-dashboard bg-white border border-[#E0E7FF] rounded-2xl shadow-[0_25px_70px_rgba(79,70,229,0.13),0_5px_20px_rgba(79,70,229,0.06)] p-3 sm:p-5 overflow-hidden">
+                  {/* Mock Window Top Bar */}
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-zinc-100">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                      <span className="ml-2 text-[11px] font-bold text-zinc-600 font-mono">
+                        proschool.edu.np/dashboard
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                        ● Term Active
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dashboard Content Mockup */}
+                  <div className="grid grid-cols-12 gap-3 text-xs">
+                    {/* Mini Sidebar */}
+                    <div className="col-span-3 bg-zinc-50/70 border border-zinc-100 rounded-xl p-2.5 space-y-2 hidden sm:block">
+                      <div className="flex items-center gap-1.5 text-[#4F46E5] font-bold pb-2 border-b border-zinc-200/60">
+                        <GraduationCap className="w-4 h-4" />
+                        <span className="text-[11px]">ProSchool</span>
+                      </div>
+                      <div className="space-y-1 text-[11px] text-zinc-600">
+                        <div className="bg-[#4F46E5]/10 text-[#4F46E5] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1.5">
+                          <Compass className="w-3.5 h-3.5" />
+                          <span>Dashboard</span>
+                        </div>
+                        <div className="hover:bg-zinc-100 px-2 py-1 rounded flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Classes</span>
+                        </div>
+                        <div className="hover:bg-zinc-100 px-2 py-1 rounded flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Assignments</span>
+                        </div>
+                        <div className="hover:bg-zinc-100 px-2 py-1 rounded flex items-center gap-1.5">
+                          <Video className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Meetings</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Main Workspace Area */}
+                    <div className="col-span-12 sm:col-span-9 space-y-3">
+                      {/* Greeting Header */}
+                      <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50/60 to-purple-50/40 p-3 rounded-xl border border-indigo-100/60">
+                        <div>
+                          <h4 className="font-bold text-zinc-900 text-xs sm:text-sm">
+                            Good Morning, Professor! 👋
+                          </h4>
+                          <p className="text-[11px] text-zinc-500">B.Sc. Computer Science • Semester 4</p>
+                        </div>
+                        <span className="text-[10px] bg-white text-indigo-700 px-2 py-1 rounded-md font-semibold border border-indigo-100 shadow-2xs">
+                          Live Sync
+                        </span>
+                      </div>
+
+                      {/* Stat Counters */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-100">
+                          <span className="text-[10px] text-blue-700 font-semibold block">Total Students</span>
+                          <span className="text-base sm:text-lg font-black text-blue-950">2,850</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-100">
+                          <span className="text-[10px] text-purple-700 font-semibold block">Active Classes</span>
+                          <span className="text-base sm:text-lg font-black text-purple-950">24</span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100">
+                          <span className="text-[10px] text-emerald-700 font-semibold block">Pending Tasks</span>
+                          <span className="text-base sm:text-lg font-black text-emerald-950">12</span>
+                        </div>
+                      </div>
+
+                      {/* Upcoming Class Schedule Item */}
+                      <div className="p-3 bg-white border border-zinc-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                            CS
+                          </div>
+                          <div>
+                            <p className="font-bold text-zinc-900 text-xs">CS 301: Advanced Algorithms</p>
+                            <p className="text-[10px] text-zinc-500">Today, 10:00 AM – 11:30 AM • Turing Hall</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => launchDemoMode('professor')}
+                          className="px-2.5 py-1 bg-[#4F46E5] text-white rounded-lg text-[10px] font-bold hover:bg-[#4338CA] transition-colors cursor-pointer shrink-0"
+                        >
+                          Join Class
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-base sm:text-[18px] font-black text-white mt-1">
-                  Everything in sync
+
+                {/* Floating Notification 1: Assignment Submitted */}
+                <div className="hero-notification -top-4 -right-2 sm:-right-6 bg-white px-3.5 py-2.5 rounded-xl border border-emerald-100 shadow-[0_12px_28px_rgba(16,185,129,0.18)] flex items-center gap-2.5 text-xs">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-zinc-900 leading-tight">Assignment Submitted</p>
+                    <p className="text-[10px] text-zinc-500">CS 301: Dynamic Graph Solvers</p>
+                  </div>
                 </div>
-                <div className="text-xs sm:text-[12px] text-[#CDCBCA] mt-1">
-                  Learning, people, and progress—together.
+
+                {/* Floating Notification 2: New Announcement */}
+                <div className="hero-notification -bottom-4 -left-2 sm:-left-6 bg-white px-3.5 py-2.5 rounded-xl border border-indigo-100 shadow-[0_12px_28px_rgba(79,70,229,0.18)] flex items-center gap-2.5 text-xs">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                    <Megaphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-zinc-900 leading-tight">New Class Announcement</p>
+                    <p className="text-[10px] text-zinc-500">Semester Term Timetable Released</p>
+                  </div>
+                </div>
+
+                {/* Floating Notification 3: Upcoming Meeting */}
+                <div className="hero-notification -top-6 left-10 bg-white px-3 py-2 rounded-xl border border-blue-100 shadow-[0_10px_24px_rgba(37,99,235,0.14)] hidden sm:flex items-center gap-2 text-xs">
+                  <div className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                    <Video className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-zinc-900 leading-tight text-[11px]">Upcoming Meeting</p>
+                    <p className="text-[9px] text-zinc-500">Faculty Council in 15 mins</p>
+                  </div>
+                </div>
+
+                {/* Floating Notification 4: Resource Uploaded */}
+                <div className="hero-notification -bottom-6 right-6 bg-white px-3 py-2 rounded-xl border border-purple-100 shadow-[0_10px_24px_rgba(147,51,234,0.14)] hidden sm:flex items-center gap-2 text-xs">
+                  <div className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                    <FileText className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-zinc-900 leading-tight text-[11px]">Resource Uploaded</p>
+                    <p className="text-[9px] text-zinc-500">Lecture04_Graphs.pdf</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -792,519 +1000,1116 @@ export const PortalLanding: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. The Unified Suite (features-surface: obsidian #080808) */}
-      <section id="features" className="py-12 sm:py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 bg-[#080808]">
-        <div className="max-w-3xl mb-8 sm:mb-12 lg:mb-14 text-left">
-          {/* Kicker */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase mb-2 sm:mb-3 shadow-[0_0_12px_rgba(212,21,20,0.2)]">
-            <span>THE UNIFIED SUITE</span>
-          </div>
-
-          {/* Title */}
-          <h2 className="font-fraunces font-bold text-white text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
-            Everything your campus needs. Finally together.
-          </h2>
-
-          {/* Description */}
-          <p className="mt-2.5 sm:mt-4 text-[#CDCBCA] text-sm sm:text-base lg:text-[17px] leading-relaxed">
-            Less switching between tools. More room to teach, learn, collaborate, and get things done.
-          </p>
-        </div>
-
-        {/* 4 Feature Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Card 1: ProCollege Teams */}
-          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
-                <Users className="w-5 h-5" />
-              </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
-                COMMUNICATE
-              </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
-                ProCollege Teams
-              </h3>
-              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
-                Channels and conversations that keep classes, clubs, and departments on the same page.
-              </p>
-            </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
-                <span>See how it connects</span>
-                <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: ProCollege Meet */}
-          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
-                <Video className="w-5 h-5" />
-              </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
-                CONNECT
-              </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
-                ProCollege Meet
-              </h3>
-              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
-                A welcoming space for virtual lectures, discussion, and participation wherever you are.
-              </p>
-            </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
-                <span>See how it connects</span>
-                <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: ProCollege LMS */}
-          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
-                <FileCheck className="w-5 h-5" />
-              </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
-                TEACH
-              </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
-                ProCollege LMS
-              </h3>
-              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
-                Bring assignments, feedback, and learning progress into a clearer academic workflow.
-              </p>
-            </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
-                <span>See how it connects</span>
-                <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4: ProCollege Cloud */}
-          <div className="bg-[#0f0f11] border border-[#CDCBCA]/20 hover:border-[#D41514] rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.25)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group cursor-pointer" onClick={() => scrollTo('perspectives')}>
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 shadow-sm">
-                <FolderOpen className="w-5 h-5" />
-              </div>
-              <div className="text-[10px] font-black tracking-wider uppercase text-[#8E8C8B] group-hover:text-[#D41514] transition-colors">
-                ORGANIZE
-              </div>
-              <h3 className="font-black text-lg sm:text-[19px] text-white mt-1 group-hover:text-[#CDCBCA] transition-colors">
-                ProCollege Cloud
-              </h3>
-              <p className="text-[#CDCBCA] text-xs sm:text-[13px] leading-relaxed mt-2 sm:mt-2.5">
-                Give documents, research, and shared resources a place everyone can find.
-              </p>
-            </div>
-            <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#161618] border border-[#CDCBCA]/25 group-hover:bg-[#D41514] text-[#CDCBCA] group-hover:text-white group-hover:border-[#D41514] text-xs font-bold transition-all duration-200">
-                <span>See how it connects</span>
-                <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. One Seamless Workflow Banner (workflow-panel: obsidian #0b0b0d with laser crimson accent) */}
-      <section className="bg-gradient-to-b from-[#0d0d0f] via-[#09090a] to-[#0d0d0f] text-white py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8 xl:px-12 border-y border-[#CDCBCA]/15 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(circle at 50% 50%, rgba(212, 21, 20, 0.08), transparent 70%)'
-        }} />
-        <div className="max-w-4xl mx-auto text-center space-y-3 sm:space-y-4 relative z-10">
-          {/* Kicker */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase shadow-[0_0_12px_rgba(212,21,20,0.2)]">
-            <span>ONE SEAMLESS WORKFLOW</span>
-          </div>
-
-          {/* Title */}
-          <h2 className="font-fraunces font-bold text-white text-xl sm:text-2xl md:text-3xl lg:text-[34px] leading-snug">
-            The whole campus, in conversation.
-          </h2>
-
-          {/* Description */}
-          <p className="text-[#CDCBCA] text-xs sm:text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-            A discussion becomes a class. A class becomes an assignment. Great work stays easy to find.
-          </p>
-
-          <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto">
-            <button
-              onClick={() => launchDemoMode()}
-              className="btn-hive-crimson bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] text-white font-black text-sm sm:text-[15px] px-7 sm:px-8 py-3.5 rounded-full border border-[#D41514]/50 shadow-[0_0_25px_rgba(212,21,20,0.5)] cursor-pointer flex items-center justify-center gap-2 group"
+      {/* ============================================================== */}
+      {/* 3. QUICK HIGHLIGHTS STRIP (5 Featured Capabilities)            */}
+      {/* ============================================================== */}
+      <section className="py-8 bg-white border-y border-zinc-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
+              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
             >
-              <span>Experience the workflow</span>
-              <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-            </button>
-            <button
-              onClick={() => setShowRequestModal(true)}
-              className="bg-[#121214] hover:bg-[#1a1a1d] border-2 border-[#CDCBCA]/30 hover:border-[#CDCBCA]/80 text-[#CDCBCA] hover:text-white font-black text-sm sm:text-[15px] px-6 sm:px-7 py-3.5 rounded-full hover:shadow-[0_0_20px_rgba(205,203,202,0.15)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 group"
+              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                <Video className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Online Classes</h4>
+                <p className="text-[11px] text-zinc-500">Teach &amp; learn seamlessly</p>
+              </div>
+            </div>
+
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
             >
-              <Building2 className="w-4 h-4 text-[#D41514] group-hover:scale-110 transition-transform duration-300" />
-              <span>Contact for Campus Onboarding</span>
-            </button>
+              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                <FolderOpen className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Assignments</h4>
+                <p className="text-[11px] text-zinc-500">Manage tasks efficiently</p>
+              </div>
+            </div>
+
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
+              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Collaboration</h4>
+                <p className="text-[11px] text-zinc-500">Connect with students &amp; staff</p>
+              </div>
+            </div>
+
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
+              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                <BarChart2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Track Progress</h4>
+                <p className="text-[11px] text-zinc-500">Monitor performance</p>
+              </div>
+            </div>
+
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '500ms' } as React.CSSProperties}
+              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2 col-span-2 md:col-span-1"
+            >
+              <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Secure &amp; Reliable</h4>
+                <p className="text-[11px] text-zinc-500">Your data, our priority</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 5. Perspectives Section (perspectives-surface: obsidian #080808) */}
-      <section id="perspectives" className="py-12 sm:py-16 lg:py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 bg-[#080808]">
-        <div className="max-w-3xl mb-8 sm:mb-12 lg:mb-14 text-left">
-          {/* Kicker */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase mb-2 sm:mb-3 shadow-[0_0_12px_rgba(212,21,20,0.2)]">
-            <span>MADE FOR CAMPUS LIFE</span>
+      {/* ============================================================== */}
+      {/* 4. DESIGNED FOR MODERN EDUCATION (6 Key Modules + Illustration) */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-white" id="features">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div className="max-w-2xl text-left">
+              <span
+                data-reveal
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Powerful Features</span>
+              </span>
+              <h2
+                data-reveal
+                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
+              >
+                Designed for Modern Education
+              </h2>
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-sm sm:text-base text-zinc-500 mt-2"
+              >
+                Everything you need to manage, teach, and grow — all in one modern platform.
+              </p>
+            </div>
           </div>
 
-          {/* Title */}
-          <h2 className="font-fraunces font-bold text-white text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
-            One experience. Many ways to thrive.
-          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Card 1: Live & Recorded Classes */}
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
+              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
+                  <Video className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Live &amp; Recorded Classes</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Teach and share knowledge anywhere, anytime with enterprise WebRTC audio/video and interactive whiteboard classrooms.
+                </p>
+              </div>
+              <button
+                onClick={() => launchDemoMode('professor')}
+                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Learn More</span>
+                <span>→</span>
+              </button>
+            </div>
 
-          {/* Description */}
-          <p className="mt-2.5 sm:mt-4 text-[#CDCBCA] text-sm sm:text-base lg:text-[17px] leading-relaxed">
-            Imagine a simpler day for everyone who makes a campus work.
-          </p>
+            {/* Card 2: Assignments & Exams */}
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Assignments &amp; Exams</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Create, distribute, and grade assignments easily with rubric scoring, SpeedGrader reviews, and deadline management.
+                </p>
+              </div>
+              <button
+                onClick={() => launchDemoMode('student')}
+                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Learn More</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            {/* Card 3: Student Management */}
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
+              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Student Management</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Manage cohorts, rosters, departments, and enrollment. Rollover academic terms with single-click batch migrations.
+                </p>
+              </div>
+              <button
+                onClick={() => launchDemoMode('admin')}
+                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Learn More</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            {/* Card 4: Real-Time Collaboration */}
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
+              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Real-Time Collaboration</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Channel posts, threaded discussions, and direct messages powered by instant real-time synchronization.
+                </p>
+              </div>
+              <button
+                onClick={() => launchDemoMode('student')}
+                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Learn More</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            {/* Card 5: Resource Library */}
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '500ms' } as React.CSSProperties}
+              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <FolderOpen className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Resource Library</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Upload, preview, and download PDFs, code files, lecture slides, and media with in-browser previewers.
+                </p>
+              </div>
+              <button
+                onClick={() => launchDemoMode('professor')}
+                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Learn More</span>
+                <span>→</span>
+              </button>
+            </div>
+
+            {/* Card 6: Progress Analytics */}
+            <div
+              data-reveal
+              style={{ '--reveal-delay': '600ms' } as React.CSSProperties}
+              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <BarChart2 className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Progress Analytics</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Track individual and cohort performance, submission rates, attendance, and grade point distributions in real-time.
+                </p>
+              </div>
+              <button
+                onClick={() => launchDemoMode('admin')}
+                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Learn More</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* 3 Perspective Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {/* Card 1: Student perspective */}
-          <div className="bg-[#0f0f11] border-2 border-[#CDCBCA]/20 hover:border-[#D41514]/70 rounded-2xl p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
-            <p className="text-[#CDCBCA] group-hover:text-white text-sm sm:text-[15px] leading-relaxed italic transition-colors">
-              &quot;Lectures, team chats, feedback, and files—without the search across five different tools.&quot;
-            </p>
-            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center justify-between">
-              <div className="text-white group-hover:text-[#D41514] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
-                Student perspective
-              </div>
-              <span className="w-2 h-2 rounded-full bg-[#D41514] opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_#D41514]" />
-            </div>
-          </div>
-
-          {/* Card 2: Faculty perspective */}
-          <div className="bg-[#0f0f11] border-2 border-[#CDCBCA]/20 hover:border-[#D41514]/70 rounded-2xl p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
-            <p className="text-[#CDCBCA] group-hover:text-white text-sm sm:text-[15px] leading-relaxed italic transition-colors">
-              &quot;One calm place to plan a class, support students, and stay connected to colleagues.&quot;
-            </p>
-            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center justify-between">
-              <div className="text-white group-hover:text-[#D41514] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
-                Faculty perspective
-              </div>
-              <span className="w-2 h-2 rounded-full bg-[#D41514] opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_#D41514]" />
-            </div>
-          </div>
-
-          {/* Card 3: IT perspective */}
-          <div className="bg-[#0f0f11] border-2 border-[#CDCBCA]/20 hover:border-[#D41514]/70 rounded-2xl p-5 sm:p-7 shadow-[0_4px_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(212,21,20,0.2)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between group">
-            <p className="text-[#CDCBCA] group-hover:text-white text-sm sm:text-[15px] leading-relaxed italic transition-colors">
-              &quot;A clearer starting point for bringing people and campus workflows together.&quot;
-            </p>
-            <div className="mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-[#CDCBCA]/15 flex items-center justify-between">
-              <div className="text-white group-hover:text-[#D41514] font-black text-xs sm:text-[13px] tracking-wide uppercase transition-colors">
-                IT perspective
-              </div>
-              <span className="w-2 h-2 rounded-full bg-[#D41514] opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_#D41514]" />
-            </div>
-          </div>
-        </div>
-
-        {/* sample-note */}
-        <p className="text-center text-[#8E8C8B] text-[11px] sm:text-[12px] mt-6 sm:mt-8">
-          Illustrative perspectives only; these are not customer endorsements.
-        </p>
       </section>
 
-      {/* 6. Pricing Section (pricing-surface: obsidian #0a0a0c) */}
-      <section
-        id="pricing"
-        className="py-12 sm:py-16 lg:py-24 border-t border-[#CDCBCA]/15 px-3 xs:px-4 sm:px-6 lg:px-8 xl:px-12 bg-[#0a0a0c]"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="max-w-3xl mb-8 sm:mb-12 lg:mb-14 text-left">
-            {/* Kicker */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D41514]/12 border border-[#D41514]/30 text-[#D41514] font-black text-[10px] sm:text-[11px] tracking-[0.18em] uppercase mb-2 sm:mb-3 shadow-[0_0_12px_rgba(212,21,20,0.2)]">
-              <span>CAMPUS PLANS</span>
-            </div>
-
-            {/* Title */}
-            <h2 className="font-fraunces font-bold text-white text-2xl sm:text-3xl lg:text-[40px] leading-tight tracking-tight">
-              Room to grow, at every scale.
+      {/* ============================================================== */}
+      {/* 5. EMPOWERING EDUCATION, TOGETHER (3 Role Solutions)          */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-gradient-to-b from-white via-indigo-50/30 to-white" id="solutions">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span
+              data-reveal
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Solutions for Every Need</span>
+            </span>
+            <h2
+              data-reveal
+              style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+              className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
+            >
+              Empowering Education, Together
             </h2>
-
-            {/* Description */}
-            <p className="mt-2.5 sm:mt-4 text-[#CDCBCA] text-sm sm:text-base lg:text-[17px] leading-relaxed">
-              Explore example plans for a small team, a connected campus, or an entire institution.
+            <p
+              data-reveal
+              style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+              className="text-sm sm:text-base text-zinc-500 mt-2"
+            >
+              Whether you are an administrator, teacher, or student — ProSchool is designed for you.
             </p>
           </div>
 
-          {/* 3 Pricing Cards Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
-            {/* Tier 1: Starter */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Persona 1: Administrators */}
             <div
-              onClick={() => setShowRequestModal(true)}
-              className="plan-card bg-[#0f0f12] border-2 border-[#CDCBCA]/25 hover:border-[#CDCBCA]/70 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.6)] hover:shadow-[0_0_35px_rgba(205,203,202,0.15)] flex flex-col justify-between transition-all duration-300 ease-out group relative overflow-hidden cursor-pointer"
+              data-reveal
+              style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
+              className="feature-card p-6 sm:p-7 bg-white rounded-2xl border border-zinc-200/90 shadow-sm flex flex-col justify-between"
             >
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#CDCBCA]/30 group-hover:bg-[#CDCBCA] transition-colors duration-300" />
-              <div>
-                <h3 className="font-black text-lg sm:text-[20px] text-white group-hover:text-[#CDCBCA] transition-colors">
-                  Starter
-                </h3>
-                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-white leading-none">
-                  Free
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-[#4F46E5] flex items-center justify-center shadow-2xs">
+                  <Building2 className="w-6 h-6" />
                 </div>
-                <div className="text-xs sm:text-[13px] text-[#8E8C8B] mt-1 sm:mt-1.5">
-                  For clubs and small departments
-                </div>
-
-                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15 space-y-3 sm:space-y-3.5">
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#CDCBCA] text-[#CDCBCA] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Up to 100 users</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#CDCBCA] text-[#CDCBCA] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Core collaboration tools</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#CDCBCA] text-[#CDCBCA] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Shared workspace</span>
-                  </div>
-                </div>
+                <h3 className="text-lg font-bold text-zinc-900">For Administrators</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Manage your institution efficiently with role-based access control, departmental cohort allocation, and automated semester rollovers.
+                </p>
+                <ul className="text-xs text-zinc-600 space-y-1.5 pt-1">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#4F46E5]" />
+                    <span>Multi-faculty department management</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#4F46E5]" />
+                    <span>Granular RBAC access controls</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#4F46E5]" />
+                    <span>Institutional audit trails</span>
+                  </li>
+                </ul>
               </div>
-
-              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowRequestModal(true);
-                  }}
-                  className="btn-hive-silver w-full py-3.5 px-6 rounded-full bg-[#161619] hover:bg-[#202024] text-[#CDCBCA] hover:text-white border border-[#CDCBCA]/30 hover:border-[#CDCBCA]/70 text-sm sm:text-[15px] font-black shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Request Starter Access</span>
-                  <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-                </button>
-              </div>
+              <button
+                onClick={() => launchDemoMode('admin')}
+                className="mt-6 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+              >
+                <span>Launch Admin Preview</span>
+                <span>→</span>
+              </button>
             </div>
 
-            {/* Tier 2: Campus Pro (Featured Plan) */}
+            {/* Persona 2: Teachers */}
             <div
-              onClick={() => setShowRequestModal(true)}
-              className="plan-card plan-card-featured bg-gradient-to-b from-[#141418] via-[#0f0f13] to-[#0a0a0d] border-2 border-[#D41514] hover:border-[#ea201f] ring-4 ring-[#D41514]/25 hover:ring-[#D41514]/40 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(212,21,20,0.3)] hover:shadow-[0_0_70px_rgba(212,21,20,0.45)] flex flex-col justify-between relative transform lg:-translate-y-2 lg:hover:-translate-y-4 transition-all duration-300 ease-out group overflow-hidden cursor-pointer"
+              data-reveal
+              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
+              className="feature-card p-6 sm:p-7 bg-white rounded-2xl border border-zinc-200/90 shadow-sm flex flex-col justify-between"
             >
-              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#CDCBCA]" />
-
-              {/* pro-badge */}
-              <div className="absolute -top-3.5 left-6 sm:left-8 bg-gradient-to-r from-[#D41514] to-[#a30b0a] text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-4 py-1 rounded-full shadow-[0_0_15px_rgba(212,21,20,0.6)] group-hover:shadow-[0_0_20px_rgba(212,21,20,0.8)] transition-all">
-                Featured plan
-              </div>
-
-              <div>
-                <h3 className="font-black text-lg sm:text-[20px] text-white group-hover:text-[#CDCBCA] transition-colors">
-                  Campus Pro
-                </h3>
-                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-white group-hover:text-[#D41514] leading-none transition-colors">
-                  $6 / student / mo
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-2xs">
+                  <GraduationCap className="w-6 h-6" />
                 </div>
-                <div className="text-xs sm:text-[13px] text-[#8E8C8B] mt-1 sm:mt-1.5">
-                  Illustrative annual pricing
-                </div>
-
-                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-[#D41514]/30 space-y-3 sm:space-y-3.5">
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
-                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Full Teams experience</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
-                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Virtual lectures</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
-                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Learning workflows</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-white font-medium">
-                    <div className="w-5 h-5 rounded-full bg-[#D41514]/20 border border-[#D41514]/50 group-hover:bg-[#D41514] text-[#D41514] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Study assistance</span>
-                  </div>
-                </div>
+                <h3 className="text-lg font-bold text-zinc-900">For Teachers</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Create engaging classes, track progress, distribute coursework, and grade with SpeedGrader and criterion rubrics in seconds.
+                </p>
+                <ul className="text-xs text-zinc-600 space-y-1.5 pt-1">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Interactive lecture channels</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-purple-600" />
+                    <span>SpeedGrader™ grading workflow</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Direct student &amp; group messaging</span>
+                  </li>
+                </ul>
               </div>
-
-              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#D41514]/30">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowRequestModal(true);
-                  }}
-                  className="btn-hive-crimson w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#D41514] via-[#ea201f] to-[#b80f0e] hover:from-[#ea201f] hover:to-[#9f0a09] text-white text-sm sm:text-[15px] font-black shadow-[0_0_30px_rgba(212,21,20,0.55)] hover:shadow-[0_0_45px_rgba(212,21,20,0.75)] border border-[#D41514]/60 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Request Campus Access</span>
-                  <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-                </button>
-              </div>
+              <button
+                onClick={() => launchDemoMode('professor')}
+                className="mt-6 text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Launch Teacher Preview</span>
+                <span>→</span>
+              </button>
             </div>
 
-            {/* Tier 3: Enterprise University */}
+            {/* Persona 3: Students */}
             <div
-              onClick={() => setShowRequestModal(true)}
-              className="plan-card bg-[#0f0f12] border-2 border-[#CDCBCA]/25 hover:border-[#D41514]/60 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.6)] hover:shadow-[0_0_35px_rgba(212,21,20,0.2)] flex flex-col justify-between transition-all duration-300 ease-out group relative overflow-hidden cursor-pointer"
+              data-reveal
+              style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
+              className="feature-card p-6 sm:p-7 bg-white rounded-2xl border border-zinc-200/90 shadow-sm flex flex-col justify-between"
             >
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#CDCBCA]/30 group-hover:bg-[#D41514] transition-colors duration-300" />
-              <div>
-                <h3 className="font-black text-lg sm:text-[20px] text-white group-hover:text-[#CDCBCA] transition-colors">
-                  Enterprise University
-                </h3>
-                <div className="mt-3 sm:mt-4 font-black text-2xl sm:text-[34px] text-white leading-none">
-                  Custom
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center shadow-2xs">
+                  <Users className="w-6 h-6" />
                 </div>
-                <div className="text-xs sm:text-[13px] text-[#8E8C8B] mt-1 sm:mt-1.5">
-                  For larger institutions
-                </div>
-
-                <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15 space-y-3 sm:space-y-3.5">
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Multi-campus planning</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Institutional integrations</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Governance considerations</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-xs sm:text-[14px] text-[#CDCBCA]">
-                    <div className="w-5 h-5 rounded-full bg-[#18181b] border border-[#CDCBCA]/30 group-hover:border-[#D41514] text-[#CDCBCA] group-hover:text-[#D41514] flex items-center justify-center transition-colors shrink-0">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Dedicated support options</span>
-                  </div>
-                </div>
+                <h3 className="text-lg font-bold text-zinc-900">For Students</h3>
+                <p className="text-xs text-zinc-600 leading-relaxed">
+                  Access course resources, submit homework, collaborate on team assignments, and stay synchronized with deadline calendars.
+                </p>
+                <ul className="text-xs text-zinc-600 space-y-1.5 pt-1">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Unified class noticeboards</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Instant file preview &amp; uploads</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Timetable &amp; submission alerts</span>
+                  </li>
+                </ul>
               </div>
-
-              <div className="mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#CDCBCA]/15">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowRequestModal(true);
-                  }}
-                  className="btn-hive w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-[#141417] via-[#1a1a1f] to-[#141417] hover:from-[#D41514] hover:to-[#b80f0e] text-[#CDCBCA] hover:text-white text-sm sm:text-[15px] font-black border border-[#CDCBCA]/30 hover:border-[#D41514] shadow-sm transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Inquire for Institution</span>
-                  <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-                </button>
-              </div>
+              <button
+                onClick={() => launchDemoMode('student')}
+                className="mt-6 text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Launch Student Preview</span>
+                <span>→</span>
+              </button>
             </div>
           </div>
-
-          {/* pricing-note */}
-          <p className="text-center text-[#8E8C8B] text-[11px] sm:text-[12px] mt-6 sm:mt-8">
-            Plans and prices shown are illustrative, not a live offer.
-          </p>
         </div>
       </section>
 
-      {/* 7. Footer (footer-surface: obsidian #050505) */}
-      <footer className="bg-[#050505] text-[#CDCBCA] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 xl:px-12 border-t border-[#CDCBCA]/15">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 md:gap-10">
-            {/* Brand & Slogan */}
-            <div className="space-y-1.5 sm:space-y-2">
-              <div className="flex items-center gap-2.5">
-                <ProCollegeLogo size="md" variant="crimson-text" />
+      {/* ============================================================== */}
+      {/* 6. EVERYTHING YOU NEED IN ONE PLACE (Interactive Dashboard UI) */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-white border-t border-zinc-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-5 space-y-6 text-left">
+              <span
+                data-reveal
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>All-in-One Education Platform</span>
+              </span>
+
+              <h2
+                data-reveal
+                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight"
+              >
+                Everything You Need in One Place
+              </h2>
+
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-sm sm:text-base text-zinc-600 leading-relaxed"
+              >
+                From virtual classrooms to student management, ProSchool helps you work smarter, not harder.
+              </p>
+
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
+                className="space-y-3 text-xs sm:text-sm text-zinc-700"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Conduct live &amp; recorded classes</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Share resources &amp; announcements</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Manage assignments &amp; deadlines</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Communicate with students &amp; parents</span>
+                </div>
               </div>
-              <div className="text-xs sm:text-[13px] text-[#8E8C8B] font-normal pt-1">
-                Your College, Smarter.
+
+              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="px-6 py-3 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-colors cursor-pointer"
+                >
+                  Explore All Features →
+                </button>
               </div>
             </div>
 
-            {/* Navigation Columns */}
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-4 sm:gap-8 lg:gap-12 text-xs sm:text-[14px]">
-              <button
-                onClick={() => scrollTo('solutions')}
-                className="text-left hover:text-white transition-colors cursor-pointer"
+            {/* Right Detailed Dashboard Mockup */}
+            <div className="lg:col-span-7" data-reveal="right">
+              <div className="bg-white border border-zinc-200 rounded-3xl p-4 sm:p-6 shadow-[0_20px_50px_rgba(79,70,229,0.08)] space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#4F46E5] text-white flex items-center justify-center font-bold text-xs">
+                      P
+                    </div>
+                    <span className="font-bold text-xs text-zinc-900">ProSchool Workspace</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-zinc-400">Term: Fall 2026</span>
+                </div>
+
+                {/* Main Inside Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                  {/* Left Column Stats */}
+                  <div className="sm:col-span-7 space-y-3">
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-3.5 rounded-2xl border border-indigo-100">
+                      <p className="text-xs text-indigo-950 font-bold">Good Morning, Teacher! 👋</p>
+                      <p className="text-[11px] text-zinc-500">Ready for today's classes?</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-xl text-center">
+                        <span className="text-[10px] text-blue-700 font-semibold block">Students</span>
+                        <span className="text-base font-black text-blue-950">2,850</span>
+                      </div>
+                      <div className="p-2.5 bg-rose-50/70 border border-rose-100 rounded-xl text-center">
+                        <span className="text-[10px] text-rose-700 font-semibold block">Classes</span>
+                        <span className="text-base font-black text-rose-950">24</span>
+                      </div>
+                      <div className="p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-xl text-center">
+                        <span className="text-[10px] text-emerald-700 font-semibold block">Tasks</span>
+                        <span className="text-base font-black text-emerald-950">12</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-zinc-50 border border-zinc-200/80 rounded-xl space-y-1">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase">Next Lecture</span>
+                      <p className="text-xs font-bold text-zinc-900">Computer Science • Algorithms</p>
+                      <p className="text-[10px] text-zinc-500">10:00 AM – 11:30 AM (Room 204)</p>
+                    </div>
+                  </div>
+
+                  {/* Right Calendar Simulation */}
+                  <div className="sm:col-span-5 bg-zinc-50/70 border border-zinc-200/80 rounded-2xl p-3 text-xs space-y-2">
+                    <div className="flex items-center justify-between font-bold text-zinc-800 text-[11px]">
+                      <span>November 2026</span>
+                      <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-zinc-400 font-mono">
+                      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono">
+                      <span className="text-zinc-300">28</span><span className="text-zinc-300">29</span><span className="text-zinc-300">30</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">1</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">2</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">3</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">4</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">5</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">6</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">7</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">8</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">9</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">10</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">11</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">12</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">13</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">14</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">15</span>
+                      <span className="p-1 rounded bg-[#4F46E5] text-white font-bold">16</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">17</span>
+                      <span className="p-1 rounded hover:bg-zinc-200">18</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 7. BUILT FOR INSTITUTIONS OF ALL SIZES                         */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-[#FAF8FF]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              <span
+                data-reveal
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80"
               >
-                Solutions
-              </button>
-              <button
-                onClick={() => scrollTo('features')}
-                className="text-left hover:text-white transition-colors cursor-pointer"
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Flexible &amp; Scalable</span>
+              </span>
+
+              <h2
+                data-reveal
+                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight"
               >
-                Features
-              </button>
-              <button
-                onClick={() => scrollTo('perspectives')}
-                className="text-left hover:text-white transition-colors cursor-pointer"
+                Built for Institutions of All Sizes
+              </h2>
+
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-sm sm:text-base text-zinc-600 leading-relaxed"
               >
-                Perspectives
-              </button>
-              <button
-                onClick={() => scrollTo('pricing')}
-                className="text-left hover:text-white transition-colors cursor-pointer"
+                Whether it's a small college or a large university, ProSchool scales with your needs.
+              </p>
+
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
+                className="space-y-3 text-xs sm:text-sm text-zinc-700"
               >
-                Pricing
-              </button>
-              <button
-                onClick={() => setShowRequestModal(true)}
-                className="text-left px-3.5 py-1.5 rounded-full bg-[#D41514]/15 hover:bg-[#D41514] text-[#D41514] hover:text-white border border-[#D41514]/40 font-bold text-xs transition-all cursor-pointer shadow-[0_0_12px_rgba(212,21,20,0.25)] self-start"
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">Easy setup &amp; onboarding</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">Highly customizable departmental structures</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span className="font-medium">24/7 technical support &amp; SLAs</span>
+                </div>
+              </div>
+
+              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="px-6 py-3 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-colors cursor-pointer"
+                >
+                  Learn More →
+                </button>
+              </div>
+            </div>
+
+            {/* Right Campus Architecture Visual */}
+            <div className="lg:col-span-6" data-reveal="right">
+              <div className="relative rounded-3xl overflow-hidden border border-zinc-200 shadow-xl group">
+                <img
+                  src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80"
+                  alt="Modern Campus Architecture"
+                  className="w-full h-80 sm:h-96 object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-end p-6 sm:p-8">
+                  <div className="text-white space-y-1">
+                    <p className="font-bold text-sm sm:text-base">Modern Educational Infrastructure</p>
+                    <p className="text-xs text-white/80">Serving 500+ Institutions across Nepal</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 8. LEARN. COLLABORATE. ACHIEVE ANYWHERE. (Mobile Experience)   */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-white border-t border-zinc-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Smartphone Mockup */}
+            <div className="lg:col-span-6 flex justify-center" data-reveal="left">
+              <div className="w-72 sm:w-80 bg-zinc-900 p-3 rounded-[40px] shadow-[0_25px_60px_rgba(79,70,229,0.15)] border-4 border-zinc-800">
+                {/* Phone Screen */}
+                <div className="bg-white rounded-[32px] overflow-hidden p-4 space-y-4">
+                  {/* Status Bar */}
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-bold px-1">
+                    <span>9:41</span>
+                    <div className="flex items-center gap-1">
+                      <span>5G</span>
+                      <div className="w-4 h-2 bg-zinc-800 rounded-sm" />
+                    </div>
+                  </div>
+
+                  {/* App Bar */}
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-sm text-[#4F46E5]">ProSchool</span>
+                    <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center text-[10px] font-bold text-indigo-700">
+                      AJ
+                    </div>
+                  </div>
+
+                  {/* My Classes */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-zinc-900 block">My Classes</span>
+                    <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-xs text-indigo-950">Computer Science</p>
+                        <p className="text-[10px] text-indigo-600">Today, 10:00 AM</p>
+                      </div>
+                      <span className="px-2 py-1 bg-[#4F46E5] text-white rounded-lg text-[10px] font-bold">
+                        Join
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Assignments */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-bold text-zinc-900 block">Assignments</span>
+                    <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80">
+                      <p className="font-bold text-xs text-zinc-900">DSA Assignment 3</p>
+                      <p className="text-[10px] text-rose-600 font-semibold mt-0.5">Due: Aug 15, 2026</p>
+                    </div>
+                  </div>
+
+                  {/* Notifications */}
+                  <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-100 flex items-center gap-2">
+                    <Megaphone className="w-3.5 h-3.5 text-purple-600" />
+                    <span className="text-[10px] text-purple-900 font-medium">2 new class announcements</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Text & Feature Checks */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              <span
+                data-reveal
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80"
               >
-                Request Access ↗
-              </button>
-              <button
-                onClick={() => launchDemoMode()}
-                className="text-left px-3.5 py-1.5 rounded-full bg-[#CDCBCA]/12 hover:bg-[#CDCBCA] text-[#CDCBCA] hover:text-[#080808] border border-[#CDCBCA]/30 font-bold text-xs transition-all cursor-pointer shadow-xs self-start"
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>On the Go</span>
+              </span>
+
+              <h2
+                data-reveal
+                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight"
               >
-                Access Workspace Portal →
-              </button>
+                Learn. Collaborate. <br />
+                <span className="text-[#4F46E5]">Achieve Anywhere.</span>
+              </h2>
+
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-sm sm:text-base text-zinc-600 leading-relaxed"
+              >
+                Access ProSchool from any device, anytime, and stay connected with your campus community.
+              </p>
+
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
+                className="space-y-3 text-xs sm:text-sm text-zinc-700"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Mobile Friendly for iOS &amp; Android devices</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Real-time push notifications for exams &amp; meetings</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-[#4F46E5] flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Seamless offline-first synchronized experience</span>
+                </div>
+              </div>
+
+              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
+                <button
+                  onClick={() => launchDemoMode('student')}
+                  className="px-6 py-3 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-colors cursor-pointer"
+                >
+                  Download App →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 9. OUR HAPPY COMMUNITY (Partner Logos Strip)                   */}
+      {/* ============================================================== */}
+      <section className="py-14 bg-zinc-50/70 border-y border-zinc-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <div>
+            <h3 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">Our Happy Community</h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              Join a growing network of educational institutions using ProSchool.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 pt-2 opacity-80">
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
+              <Building2 className="w-4 h-4 text-[#4F46E5]" />
+              <span>Kathmandu College</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
+              <GraduationCap className="w-4 h-4 text-[#4F46E5]" />
+              <span>Himalayan College</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
+              <BookOpen className="w-4 h-4 text-[#4F46E5]" />
+              <span>Nepal College of IT</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
+              <Award className="w-4 h-4 text-[#4F46E5]" />
+              <span>United College Nepal</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 bg-white px-4 py-2.5 rounded-xl border border-zinc-200/80 shadow-2xs">
+              <Compass className="w-4 h-4 text-[#4F46E5]" />
+              <span>Everest Academy</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 10. WHAT OUR PARTNERS SAY (Testimonial & Metrics)               */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-white" id="testimonials">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-left mb-10">
+            <span
+              data-reveal
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>Trusted by Educational Institutions</span>
+            </span>
+            <h2
+              data-reveal
+              style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+              className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
+            >
+              What Our Partners Say
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            {/* Left Testimonial Card */}
+            <div
+              data-reveal="left"
+              className="lg:col-span-7 bg-zinc-50 border border-zinc-200/90 rounded-3xl p-6 sm:p-8 flex flex-col justify-between shadow-xs"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center gap-1 text-amber-400">
+                  <Star className="w-4 h-4 fill-amber-400" />
+                  <Star className="w-4 h-4 fill-amber-400" />
+                  <Star className="w-4 h-4 fill-amber-400" />
+                  <Star className="w-4 h-4 fill-amber-400" />
+                  <Star className="w-4 h-4 fill-amber-400" />
+                </div>
+                <blockquote className="text-sm sm:text-base text-zinc-700 italic leading-relaxed">
+                  "ProSchool has completely transformed the way we manage our college. The platform is easy to use, reliable, and packed with features that keep our students and lecturers aligned."
+                </blockquote>
+              </div>
+
+              <div className="flex items-center gap-3.5 pt-6 mt-6 border-t border-zinc-200/60">
+                <img
+                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80"
+                  alt="Dr. Ramesh Bhandari"
+                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-2xs"
+                />
+                <div>
+                  <p className="font-bold text-sm text-zinc-900">Dr. Ramesh Bhandari</p>
+                  <p className="text-xs text-zinc-500">Principal, Kathmandu College</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Metric Cards */}
+            <div className="lg:col-span-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4" data-reveal="right">
+              <div className="p-6 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+                <div>
+                  <span className="text-3xl font-black text-[#4F46E5] block">500+</span>
+                  <span className="text-xs text-zinc-600 font-semibold mt-1 block">Active Institutions</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-[#4F46E5] flex items-center justify-center">
+                  <Building2 className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center justify-between">
+                <div>
+                  <span className="text-3xl font-black text-blue-600 block">100K+</span>
+                  <span className="text-xs text-zinc-600 font-semibold mt-1 block">Students &amp; Faculty</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between sm:col-span-2 lg:col-span-1">
+                <div>
+                  <span className="text-3xl font-black text-emerald-600 block">99.9%</span>
+                  <span className="text-xs text-zinc-600 font-semibold mt-1 block">Platform Uptime SLA</span>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 11. FREQUENTLY ASKED QUESTIONS (Accordion & Support Card)       */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-[#FAF8FF] border-t border-zinc-100" id="faq">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            {/* Left FAQ Accordion */}
+            <div className="lg:col-span-8 space-y-4 text-left">
+              <div>
+                <span
+                  data-reveal
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>FAQ</span>
+                </span>
+                <h2
+                  data-reveal
+                  style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                  className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
+                >
+                  Frequently Asked Questions
+                </h2>
+                <p
+                  data-reveal
+                  style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                  className="text-xs sm:text-sm text-zinc-500 mt-1"
+                >
+                  Find answers to common questions about ProSchool.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-4">
+                {[
+                  {
+                    q: 'Is ProSchool free for educational institutions?',
+                    a: 'Yes! We offer a generous free trial and deeply discounted, affordable subscription plans tailored specifically for schools, colleges, and university departments across Nepal and South Asia.'
+                  },
+                  {
+                    q: 'Can I use ProSchool on mobile devices?',
+                    a: 'Absolutely. ProSchool works smoothly across all modern web browsers on smartphones, tablets, laptops, and desktops with an adaptive, responsive mobile interface.'
+                  },
+                  {
+                    q: 'Is our student and academic data secure?',
+                    a: 'Yes. All messages, student records, assignments, and exam grades are protected with end-to-end encrypted transport, multi-tenant database isolation, and role-based permissions.'
+                  },
+                  {
+                    q: 'How do we request onboarding or support?',
+                    a: 'You can submit an institutional inquiry via the Request Campus Deployment button, and our deployment engineers will set up your college workspace within 24 hours.'
+                  }
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="bg-white border border-zinc-200/90 rounded-2xl overflow-hidden transition-all shadow-2xs"
+                  >
+                    <button
+                      onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                      className="w-full p-4 sm:p-5 text-left font-bold text-xs sm:text-sm text-zinc-900 flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-50"
+                    >
+                      <span>{item.q}</span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${
+                          activeFaq === idx ? 'rotate-180 text-[#4F46E5]' : ''
+                        }`}
+                      />
+                    </button>
+                    {activeFaq === idx && (
+                      <div className="px-4 sm:px-5 pb-5 text-xs text-zinc-600 leading-relaxed border-t border-zinc-100 pt-3">
+                        {item.a}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Need Help Card */}
+            <div className="lg:col-span-4" data-reveal="right">
+              <div className="bg-white border border-zinc-200/90 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-sm">
+                <div className="w-14 h-14 rounded-full bg-purple-50 text-[#4F46E5] flex items-center justify-center mx-auto border border-purple-100">
+                  <Headphones className="w-7 h-7" />
+                </div>
+                <h3 className="font-bold text-base text-zinc-900">Need Help?</h3>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Our dedicated educational support team is here to assist your administrators and educators 24/7.
+                </p>
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="w-full py-2.5 px-4 rounded-xl border border-[#4F46E5] text-[#4F46E5] hover:bg-indigo-50 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Contact Support →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 12. LET'S BUILD A SMARTER LEARNING COMMUNITY (CTA Banner)      */}
+      {/* ============================================================== */}
+      <section className="py-14 sm:py-20 bg-white" id="pricing">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            data-reveal
+            className="rounded-3xl bg-gradient-to-r from-[#4F46E5] via-[#5B4FF5] to-[#3730A3] text-white p-8 sm:p-14 text-center relative overflow-hidden shadow-2xl space-y-6"
+          >
+            {/* Background Accent Wave */}
+            <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-900/40 blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 max-w-2xl mx-auto space-y-4">
+              <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+                Let's Build a Smarter <br />
+                Learning Community Together
+              </h2>
+              <p className="text-xs sm:text-base text-indigo-100 leading-relaxed">
+                Get started today and empower your campus with ProSchool.
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="px-7 sm:px-8 py-3.5 sm:py-4 bg-white text-[#4F46E5] hover:bg-zinc-50 rounded-xl font-bold text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  Get Started Free →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 13. FOOTER (Professional Clean SaaS Footer)                    */}
+      {/* ============================================================== */}
+      <footer className="bg-white border-t border-zinc-200/80 pt-14 pb-8 text-zinc-600 text-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+            {/* Col 1: Brand & Tagline */}
+            <div className="col-span-2 space-y-3">
+              <ProCollegeLogo size="md" brandName="ProSchool" showSlogan={true} />
+              <p className="text-xs text-zinc-500 max-w-sm leading-relaxed mt-2">
+                ProSchool is the premier education management and classroom collaboration platform engineered for colleges, universities, and schools.
+              </p>
+              <div className="flex items-center gap-3 pt-2 text-zinc-400">
+                <span className="hover:text-[#4F46E5] cursor-pointer">LinkedIn</span>
+                <span>•</span>
+                <span className="hover:text-[#4F46E5] cursor-pointer">Discord</span>
+                <span>•</span>
+                <span className="hover:text-[#4F46E5] cursor-pointer">X</span>
+                <span>•</span>
+                <span className="hover:text-[#4F46E5] cursor-pointer">Facebook</span>
+              </div>
+            </div>
+
+            {/* Col 2: Product */}
+            <div className="space-y-2.5">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900">Product</h4>
+              <ul className="space-y-2 text-zinc-500">
+                <li><button onClick={() => scrollTo('features')} className="hover:text-[#4F46E5]">Features</button></li>
+                <li><button onClick={() => scrollTo('solutions')} className="hover:text-[#4F46E5]">Solutions</button></li>
+                <li><button onClick={() => scrollTo('pricing')} className="hover:text-[#4F46E5]">Pricing</button></li>
+                <li><button onClick={() => launchDemoMode('student')} className="hover:text-[#4F46E5]">Live Demo</button></li>
+              </ul>
+            </div>
+
+            {/* Col 3: Resources */}
+            <div className="space-y-2.5">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900">Resources</h4>
+              <ul className="space-y-2 text-zinc-500">
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-[#4F46E5]">Documentation</button></li>
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-[#4F46E5]">Help Center</button></li>
+                <li><button onClick={() => scrollTo('testimonials')} className="hover:text-[#4F46E5]">Community</button></li>
+                <li><button onClick={() => scrollTo('faq')} className="hover:text-[#4F46E5]">FAQs</button></li>
+              </ul>
+            </div>
+
+            {/* Col 4: Company */}
+            <div className="space-y-2.5">
+              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900">Company</h4>
+              <ul className="space-y-2 text-zinc-500">
+                <li><button onClick={() => scrollTo('home')} className="hover:text-[#4F46E5]">About Us</button></li>
+                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-[#4F46E5]">Contact</button></li>
+                <li><button onClick={() => setShowRequestModal(true)} className="hover:text-[#4F46E5]">Campus Deployments</button></li>
+                <li><button onClick={() => setShowSignInModal(true)} className="hover:text-[#4F46E5]">Portal Access</button></li>
+              </ul>
             </div>
           </div>
 
-          {/* Concept Note & Copyright */}
-          <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-[#CDCBCA]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[11px] sm:text-[12px] text-[#8E8C8B]">
-            <p className="leading-relaxed">
-              Website concept: platform access, purchases, trials, and sales requests are managed via institutional onboarding agreements.
-            </p>
-            <p className="shrink-0 font-medium text-[#CDCBCA]">
-              © 2026 ProCollege. Your College, Smarter.
-            </p>
+          {/* Bottom Copyright & Legal */}
+          <div className="pt-8 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-400">
+            <p>© 2026 ProSchool. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <span className="hover:text-zinc-600 cursor-pointer">Privacy Policy</span>
+              <span className="hover:text-zinc-600 cursor-pointer">Terms of Service</span>
+              <span className="hover:text-zinc-600 cursor-pointer">Security Overview</span>
+            </div>
           </div>
         </div>
       </footer>
 
-      {/* 8. Institutional Access Request Modal (Contact Form) */}
+      {/* ============================================================== */}
+      {/* 14. INSTITUTIONAL REQUEST MODAL (CAMPUS DEPLOYMENT ONBOARDING)  */}
+      {/* ============================================================== */}
       {showRequestModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-4xl lg:max-w-5xl w-full p-5 sm:p-7 md:p-8 shadow-2xl border border-zinc-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
               <div className="flex items-center gap-2">
-                <ProCollegeLogo size="sm" variant="dark-text" />
+                <ProCollegeLogo size="sm" brandName="ProSchool" />
               </div>
               <button
                 onClick={() => {
@@ -1327,7 +2132,7 @@ export const PortalLanding: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Left Column: Campus Deployment Form (7 cols on desktop) */}
+                  {/* Left Column: Campus Deployment Form */}
                   <div className="lg:col-span-7">
                     <form onSubmit={handleOrgRequestSubmit} className="space-y-3 sm:space-y-3.5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1341,7 +2146,7 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.institutionName}
                             onChange={e => setOrgForm({ ...orgForm, institutionName: e.target.value })}
                             placeholder="College or University Name"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                           />
                         </div>
 
@@ -1354,7 +2159,7 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.department}
                             onChange={e => setOrgForm({ ...orgForm, department: e.target.value })}
                             placeholder="Department or Faculty Unit"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                           />
                         </div>
                       </div>
@@ -1362,15 +2167,15 @@ export const PortalLanding: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-bold text-zinc-700 mb-1">
-                            Contact Person Name & Title *
+                            Contact Person Name &amp; Title *
                           </label>
                           <input
                             type="text"
                             required
                             value={orgForm.contactName}
                             onChange={e => setOrgForm({ ...orgForm, contactName: e.target.value })}
-                            placeholder="Full Name & Academic Role"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            placeholder="Full Name &amp; Academic Role"
+                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                           />
                         </div>
 
@@ -1384,7 +2189,7 @@ export const PortalLanding: React.FC = () => {
                             value={orgForm.email}
                             onChange={e => setOrgForm({ ...orgForm, email: e.target.value })}
                             placeholder="official.email@institution.edu"
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                           />
                         </div>
                       </div>
@@ -1398,7 +2203,7 @@ export const PortalLanding: React.FC = () => {
                             <select
                               value={phoneCountryCode}
                               onChange={e => setPhoneCountryCode(e.target.value)}
-                              className="w-28 text-xs sm:text-sm border border-zinc-300 rounded-xl px-2.5 py-2.5 text-zinc-900 bg-zinc-50 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff] shrink-0 font-medium cursor-pointer"
+                              className="w-28 text-xs sm:text-sm border border-zinc-300 rounded-xl px-2.5 py-2.5 text-zinc-900 bg-zinc-50 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] shrink-0 font-medium cursor-pointer"
                             >
                               <option value="+977">+977 (NP)</option>
                               <option value="+1">+1 (US/CA)</option>
@@ -1423,7 +2228,7 @@ export const PortalLanding: React.FC = () => {
                                 setOrgForm(prev => ({ ...prev, phone: digits }));
                               }}
                               placeholder="10-digit number"
-                              className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                              className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                             />
                           </div>
                           <p className="text-[11px] text-zinc-400 mt-1">Numbers only, maximum 10 digits.</p>
@@ -1436,7 +2241,7 @@ export const PortalLanding: React.FC = () => {
                           <select
                             value={orgForm.studentCount}
                             onChange={e => setOrgForm({ ...orgForm, studentCount: Number(e.target.value) })}
-                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff] bg-white cursor-pointer"
+                            className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] bg-white cursor-pointer"
                           >
                             <option value={500}>Up to 500 students</option>
                             <option value={1500}>500 - 2,500 students</option>
@@ -1453,10 +2258,11 @@ export const PortalLanding: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
                           <label
                             onClick={() => setOrgForm({ ...orgForm, deploymentType: 'campus-pro' })}
-                            className={`p-3 rounded-xl border cursor-pointer transition-all ${orgForm.deploymentType === 'campus-pro'
-                              ? 'border-[#173bff] bg-blue-50/50 text-[#173bff] font-bold'
-                              : 'border-zinc-200 text-zinc-600'
-                              }`}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                              orgForm.deploymentType === 'campus-pro'
+                                ? 'border-[#4F46E5] bg-indigo-50/50 text-[#4F46E5] font-bold'
+                                : 'border-zinc-200 text-zinc-600'
+                            }`}
                           >
                             <div>Campus Pro ($6 / mo)</div>
                             <p className="text-[10px] text-zinc-500 font-normal mt-0.5">
@@ -1466,10 +2272,11 @@ export const PortalLanding: React.FC = () => {
 
                           <label
                             onClick={() => setOrgForm({ ...orgForm, deploymentType: 'enterprise' })}
-                            className={`p-3 rounded-xl border cursor-pointer transition-all ${orgForm.deploymentType === 'enterprise'
-                              ? 'border-[#173bff] bg-blue-50/50 text-[#173bff] font-bold'
-                              : 'border-zinc-200 text-zinc-600'
-                              }`}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                              orgForm.deploymentType === 'enterprise'
+                                ? 'border-[#4F46E5] bg-indigo-50/50 text-[#4F46E5] font-bold'
+                                : 'border-zinc-200 text-zinc-600'
+                            }`}
                           >
                             <div>Enterprise University</div>
                             <p className="text-[10px] text-zinc-500 font-normal mt-0.5">
@@ -1487,26 +2294,34 @@ export const PortalLanding: React.FC = () => {
                           rows={2}
                           value={orgForm.notes}
                           onChange={e => setOrgForm({ ...orgForm, notes: e.target.value })}
-                          placeholder="Implementation requirements, SIS integration needs, or campus specifics..."
-                          className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2 text-zinc-900 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                          placeholder="Specific requirements (e.g., student roster CSV sync, department structures)"
+                          className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2 text-zinc-900 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] resize-none"
                         />
                       </div>
 
-                      <div className="pt-2">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => launchDemoMode('student')}
+                          className="text-xs text-[#4F46E5] hover:underline font-semibold order-2 sm:order-1 cursor-pointer"
+                        >
+                          Or explore Live Demo without account →
+                        </button>
+
                         <button
                           type="submit"
                           disabled={isSubmittingRequest}
-                          className="btn-hive w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#173bff] to-[#0c2de6] text-white text-xs sm:text-sm font-black shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 group disabled:opacity-50"
+                          className="w-full sm:w-auto py-3 px-6 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#4338CA] hover:from-[#4338CA] hover:to-[#3730A3] text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer order-1 sm:order-2 disabled:opacity-50"
                         >
                           {isSubmittingRequest ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Submitting Deployment Request...</span>
+                              <span>Submitting...</span>
                             </>
                           ) : (
                             <>
-                              <span>Submit Deployment Request</span>
-                              <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                              <span>Submit Institutional Request</span>
+                              <span>→</span>
                             </>
                           )}
                         </button>
@@ -1514,125 +2329,70 @@ export const PortalLanding: React.FC = () => {
                     </form>
                   </div>
 
-                  {/* Right Column: Direct Deployment & Contact Card (5 cols on desktop) */}
-                  <div className="lg:col-span-5 bg-gradient-to-br from-[#101b46] via-[#0d173b] to-[#090f28] text-white rounded-2xl p-5 sm:p-6 border border-blue-900/50 shadow-xl flex flex-col justify-between space-y-4">
+                  {/* Right Column: Deployment Assistance Details */}
+                  <div className="lg:col-span-5 bg-zinc-50 border border-zinc-200/90 rounded-2xl p-5 sm:p-6 space-y-4">
                     <div>
-                      <div className="text-[11px] font-bold tracking-wider uppercase text-blue-400">
-                        Direct Deployment Contacts
-                      </div>
-                      <h4 className="text-base sm:text-lg font-black text-white mt-1">
-                        Connect with Our Team
+                      <span className="text-[10px] font-bold tracking-wider uppercase text-[#4F46E5] bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                        Deployment Operations
+                      </span>
+                      <h4 className="font-extrabold text-sm sm:text-base text-zinc-900 mt-2">
+                        Direct Campus Support &amp; Verification
                       </h4>
-                      <p className="text-xs text-blue-200/80 mt-1 leading-relaxed">
-                        Speak directly with our campus deployment lead for fast onboarding, agreement details, and institutional rollouts.
+                      <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                        Our regional institutional team verifies every college account before provisioning production tenants.
                       </p>
-
-                      <div className="mt-4 pt-4 border-t border-blue-800/40 space-y-3.5">
-                        {/* Name */}
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
-                            Name & Leadership
-                          </div>
-                          <div className="text-sm sm:text-base font-extrabold text-white mt-0.5">
-                            Sujan GC
-                          </div>
-                          <div className="text-[11px] text-blue-200/70">
-                            Campus Deployment & Academic Systems
-                          </div>
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
-                            Email ID
-                          </div>
-                          <a
-                            href="mailto:gcsujan321@gmail.com"
-                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-100 hover:text-white hover:underline mt-0.5 group"
-                          >
-                            <Mail className="w-4 h-4 text-blue-400 shrink-0" />
-                            <span className="break-all">gcsujan321@gmail.com</span>
-                          </a>
-                        </div>
-
-                        {/* Contact Info */}
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
-                            Contact Info (WhatsApp / Cell Phone)
-                          </div>
-                          <a
-                            href="tel:+9779848962315"
-                            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-100 hover:text-white hover:underline mt-0.5"
-                          >
-                            <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-                            <span>+977 9848962315</span>
-                          </a>
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Quick Contact Actions */}
-                    <div className="pt-3 border-t border-blue-800/40 space-y-2">
-                      <a
-                        href="https://wa.me/9779848962315"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Chat on WhatsApp</span>
-                      </a>
+                    <div className="space-y-3 text-xs text-zinc-700">
+                      <div className="p-3 bg-white rounded-xl border border-zinc-200 space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase block">Deployment Team</span>
+                        <p className="font-bold text-zinc-900 text-xs sm:text-sm">ProSchool Academic Deployment</p>
+                        <p className="text-[11px] text-zinc-500">Kathmandu, Nepal • Regional Cloud Center</p>
+                      </div>
 
-                      <a
-                        href="mailto:gcsujan321@gmail.com?subject=ProCollege%20Campus%20Deployment%20Inquiry"
-                        className="w-full py-2.5 px-3.5 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Mail className="w-4 h-4" />
-                        <span>Send Official Inquiry</span>
-                      </a>
+                      <div className="p-3 bg-white rounded-xl border border-zinc-200 space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase block">Direct Email Support</span>
+                        <a href="mailto:deploy@proschool.edu.np" className="font-bold text-[#4F46E5] hover:underline block text-xs sm:text-sm">
+                          deploy@proschool.edu.np
+                        </a>
+                        <p className="text-[11px] text-zinc-400">Response turnaround: within 4 business hours</p>
+                      </div>
 
-                      <div className="text-[11px] text-blue-300/80 text-center pt-1">
-                        Direct response within 1 to 2 hours
+                      <div className="p-3 bg-white rounded-xl border border-zinc-200 space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase block">Helpline &amp; WhatsApp</span>
+                        <p className="font-bold text-zinc-900 text-xs sm:text-sm">+977 (01) 597-0044</p>
+                        <p className="text-[11px] text-zinc-400">Sun – Fri, 9:00 AM – 6:00 PM NPT</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="py-4 sm:py-6 text-center space-y-3 sm:space-y-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
-                  <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />
+              <div className="py-8 sm:py-12 text-center space-y-4">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xs">
+                  <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-[#101b46]">Request Successfully Dispatched!</h3>
-                <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 sm:p-4 text-xs text-blue-900 text-left space-y-2">
-                  <div className="font-bold text-xs sm:text-sm text-[#101b46] flex items-center gap-1.5">
-                    <Key className="w-4 h-4 text-[#173bff]" />
-                    <span>Next Step: Organization Admin Login ID Verification</span>
-                  </div>
-                  <p className="leading-relaxed text-[#44536c]">
-                    Our university deployment specialist will review your institutional credentials for <strong>{orgForm.institutionName}</strong> and contact <strong>{orgForm.contactName}</strong> at <strong>{orgForm.email}</strong>.
-                  </p>
-                  <p className="leading-relaxed text-[#44536c]">
-                    Upon verification, you will receive your official <strong>Organization Admin Login ID (ORG-ADMIN-XX)</strong>, enabling you to provision all student and lecturer accounts.
-                  </p>
-                </div>
-
-                <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3">
-                  <button
-                    onClick={() => launchDemoMode()}
-                    className="btn-hive w-full sm:w-auto py-3 px-6 rounded-xl bg-gradient-to-r from-[#173bff] to-[#0c2de6] text-white text-xs sm:text-sm font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 group"
-                  >
-                    <span>Open Platform Workspace</span>
-                    <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-                  </button>
+                <h3 className="text-xl sm:text-2xl font-black text-zinc-900">
+                  Institutional Request Submitted!
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-600 max-w-md mx-auto leading-relaxed">
+                  Thank you, <strong className="text-zinc-900">{orgForm.contactName}</strong>. Our regional onboarding engineers will verify <strong className="text-zinc-900">{orgForm.institutionName}</strong> and contact you at <strong className="text-zinc-900">{orgForm.email}</strong> with your administrator credentials.
+                </p>
+                <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                   <button
                     onClick={() => {
                       setShowRequestModal(false);
                       setRequestSubmitted(false);
                     }}
-                    className="w-full sm:w-auto py-3 px-5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs sm:text-sm font-bold transition-all cursor-pointer"
+                    className="w-full sm:w-auto py-2.5 px-5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-bold transition-all cursor-pointer"
                   >
-                    Close
+                    Close Window
+                  </button>
+                  <button
+                    onClick={() => launchDemoMode('student')}
+                    className="w-full sm:w-auto py-2.5 px-6 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold shadow-md transition-all cursor-pointer"
+                  >
+                    Explore Live Platform Demo →
                   </button>
                 </div>
               </div>
@@ -1641,12 +2401,14 @@ export const PortalLanding: React.FC = () => {
         </div>
       )}
 
-      {/* 9. Institutional Sign-In Modal */}
+      {/* ============================================================== */}
+      {/* 15. INSTITUTIONAL SIGN-IN MODAL (ALL 5 SECURE AUTH STEPS)       */}
+      {/* ============================================================== */}
       {showSignInModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-zinc-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-zinc-100">
-              <ProCollegeLogo size="sm" variant="dark-text" />
+              <ProCollegeLogo size="sm" brandName="ProSchool" />
               <button
                 onClick={resetAuthModal}
                 className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
@@ -1660,7 +2422,7 @@ export const PortalLanding: React.FC = () => {
               <>
                 <div className="mt-5">
                   <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Institutional Sign-In</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     Enter your registered institutional credentials to access your academic workspace.
                   </p>
                 </div>
@@ -1683,7 +2445,7 @@ export const PortalLanding: React.FC = () => {
                       value={loginEmail}
                       onChange={e => setLoginEmail(e.target.value)}
                       placeholder="name@institution.edu"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
@@ -1700,7 +2462,7 @@ export const PortalLanding: React.FC = () => {
                           setResetEmail(loginEmail);
                           setAuthStep('forgot-password-request');
                         }}
-                        className="text-xs text-[#173bff] hover:text-[#0c2de6] hover:underline font-semibold cursor-pointer"
+                        className="text-xs text-[#4F46E5] hover:text-[#4338CA] hover:underline font-semibold cursor-pointer"
                       >
                         Forgot Password?
                       </button>
@@ -1712,14 +2474,14 @@ export const PortalLanding: React.FC = () => {
                       value={loginPassword}
                       onChange={e => setLoginPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoggingIn}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-60"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#4F46E5] via-[#5B4FF5] to-[#4338CA] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-60"
                   >
                     {isLoggingIn ? (
                       <>
@@ -1741,7 +2503,7 @@ export const PortalLanding: React.FC = () => {
                         setShowSignInModal(false);
                         setShowRequestModal(true);
                       }}
-                      className="text-xs text-[#173bff] hover:underline font-semibold"
+                      className="text-xs text-[#4F46E5] hover:underline font-semibold cursor-pointer"
                     >
                       Need an account for your university? Request Campus Deployment →
                     </button>
@@ -1754,20 +2516,20 @@ export const PortalLanding: React.FC = () => {
             {authStep === 'otp' && (
               <>
                 <div className="mt-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#173bff]/10 text-[#173bff] flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center mb-3">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Two-Factor Security Verification</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     A 6-digit security code was dispatched directly to <span className="font-semibold text-zinc-900">{otpEmail}</span>. Please check your inbox and spam folder.
                   </p>
                 </div>
 
-                <div className="mt-4 p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs text-blue-900 flex items-start gap-2.5">
-                  <Mail className="w-4 h-4 text-[#173bff] shrink-0 mt-0.5" />
+                <div className="mt-4 p-3 rounded-xl bg-indigo-50/70 border border-indigo-200/80 text-xs text-indigo-900 flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 text-[#4F46E5] shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <p className="font-semibold text-blue-950">Check Your Registered Mailbox</p>
-                    <p className="text-blue-800/80 leading-relaxed">
+                    <p className="font-semibold text-indigo-950">Check Your Registered Mailbox</p>
+                    <p className="text-indigo-800/80 leading-relaxed">
                       Enter the 6-digit code received via email to verify your identity and access your dashboard.
                     </p>
                   </div>
@@ -1799,7 +2561,7 @@ export const PortalLanding: React.FC = () => {
                       value={otpCode}
                       onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="• • • • • •"
-                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-3 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-3 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
@@ -1809,7 +2571,7 @@ export const PortalLanding: React.FC = () => {
                       type="button"
                       onClick={handleResendOtp}
                       disabled={resendCooldown > 0 || isResending}
-                      className="font-semibold text-[#173bff] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
+                      className="font-semibold text-[#4F46E5] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
                     >
                       {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : isResending ? 'Sending...' : 'Resend Code'}
                     </button>
@@ -1818,7 +2580,7 @@ export const PortalLanding: React.FC = () => {
                   <button
                     type="submit"
                     disabled={isVerifyingOtp || otpCode.trim().length !== 6}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#4F46E5] via-[#5B4FF5] to-[#4338CA] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50"
                   >
                     {isVerifyingOtp ? (
                       <>
@@ -1828,7 +2590,7 @@ export const PortalLanding: React.FC = () => {
                     ) : (
                       <>
                         <ShieldCheck className="w-4 h-4" />
-                        <span>Verify & Continue</span>
+                        <span>Verify &amp; Continue</span>
                       </>
                     )}
                   </button>
@@ -1841,10 +2603,10 @@ export const PortalLanding: React.FC = () => {
                         setLoginError('');
                         setResendMessage('');
                       }}
-                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Back to Email & Password</span>
+                      <span>Back to Email &amp; Password</span>
                     </button>
                   </div>
                 </form>
@@ -1859,7 +2621,7 @@ export const PortalLanding: React.FC = () => {
                     <Lock className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Set Permanent Password</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     You are signing in with a temporary roster password. Please create a secure permanent password to protect your student records.
                   </p>
                 </div>
@@ -1881,7 +2643,7 @@ export const PortalLanding: React.FC = () => {
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       placeholder="At least 6 characters"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
@@ -1895,14 +2657,14 @@ export const PortalLanding: React.FC = () => {
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter new password"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isChangingPassword || !newPassword || !confirmPassword}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(16,185,129,0.35)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50"
                   >
                     {isChangingPassword ? (
                       <>
@@ -1912,7 +2674,7 @@ export const PortalLanding: React.FC = () => {
                     ) : (
                       <>
                         <Check className="w-4 h-4" />
-                        <span>Save & Enter Workspace</span>
+                        <span>Save &amp; Enter Workspace</span>
                       </>
                     )}
                   </button>
@@ -1924,7 +2686,7 @@ export const PortalLanding: React.FC = () => {
                         setAuthStep('credentials');
                         setLoginError('');
                       }}
-                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold"
+                      className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 font-semibold cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Back to Sign In</span>
@@ -1938,11 +2700,11 @@ export const PortalLanding: React.FC = () => {
             {authStep === 'forgot-password-request' && (
               <>
                 <div className="mt-5">
-                  <div className="w-10 h-10 rounded-xl bg-[#173bff]/10 text-[#173bff] flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center mb-3">
                     <KeyRound className="w-6 h-6" />
                   </div>
                   <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Reset Your Password</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     Enter your registered institutional email address. We'll dispatch a secure 6-digit verification code directly to your email inbox.
                   </p>
                 </div>
@@ -1966,14 +2728,14 @@ export const PortalLanding: React.FC = () => {
                       value={resetEmail}
                       onChange={e => setResetEmail(e.target.value)}
                       placeholder="e.g. yourname@institution.edu"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isRequestingResetOtp || !resetEmail.trim()}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-[#173bff] via-[#244cff] to-[#0d2ee6] text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(23,59,255,0.4)] hover:shadow-[0_8px_24px_rgba(23,59,255,0.55)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#4F46E5] via-[#5B4FF5] to-[#4338CA] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50"
                   >
                     {isRequestingResetOtp ? (
                       <>
@@ -2009,11 +2771,11 @@ export const PortalLanding: React.FC = () => {
             {authStep === 'forgot-password-verify' && (
               <>
                 <div className="mt-5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Verify Code & Set New Password</h3>
-                  <p className="text-xs text-[#586680] mt-1.5 leading-relaxed">
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Verify Code &amp; Set New Password</h3>
+                  <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
                     Enter the 6-digit verification code sent to <span className="font-semibold text-zinc-900">{resetEmail}</span> along with your new password.
                   </p>
                 </div>
@@ -2044,7 +2806,7 @@ export const PortalLanding: React.FC = () => {
                       value={resetOtpCode}
                       onChange={e => setResetOtpCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="• • • • • •"
-                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-2.5 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-center font-mono text-2xl tracking-[0.35em] font-bold border border-zinc-300 rounded-xl px-4 py-2.5 text-zinc-900 placeholder-zinc-300 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
@@ -2054,7 +2816,7 @@ export const PortalLanding: React.FC = () => {
                       type="button"
                       onClick={handleResendOtp}
                       disabled={resendCooldown > 0 || isResending}
-                      className="font-semibold text-[#173bff] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
+                      className="font-semibold text-[#4F46E5] hover:underline disabled:text-zinc-400 disabled:no-underline cursor-pointer"
                     >
                       {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : isResending ? 'Sending...' : 'Resend Code'}
                     </button>
@@ -2070,7 +2832,7 @@ export const PortalLanding: React.FC = () => {
                       value={resetNewPass}
                       onChange={e => setResetNewPass(e.target.value)}
                       placeholder="At least 6 characters"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
@@ -2084,14 +2846,14 @@ export const PortalLanding: React.FC = () => {
                       value={resetConfirmPass}
                       onChange={e => setResetConfirmPass(e.target.value)}
                       placeholder="Re-enter new password"
-                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#173bff] focus:ring-1 focus:ring-[#173bff]"
+                      className="w-full text-xs sm:text-sm border border-zinc-300 rounded-xl px-3.5 py-2.5 text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isVerifyingReset || resetOtpCode.length !== 6 || !resetNewPass || !resetConfirmPass}
-                    className="btn-hive w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-[0_4px_18px_rgba(16,185,129,0.35)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center gap-2 cursor-pointer group mt-2 disabled:opacity-50"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white text-xs sm:text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 disabled:opacity-50"
                   >
                     {isVerifyingReset ? (
                       <>
@@ -2101,7 +2863,7 @@ export const PortalLanding: React.FC = () => {
                     ) : (
                       <>
                         <RotateCcw className="w-4 h-4" />
-                        <span>Reset Password & Enter Portal</span>
+                        <span>Reset Password &amp; Enter Portal</span>
                       </>
                     )}
                   </button>
