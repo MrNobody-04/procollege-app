@@ -37,6 +37,7 @@ import {
   getDeviceDisplayName
 } from '../utils/deviceFingerprint';
 import { initHeroAnimations } from '../utils/heroAnimations';
+import { ProCollegeAIAssistant } from './ProCollegeAIAssistant';
 
 export const PortalLanding: React.FC = () => {
   const {
@@ -2651,6 +2652,8 @@ export const PortalLanding: React.FC = () => {
           </div>
         </div>
       )}
+      {/* ProCollege AI Concierge Assistant (Echo) */}
+      <ProCollegeAIAssistant />
     </div>
   );
 };
