@@ -18,9 +18,8 @@ import {
   RotateCcw,
   Play,
   FileText,
-  FolderOpen,
+  Folder,
   BarChart2,
-  Shield,
   ChevronDown,
   ChevronUp,
   ChevronRight,
@@ -1006,134 +1005,31 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 3. QUICK HIGHLIGHTS STRIP (5 Featured Capabilities)            */}
+      {/* 3. CORE PLATFORM CAPABILITIES (6 Cards Matched to Image 2)     */}
       {/* ============================================================== */}
-      <section className="py-8 bg-white border-y border-zinc-100">
+      <section className="py-14 sm:py-20 bg-white" id="features">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
-            >
-              <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                <Video className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Online Classes</h4>
-                <p className="text-[11px] text-zinc-500">Teach &amp; learn seamlessly</p>
-              </div>
-            </div>
-
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
-              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
-                <FolderOpen className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Assignments</h4>
-                <p className="text-[11px] text-zinc-500">Manage tasks efficiently</p>
-              </div>
-            </div>
-
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
-              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
-            >
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                <Users className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Collaboration</h4>
-                <p className="text-[11px] text-zinc-500">Connect with students &amp; staff</p>
-              </div>
-            </div>
-
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
-              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2"
-            >
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                <BarChart2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Track Progress</h4>
-                <p className="text-[11px] text-zinc-500">Monitor performance</p>
-              </div>
-            </div>
-
-            <div
-              data-reveal
-              style={{ '--reveal-delay': '500ms' } as React.CSSProperties}
-              className="feature-card p-4 rounded-2xl bg-zinc-50/70 border border-zinc-200/70 flex flex-col items-start gap-2 col-span-2 md:col-span-1"
-            >
-              <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                <Shield className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-bold text-xs sm:text-sm text-zinc-900">Secure &amp; Reliable</h4>
-                <p className="text-[11px] text-zinc-500">Your data, our priority</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 4. DESIGNED FOR MODERN EDUCATION (6 Key Modules + Illustration) */}
-      {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-white" id="features">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-            <div className="max-w-2xl text-left">
-              <span
-                data-reveal
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80 mb-3"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Powerful Features</span>
-              </span>
-              <h2
-                data-reveal
-                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight"
-              >
-                Designed for Modern Education
-              </h2>
-              <p
-                data-reveal
-                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                className="text-sm sm:text-base text-zinc-500 mt-2"
-              >
-                Everything you need to manage courses, teach, and collaborate across campus.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-7">
             {/* Card 1: Live & Recorded Classes */}
             <div
               data-reveal
               style={{ '--reveal-delay': '100ms' } as React.CSSProperties}
-              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-indigo-50 text-[#4F46E5] flex items-center justify-center">
-                  <Video className="w-5 h-5" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
+                  <Video className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Live &amp; Recorded Classes</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Teach and share knowledge anywhere, anytime with enterprise WebRTC audio/video and interactive whiteboard classrooms.
+                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
+                  Live &amp; Recorded Classes
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
+                  Teach and share knowledge anywhere, anytime.
                 </p>
               </div>
               <button
                 onClick={() => launchDemoMode('professor')}
-                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
               >
                 <span>Learn More</span>
                 <span>→</span>
@@ -1144,20 +1040,22 @@ export const PortalLanding: React.FC = () => {
             <div
               data-reveal
               style={{ '--reveal-delay': '200ms' } as React.CSSProperties}
-              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <FileText className="w-5 h-5" />
+              <div>
+                <div className="w-12 h-12 rounded-full bg-[#10B981] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(16,185,129,0.35)] mb-6">
+                  <Check className="w-6 h-6 stroke-[3] text-white" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Assignments &amp; Exams</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Create, distribute, and grade assignments easily with rubric scoring, SpeedGrader reviews, and deadline management.
+                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
+                  Assignments &amp; Exams
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
+                  Create, distribute, and track assignments easily.
                 </p>
               </div>
               <button
                 onClick={() => launchDemoMode('student')}
-                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
               >
                 <span>Learn More</span>
                 <span>→</span>
@@ -1168,20 +1066,22 @@ export const PortalLanding: React.FC = () => {
             <div
               data-reveal
               style={{ '--reveal-delay': '300ms' } as React.CSSProperties}
-              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Users className="w-5 h-5" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
+                  <Users className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Student Management</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Manage cohorts, rosters, departments, and enrollment. Rollover academic terms with single-click batch migrations.
+                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
+                  Student Management
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
+                  Manage students, classes, and progress.
                 </p>
               </div>
               <button
                 onClick={() => launchDemoMode('admin')}
-                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
               >
                 <span>Learn More</span>
                 <span>→</span>
@@ -1192,20 +1092,22 @@ export const PortalLanding: React.FC = () => {
             <div
               data-reveal
               style={{ '--reveal-delay': '400ms' } as React.CSSProperties}
-              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
+                  <MessageSquare className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Real-Time Collaboration</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Channel posts, threaded discussions, and direct messages powered by instant real-time synchronization.
+                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
+                  Real-Time Collaboration
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
+                  Chat, discuss, and work together effortlessly.
                 </p>
               </div>
               <button
                 onClick={() => launchDemoMode('student')}
-                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
               >
                 <span>Learn More</span>
                 <span>→</span>
@@ -1216,20 +1118,22 @@ export const PortalLanding: React.FC = () => {
             <div
               data-reveal
               style={{ '--reveal-delay': '500ms' } as React.CSSProperties}
-              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                  <FolderOpen className="w-5 h-5" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#3B82F6] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(59,130,246,0.35)] mb-6">
+                  <Folder className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Resource Library</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Upload, preview, and download PDFs, code files, lecture slides, and media with in-browser previewers.
+                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
+                  Resource Library
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
+                  Share files, notes, and study materials.
                 </p>
               </div>
               <button
                 onClick={() => launchDemoMode('professor')}
-                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
               >
                 <span>Learn More</span>
                 <span>→</span>
@@ -1240,24 +1144,114 @@ export const PortalLanding: React.FC = () => {
             <div
               data-reveal
               style={{ '--reveal-delay': '600ms' } as React.CSSProperties}
-              className="feature-card p-6 bg-white border border-zinc-200/90 rounded-2xl shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              className="bg-white rounded-3xl p-7 sm:p-8 border border-purple-100/70 shadow-[0_4px_25px_rgba(99,102,241,0.04)] hover:shadow-[0_12px_35px_rgba(99,102,241,0.08)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
             >
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                  <BarChart2 className="w-5 h-5" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#5B4FF5] text-white flex items-center justify-center shadow-[0_6px_20px_rgba(91,79,245,0.35)] mb-6">
+                  <BarChart2 className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-bold text-base text-zinc-900">Progress Analytics</h3>
-                <p className="text-xs text-zinc-600 leading-relaxed">
-                  Track individual and cohort performance, submission rates, attendance, and grade point distributions in real-time.
+                <h3 className="font-extrabold text-lg sm:text-xl text-zinc-950 mb-2.5 tracking-tight">
+                  Progress Analytics
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-500 font-medium leading-relaxed mb-6">
+                  Track performance with detailed insights.
                 </p>
               </div>
               <button
                 onClick={() => launchDemoMode('admin')}
-                className="mt-5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                className="mt-auto text-xs sm:text-sm font-bold text-[#4F46E5] hover:text-[#4338CA] inline-flex items-center gap-1.5 cursor-pointer w-fit"
               >
                 <span>Learn More</span>
                 <span>→</span>
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================== */}
+      {/* 4. BUILT FOR INSTITUTIONS OF ALL SIZES (Matched to Image 2)    */}
+      {/* ============================================================== */}
+      <section className="py-16 sm:py-24 bg-white border-t border-purple-50/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              <span
+                data-reveal
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Flexible &amp; Scalable</span>
+              </span>
+
+              <h2
+                data-reveal
+                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
+                className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#111827] tracking-tight leading-tight"
+              >
+                Built for Institutions <br />
+                of All Sizes
+              </h2>
+
+              <p
+                data-reveal
+                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
+                className="text-sm sm:text-base text-zinc-600 leading-relaxed max-w-md"
+              >
+                Whether it's a small college or a large university, ProSchool scales with your needs.
+              </p>
+
+              <div
+                data-reveal
+                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
+                className="space-y-3.5 text-sm sm:text-base text-zinc-800 font-medium"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Easy setup &amp; onboarding</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>Highly customizable</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#6366F1] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <span>24/7 support</span>
+                </div>
+              </div>
+
+              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
+                <button
+                  onClick={() => setShowRequestModal(true)}
+                  className="px-7 py-3.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-full text-sm font-bold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
+                >
+                  <span>Learn More</span>
+                  <span>→</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Campus Architecture Visual with organic purple backdrop blob */}
+            <div className="lg:col-span-6 relative flex items-center justify-center" data-reveal="right">
+              {/* Decorative organic lavender backdrop blob matching Image 2 */}
+              <div className="absolute -inset-4 sm:-inset-6 bg-gradient-to-tr from-purple-300/40 via-indigo-200/30 to-purple-400/25 rounded-[44px] filter blur-xs -z-10 transform -rotate-1" />
+              <div className="absolute -top-10 -right-10 w-48 h-48 bg-purple-400/20 rounded-full blur-2xl -z-10 pointer-events-none" />
+              <div className="absolute -bottom-8 -left-8 w-48 h-48 bg-indigo-400/20 rounded-full blur-2xl -z-10 pointer-events-none" />
+
+              <div className="relative rounded-3xl sm:rounded-[32px] overflow-hidden shadow-2xl border-2 border-white/80 group w-full">
+                <img
+                  src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80"
+                  alt="Modern Campus Architecture"
+                  className="w-full h-80 sm:h-96 object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1550,93 +1544,6 @@ export const PortalLanding: React.FC = () => {
                       <span className="p-1 rounded hover:bg-zinc-200">17</span>
                       <span className="p-1 rounded hover:bg-zinc-200">18</span>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================== */}
-      {/* 7. BUILT FOR INSTITUTIONS OF ALL SIZES                         */}
-      {/* ============================================================== */}
-      <section className="py-16 sm:py-24 bg-[#FAF8FF]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Content */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              <span
-                data-reveal
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-[#4F46E5] border border-indigo-200/80"
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                <span>Flexible &amp; Scalable</span>
-              </span>
-
-              <h2
-                data-reveal
-                style={{ '--reveal-delay': '150ms' } as React.CSSProperties}
-                className="text-2xl sm:text-4xl font-extrabold text-zinc-950 tracking-tight leading-tight"
-              >
-                Built for Institutions of All Sizes
-              </h2>
-
-              <p
-                data-reveal
-                style={{ '--reveal-delay': '250ms' } as React.CSSProperties}
-                className="text-sm sm:text-base text-zinc-600 leading-relaxed"
-              >
-                Whether it's a small college or a large university, ProSchool scales with your needs.
-              </p>
-
-              <div
-                data-reveal
-                style={{ '--reveal-delay': '350ms' } as React.CSSProperties}
-                className="space-y-3 text-xs sm:text-sm text-zinc-700"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span className="font-medium">Easy setup &amp; onboarding</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span className="font-medium">Highly customizable departmental structures</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <span className="font-medium">24/7 technical support &amp; SLAs</span>
-                </div>
-              </div>
-
-              <div data-reveal style={{ '--reveal-delay': '450ms' } as React.CSSProperties} className="pt-2">
-                <button
-                  onClick={() => setShowRequestModal(true)}
-                  className="px-6 py-3 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md transition-colors cursor-pointer"
-                >
-                  Learn More →
-                </button>
-              </div>
-            </div>
-
-            {/* Right Campus Architecture Visual */}
-            <div className="lg:col-span-6" data-reveal="right">
-              <div className="relative rounded-3xl overflow-hidden border border-zinc-200 shadow-xl group">
-                <img
-                  src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80"
-                  alt="Modern Campus Architecture"
-                  className="w-full h-80 sm:h-96 object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex items-end p-6 sm:p-8">
-                  <div className="text-white space-y-1">
-                    <p className="font-bold text-sm sm:text-base">Modern Educational Infrastructure</p>
-                    <p className="text-xs text-white/80">Serving 500+ Institutions across Nepal</p>
                   </div>
                 </div>
               </div>
@@ -2038,29 +1945,59 @@ export const PortalLanding: React.FC = () => {
       </section>
 
       {/* ============================================================== */}
-      {/* 12. CURVED WAVE TRANSITION + DEEP DARK NAVY FOOTER              */}
+      {/* 12. CONTINUOUS IN-MOTION OCEAN WAVES + DEEP DARK NAVY FOOTER   */}
       {/* ============================================================== */}
-      {/* Organic Curved Wave Divider */}
-      <div className="relative w-full overflow-hidden leading-none bg-[#FAF9FF] -mb-1">
-        <svg
-          className="relative block w-full h-16 sm:h-24 md:h-32 text-[#111827]"
-          viewBox="0 0 1440 160"
-          preserveAspectRatio="none"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Background translucent wave */}
-          <path
-            d="M0,40 C320,110 440,20 720,65 C1000,110 1140,25 1440,70 L1440,160 L0,160 Z"
-            fill="#6366F1"
-            fillOpacity="0.45"
-          />
-          {/* Deep dark navy front wave */}
-          <path
-            d="M0,75 C360,135 520,35 820,90 C1120,140 1260,55 1440,95 L1440,160 L0,160 Z"
-            fill="#111827"
-          />
-        </svg>
+      {/* Continuous Living Ocean Waves Divider */}
+      <div className="relative w-full overflow-hidden leading-none bg-[#FAF9FF] h-20 sm:h-28 md:h-36 -mb-1 select-none pointer-events-none">
+        {/* Layer 1: Back Wave (Translucent Indigo #6366F1) */}
+        <div className="absolute inset-x-0 bottom-0 w-[200%] h-full flex animate-wave-slow">
+          <svg
+            className="w-full h-full block"
+            viewBox="0 0 2880 160"
+            preserveAspectRatio="none"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M 0,30 C 280,75 520,5 720,40 C 920,75 1160,5 1440,40 C 1720,75 1960,5 2160,40 C 2360,75 2600,5 2880,40 L 2880,160 L 0,160 Z"
+              fill="#6366F1"
+              fillOpacity="0.4"
+            />
+          </svg>
+        </div>
+
+        {/* Layer 2: Middle Wave (Translucent Violet #818CF8 in Reverse) */}
+        <div className="absolute inset-x-0 bottom-0 w-[200%] h-full flex animate-wave-medium">
+          <svg
+            className="w-full h-full block"
+            viewBox="0 0 2880 160"
+            preserveAspectRatio="none"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M 0,45 C 320,95 440,10 720,50 C 1000,90 1140,15 1440,50 C 1760,95 1880,10 2160,50 C 2440,90 2580,15 2880,50 L 2880,160 L 0,160 Z"
+              fill="#818CF8"
+              fillOpacity="0.45"
+            />
+          </svg>
+        </div>
+
+        {/* Layer 3: Front Solid Deep Dark Navy Wave (#111827) */}
+        <div className="absolute inset-x-0 bottom-0 w-[200%] h-full flex animate-wave-fast">
+          <svg
+            className="w-full h-full block"
+            viewBox="0 0 2880 160"
+            preserveAspectRatio="none"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M 0,65 C 240,120 480,20 720,65 C 960,110 1200,20 1440,65 C 1680,120 1920,20 2160,65 C 2400,110 2640,20 2880,65 L 2880,160 L 0,160 Z"
+              fill="#111827"
+            />
+          </svg>
+        </div>
       </div>
 
       <footer className="bg-[#111827] text-zinc-400 pt-8 sm:pt-12 pb-10 text-xs">

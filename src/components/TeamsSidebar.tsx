@@ -22,7 +22,9 @@ export const TeamsSidebar: React.FC = () => {
     mobileSidebarOpen,
     setMobileSidebarOpen,
     setActiveTab,
-    currentUser
+    currentUser,
+    getStudentSubjectAttendance,
+    getStudentSchoolAttendance
   } = useApp();
 
   const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({
@@ -236,28 +238,42 @@ export const TeamsSidebar: React.FC = () => {
                 return (
                   <div className="ml-5 pl-2 border-l-2 border-zinc-300/60 my-1 space-y-1">
                     {/* Default Section: Announcements (Not a class, it is announcement noticeboard where all lecturers send notice) */}
-                    {announcementChannel && (
-                      <button
-                        onClick={() => handleSelectChannel(course, announcementChannel)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs transition-colors ${
-                          selectedCourse?.id === course.id && selectedChannel?.id === announcementChannel.id
-                            ? 'bg-white text-[#26394D] font-bold shadow-xs border border-zinc-200/80'
-                            : 'text-zinc-800 hover:bg-zinc-200/60 font-semibold'
-                        }`}
-                        title="Class Announcements: Noticeboard where all lecturers broadcast notices and updates"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Megaphone className="w-3.5 h-3.5 shrink-0 text-[#26394D]" />
-                          <span className="truncate">{announcementChannel.name}</span>
-                        </div>
+                    {announcementChannel && (() => {
+                      const schStats = currentUser.role === 'student' ? getStudentSchoolAttendance(currentUser.id, course.id) : null;
 
-                        {Boolean(announcementChannel.unreadCount && announcementChannel.unreadCount > 0) && (
-                          <span className="px-1.5 py-0.2 text-[9px] font-bold bg-[#c4314b] text-white rounded-full">
-                            {announcementChannel.unreadCount}
-                          </span>
-                        )}
-                      </button>
-                    )}
+                      return (
+                        <button
+                          onClick={() => handleSelectChannel(course, announcementChannel)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs transition-colors ${
+                            selectedCourse?.id === course.id && selectedChannel?.id === announcementChannel.id
+                              ? 'bg-white text-[#26394D] font-bold shadow-xs border border-zinc-200/80'
+                              : 'text-zinc-800 hover:bg-zinc-200/60 font-semibold'
+                          }`}
+                          title="Class Announcements: Noticeboard where all lecturers broadcast notices and updates"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Megaphone className="w-3.5 h-3.5 shrink-0 text-[#26394D]" />
+                            <span className="truncate">{announcementChannel.name}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {schStats && schStats.totalSessions > 0 && (
+                              <span
+                                className={`px-1.5 py-0.2 text-[9px] font-bold rounded border ${schStats.threshold.badgeClass}`}
+                                title={`Your Individual Class Roll-Call Attendance: ${schStats.percentage}% (${schStats.presentCount}/${schStats.totalSessions} days)`}
+                              >
+                                {schStats.percentage}%
+                              </span>
+                            )}
+                            {Boolean(announcementChannel.unreadCount && announcementChannel.unreadCount > 0) && (
+                              <span className="px-1.5 py-0.2 text-[9px] font-bold bg-[#c4314b] text-white rounded-full">
+                                {announcementChannel.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })()}
 
                     {/* Academic Subjects List */}
                     {subjectChannels.length > 0 && (
@@ -271,6 +287,7 @@ export const TeamsSidebar: React.FC = () => {
                           {subjectChannels.map(channel => {
                             const isChannelActive =
                               selectedCourse?.id === course.id && selectedChannel?.id === channel.id;
+                            const subStats = currentUser.role === 'student' ? getStudentSubjectAttendance(currentUser.id, channel.id) : null;
 
                             return (
                               <button
@@ -292,11 +309,21 @@ export const TeamsSidebar: React.FC = () => {
                                   <span className="truncate">{channel.name}</span>
                                 </div>
 
-                                {Boolean(channel.unreadCount && channel.unreadCount > 0) && (
-                                  <span className="px-1.5 py-0.2 text-[9px] font-bold bg-[#c4314b] text-white rounded-full">
-                                    {channel.unreadCount}
-                                  </span>
-                                )}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {subStats && subStats.totalSessions > 0 && (
+                                    <span
+                                      className={`px-1.5 py-0.2 text-[9px] font-bold rounded border ${subStats.threshold.badgeClass}`}
+                                      title={`Your Individual Subject Attendance: ${subStats.percentage}% (${subStats.presentCount}/${subStats.totalSessions} sessions)`}
+                                    >
+                                      {subStats.percentage}%
+                                    </span>
+                                  )}
+                                  {Boolean(channel.unreadCount && channel.unreadCount > 0) && (
+                                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-[#c4314b] text-white rounded-full">
+                                      {channel.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
                               </button>
                             );
                           })}

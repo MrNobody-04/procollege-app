@@ -344,14 +344,14 @@ export const AssignmentsView: React.FC = () => {
                         <span className="font-bold text-[#26394D]">{asgn.subjectName || 'Subject'}</span>
                       </span>
 
-                      {/* Student Attendance Standing Badge */}
-                      {isStudent && subjectAttendance && (
+                      {/* Student Individual Attendance Standing Badge */}
+                      {isStudent && subjectAttendance && subjectAttendance.totalSessions > 0 && (
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${subjectAttendance.threshold.badgeClass}`}
-                          title={`Subject Attendance: ${subjectAttendance.percentage}% (${subjectAttendance.presentCount}/${subjectAttendance.totalSessions} sessions held)`}
+                          title={`Your Individual Subject Attendance: ${subjectAttendance.percentage}% (${subjectAttendance.presentCount}/${subjectAttendance.totalSessions} sessions held)`}
                         >
                           <span>{subjectAttendance.threshold.icon}</span>
-                          <span>{subjectAttendance.percentage}%</span>
+                          <span>{subjectAttendance.percentage}% Attendance</span>
                           {subjectAttendance.threshold.isRestricted && (
                             <span className="text-rose-700 font-bold">• Submission Restricted</span>
                           )}

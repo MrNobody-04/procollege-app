@@ -26,7 +26,8 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
     schoolAttendance,
     showDialog,
     availableUsers,
-    currentUser
+    currentUser,
+    getStudentSchoolAttendance
   } = useApp();
 
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -66,7 +67,6 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
   const absentCount = Object.values(statusMap).filter(st => st === 'absent').length;
   const lateCount = Object.values(statusMap).filter(st => st === 'late').length;
   const totalCount = students.length;
-  const presentPct = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -78,7 +78,7 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
 
       await saveSchoolRollCall(course.id, date, records);
 
-      showDialog(`Daily Roll-Call saved for ${course.name} on ${date}! Present: ${presentCount}/${totalCount} (${presentPct}%).`, {
+      showDialog(`Daily Roll-Call recorded for ${course.name} on ${date}! ${presentCount} present, ${absentCount} absent, ${lateCount} late. Individual student records updated.`, {
         type: 'success',
         title: 'Roll-Call Recorded'
       });
@@ -152,13 +152,13 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
         </div>
 
         {/* Live Attendance Summary Banner */}
-        <div className="px-4 py-2 bg-emerald-50/40 border-b border-emerald-100 flex items-center justify-between text-xs shrink-0">
-          <div className="flex items-center gap-4">
+        <div className="px-4 py-2.5 bg-emerald-50/50 border-b border-emerald-100 flex items-center justify-between text-xs shrink-0 flex-wrap gap-2">
+          <div className="flex items-center gap-4 flex-wrap">
             <span className="font-semibold text-zinc-700">
               Enrolled: <strong className="text-zinc-900">{totalCount}</strong>
             </span>
             <span className="text-emerald-700 font-semibold">
-              Present: <strong>{presentCount}</strong> ({presentPct}%)
+              Present: <strong>{presentCount}</strong>
             </span>
             <span className="text-rose-700 font-semibold">
               Absent: <strong>{absentCount}</strong>
@@ -167,8 +167,8 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
               Late: <strong>{lateCount}</strong>
             </span>
           </div>
-          <span className="text-[10px] text-zinc-400 font-mono">
-            Formula: (Present / Total Days) * 100
+          <span className="text-[11px] text-zinc-500 font-medium">
+            Daily Bulk Roll-Call • Nursery to Class 12
           </span>
         </div>
 
@@ -182,6 +182,8 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
           ) : (
             students.map((student, idx) => {
               const currentStatus = statusMap[student.id] || 'present';
+              const stats = getStudentSchoolAttendance(student.id, course.id);
+              const t = stats.threshold;
 
               return (
                 <div
@@ -195,9 +197,15 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
                       className="w-8 h-8 rounded-full object-cover border border-zinc-200 shrink-0"
                     />
                     <div className="min-w-0">
-                      <p className="font-semibold text-xs text-zinc-900 truncate">{student.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-xs text-zinc-900 truncate">{student.name}</p>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold border ${t.badgeClass}`}>
+                          <span>{t.icon}</span>
+                          <span>{stats.totalSessions === 0 ? 'New' : `${stats.percentage}%`}</span>
+                        </span>
+                      </div>
                       <p className="text-[10px] text-zinc-400 font-mono">
-                        {student.loginId || `STU-${idx + 101}`}
+                        {student.loginId || `STU-${idx + 101}`} • {stats.presentCount}/{stats.totalSessions} days present
                       </p>
                     </div>
                   </div>

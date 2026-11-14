@@ -272,3 +272,34 @@
 .plan-card-featured:hover {
   transform: translateY(-12px);
 }
+
+/* Continuous Living Ocean Waves Animation for Footer */
+@keyframes wave-drift-slow {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes wave-drift-medium {
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes wave-drift-fast {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-wave-slow {
+  animation: wave-drift-slow 22s linear infinite;
+  will-change: transform;
+}
+
+.animate-wave-medium {
+  animation: wave-drift-medium 14s linear infinite;
+  will-change: transform;
+}
+
+.animate-wave-fast {
+  animation: wave-drift-fast 8s linear infinite;
+  will-change: transform;
+}

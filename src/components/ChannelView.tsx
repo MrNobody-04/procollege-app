@@ -28,6 +28,7 @@ import { StudentAssignmentModal } from './StudentAssignmentModal';
 import { FilePreviewModal } from './FilePreviewModal';
 import { SchoolRollCallModal } from './SchoolRollCallModal';
 import { SubjectRollCallModal } from './SubjectRollCallModal';
+import { StudentProfileModal } from './StudentProfileModal';
 import { downloadFile, readFileAsDataUrl, getFileType } from '../utils/fileManager';
 import type { Assignment, PostCategory, Attachment, CourseFile } from '../types';
 
@@ -51,11 +52,13 @@ export const ChannelView: React.FC = () => {
     setMobileSidebarOpen,
     showDialog,
     setActiveTab,
-    getStudentSubjectAttendance
+    getStudentSubjectAttendance,
+    getStudentSchoolAttendance
   } = useApp();
 
   const [showSchoolRollCallModal, setShowSchoolRollCallModal] = useState(false);
   const [showSubjectRollCallModal, setShowSubjectRollCallModal] = useState(false);
+  const [showStudentProfileModal, setShowStudentProfileModal] = useState(false);
 
   const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');
@@ -244,10 +247,17 @@ export const ChannelView: React.FC = () => {
     )
   );
 
-  const studentAttendance =
-    currentUser.role === 'student' && selectedCourse && selectedChannel
-      ? getStudentSubjectAttendance(currentUser.id, selectedChannel.id)
-      : null;
+  const schoolAtt = selectedCourse ? getStudentSchoolAttendance(currentUser.id, selectedCourse.id) : null;
+  const subjectAtt = selectedChannel ? getStudentSubjectAttendance(currentUser.id, selectedChannel.id) : null;
+
+  // Select the student's individual attendance for this view:
+  // In the general noticeboard channel or if school-tier attendance exists, show the school roll-call rate;
+  // in specific subject channels with conducted sessions, show that subject's dynamic rate.
+  const studentAttendance = currentUser.role === 'student' && selectedCourse
+    ? (isGeneralChannel || (schoolAtt && schoolAtt.totalSessions > 0 && (!subjectAtt || subjectAtt.totalSessions === 0))
+        ? schoolAtt
+        : subjectAtt)
+    : null;
 
   return (
     <div className={`flex-1 flex flex-col h-full bg-[#E8E9E2] min-w-0 overflow-hidden select-none ${mobileSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
@@ -316,16 +326,18 @@ export const ChannelView: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Student Subject Attendance Standing Badge */}
+          {/* Student Individual Attendance Standing Badge */}
           {currentUser.role === 'student' && studentAttendance && (
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${studentAttendance.threshold.badgeClass} shadow-2xs`}
-              title={`${studentAttendance.percentage}% Attendance (${studentAttendance.presentCount}/${studentAttendance.totalSessions} sessions held)`}
+            <button
+              type="button"
+              onClick={() => setShowStudentProfileModal(true)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${studentAttendance.threshold.badgeClass} shadow-2xs hover:shadow-xs transition-all cursor-pointer`}
+              title={`Your Individual Attendance: ${studentAttendance.totalSessions === 0 ? 'No sessions yet' : `${studentAttendance.percentage}%`} (${studentAttendance.presentCount}/${studentAttendance.totalSessions} sessions attended) - Click to view detailed ledger`}
             >
               <span>{studentAttendance.threshold.icon}</span>
-              <span>{studentAttendance.percentage}%</span>
+              <span>{studentAttendance.totalSessions === 0 ? 'No attendance yet' : `${studentAttendance.percentage}% Attendance`}</span>
               <span className="hidden sm:inline font-medium text-[10px]">({studentAttendance.threshold.label})</span>
-            </span>
+            </button>
           )}
 
           {/* Teacher / Admin Roll-Call Action Buttons */}
@@ -964,6 +976,16 @@ export const ChannelView: React.FC = () => {
           subject={selectedChannel}
           isOpen={showSubjectRollCallModal}
           onClose={() => setShowSubjectRollCallModal(false)}
+        />
+      )}
+
+      {/* Student Individual Attendance Profile Modal */}
+      {selectedCourse && (
+        <StudentProfileModal
+          student={currentUser}
+          course={selectedCourse}
+          isOpen={showStudentProfileModal}
+          onClose={() => setShowStudentProfileModal(false)}
         />
       )}
     </div>

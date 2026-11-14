@@ -287,7 +287,9 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     temporaryPassword: string;
   } | null>(null);
   const [confirmResetOrg, setConfirmResetOrg] = useState<PlatformOrg | null>(null);
+  const [confirmDeleteOrg, setConfirmDeleteOrg] = useState<PlatformOrg | null>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isDeletingOrg, setIsDeletingOrg] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Multi-Admin Management Modal State (for Developer Admin managing multiple Institutional Admins per organization)
@@ -452,18 +454,20 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     }
   };
 
-  const handleDeleteOrg = async (org: PlatformOrg) => {
-    const confirmDelete = window.confirm(
-      `Are you sure you want to permanently delete "${org.name}"?\n\nThis will remove all associated faculties, classes, students, and campus data. This action cannot be undone.`
-    );
-    if (!confirmDelete) return;
+  const handleDeleteOrg = (org: PlatformOrg) => {
+    setConfirmDeleteOrg(org);
+  };
 
+  const executeDeleteOrg = async (org: PlatformOrg) => {
+    setIsDeletingOrg(true);
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'x-user-role': currentUser?.role || 'developer',
+          'x-user-email': currentUser?.email || 'gcsujan321@gmail.com'
         }
       });
       const data = await res.json();
@@ -473,14 +477,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
       setOrganizations(prev => prev.filter(o => o.id !== org.id));
       deleteOrganization(org.name);
+      setConfirmDeleteOrg(null);
 
-      showDialog(`Organization "${org.name}" has been permanently deleted.`, {
+      showDialog(`Organization "${org.name}" has been permanently deleted from the system.`, {
         type: 'success',
         title: 'Organization Deleted'
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       showDialog(`Delete failed: ${msg}`, { type: 'error' });
+    } finally {
+      setIsDeletingOrg(false);
     }
   };
 
@@ -1373,17 +1380,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <span className="text-xs font-bold text-zinc-700">
               Enrolled Students ({enrolled.length})
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setSelectedCourseForAction(course);
                   setShowSchoolRollCallModal(true);
                 }}
-                className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-semibold cursor-pointer flex items-center gap-1 transition-colors"
+                className="text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-md font-semibold cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
                 title="Take daily bulk roll-call for this class"
               >
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Daily Roll-Call</span>
               </button>
               <button
@@ -1391,7 +1398,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   setSelectedCourseForAction(course);
                   setShowManageStudentsModal(true);
                 }}
-                className="text-[11px] text-[#26394D] hover:underline font-semibold cursor-pointer"
+                className="text-[11px] text-[#26394D] hover:underline font-semibold cursor-pointer whitespace-nowrap"
               >
                 Manage Students
               </button>
@@ -1412,7 +1419,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     setShowStudentProfileModal(true);
                   }}
                   className="inline-flex items-center gap-1.5 bg-white border border-zinc-200 hover:border-zinc-300 px-2.5 py-1 rounded-full text-xs text-zinc-800 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
-                  title={`View Student Profile & Attendance (${t.percentage}% - ${t.label})`}
+                  title={`View Student Profile & Individual Attendance (${t.percentage}% - ${t.label})`}
                 >
                   <img
                     src={student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
@@ -1420,7 +1427,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     className="w-4 h-4 rounded-full object-cover shrink-0"
                   />
                   <span className="font-medium text-[11px] truncate max-w-[120px]">{student.name}</span>
-                  <span className="text-[10px]" title={`Attendance: ${t.percentage}% (${t.label})`}>{t.icon}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${t.badgeClass} flex items-center gap-0.5`}>
+                    <span>{t.icon}</span>
+                    <span>{att.totalSessions === 0 ? 'New' : `${att.percentage}%`}</span>
+                  </span>
                 </button>
               );
             })}
@@ -1455,10 +1465,10 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               const currentLecturer = ch.subjectLecturerName || (isAnnouncement ? course.instructor?.name : '');
 
               return (
-                <div key={ch.id} className="py-2 flex items-center justify-between text-xs gap-2 flex-wrap sm:flex-nowrap">
+                <div key={ch.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-1.5 sm:gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-zinc-900 text-xs truncate">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-zinc-900 text-xs">
                         {ch.name.replace(/\[(.*?)\]/g, '($1)')}
                       </span>
                       {isAnnouncement && (
@@ -1472,7 +1482,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 justify-between sm:justify-end shrink-0 w-full sm:w-auto">
                     {isAnnouncement ? (
                       <span className="text-[11px] text-zinc-600 font-medium px-2 py-0.5 rounded bg-zinc-100">
                         Broadcaster: {course.instructor?.name || 'Class Owner'}
@@ -1652,7 +1662,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 Campus Administration Center
               </h1>
               <p className="text-xs text-zinc-500 font-medium mt-0.5">
-                institutional Admin Role Tiers: Developer, Institutional, Lecturer, Student
+                Manage academic departments, classes, assigned lecturers, and student enrollment.
               </p>
             </div>
 
@@ -2984,16 +2994,16 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   >
                     {/* Department Header */}
                     <div
-                      className="p-4 sm:p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-zinc-50/50 transition-colors select-none"
+                      className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer hover:bg-zinc-50/50 transition-colors select-none"
                       onClick={() => toggleDeptCollapse(dept.id)}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-[#26394D]/5 text-[#26394D] border border-[#26394D]/10 flex items-center justify-center shrink-0">
+                      <div className="flex items-start sm:items-center gap-3 min-w-0 w-full sm:w-auto flex-1">
+                        <div className="w-10 h-10 rounded-xl bg-[#26394D]/5 text-[#26394D] border border-[#26394D]/10 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
                           <Building2 className="w-5 h-5" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-base text-zinc-900 truncate">
+                            <h3 className="font-bold text-base text-zinc-900 break-words">
                               {dept.name}
                             </h3>
                             {dept.code && (
@@ -3002,7 +3012,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap font-medium">
+                          <p className="text-xs text-zinc-500 mt-1 flex items-center gap-2 flex-wrap font-medium">
                             <span className="text-zinc-700 font-semibold">
                               {deptCourses.length} {deptCourses.length === 1 ? 'Class' : 'Classes'}
                             </span>
@@ -3019,7 +3029,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       </div>
 
                       {/* Department Actions */}
-                      <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 pt-1 sm:pt-0" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => {
                             setSelectedFacultyId(dept.id);
@@ -5202,6 +5212,74 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <>
                     <Key className="w-3.5 h-3.5" />
                     <span>Confirm Password Reset</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Platform Developer: Delete Organization Confirmation Modal */}
+      {confirmDeleteOrg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 p-5 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-zinc-100">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900">Permanently Delete Organization</h3>
+                <p className="text-[11px] text-rose-600 font-semibold">Irreversible Platform Root Action</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Are you sure you want to permanently delete <strong>{confirmDeleteOrg.name}</strong>?
+            </p>
+
+            <div className="p-3.5 bg-rose-50/70 rounded-xl border border-rose-200 text-xs text-rose-900 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-rose-700 font-medium">Institution Code:</span>
+                <span className="font-mono font-bold text-rose-950">{confirmDeleteOrg.code || confirmDeleteOrg.id}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-rose-700 font-medium">Plan / Tier:</span>
+                <span className="font-semibold text-rose-950 capitalize">{confirmDeleteOrg.billingPlan}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-rose-700 font-medium">Enrolled Students:</span>
+                <span className="font-semibold text-rose-950">{confirmDeleteOrg.studentCount ?? 0}</span>
+              </div>
+              <p className="text-[11px] text-rose-800 pt-1 border-t border-rose-200/80 leading-relaxed font-medium">
+                ⚠️ This will permanently remove all associated faculties, classes, subjects, enrolled students, credentials, and attendance records from Turso database. This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteOrg(null)}
+                disabled={isDeletingOrg}
+                className="px-3.5 py-2 text-xs font-semibold text-zinc-600 hover:bg-zinc-100 rounded-lg cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeDeleteOrg(confirmDeleteOrg)}
+                disabled={isDeletingOrg}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg cursor-pointer shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                {isDeletingOrg ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting Organization...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Permanently Delete</span>
                   </>
                 )}
               </button>
