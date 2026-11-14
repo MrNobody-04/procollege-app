@@ -432,60 +432,62 @@ export const TopHeader: React.FC = () => {
                 )}
               </div>
 
-              {/* Switch Accounts Section */}
-              <div className="py-2 border-b border-zinc-100">
-                <button
-                  onClick={() => setShowSwitchAccounts(!showSwitchAccounts)}
-                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 transition-colors text-zinc-700 font-medium"
-                >
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-zinc-500" />
-                    <span>Switch account</span>
-                  </div>
-                  <span className="text-[10px] text-zinc-400 font-mono">
-                    {switchableUsers.length} accounts
-                  </span>
-                </button>
+              {/* Switch Accounts Section (Only visible in Demo / Interactive Sandbox mode, NEVER in real authenticated accounts) */}
+              {isDemoMode && switchableUsers.length > 1 && (
+                <div className="py-2 border-b border-zinc-100">
+                  <button
+                    onClick={() => setShowSwitchAccounts(!showSwitchAccounts)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 transition-colors text-zinc-700 font-medium cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-zinc-500" />
+                      <span>Switch account</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      {switchableUsers.length} accounts
+                    </span>
+                  </button>
 
-                {showSwitchAccounts && (
-                  <div className="mt-1 space-y-1 p-1 bg-zinc-50 rounded-lg border border-zinc-200 animate-in fade-in">
-                    {switchableUsers.map((user: (typeof availableUsers)[number]) => {
-                      const isCurrent = user.id === currentUser.id;
-                      return (
-                        <button
-                          key={user.id}
-                          onClick={() => {
-                            setCurrentUser(user);
-                            setShowSwitchAccounts(false);
-                          }}
-                          className={`w-full flex items-center justify-between p-2 rounded text-left transition-colors cursor-pointer ${
-                            isCurrent
-                              ? 'bg-white border border-[#26394D]/30 shadow-2xs'
-                              : 'hover:bg-zinc-200/60'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <img
-                              src={user.avatar}
-                              alt=""
-                              className="w-6 h-6 rounded-full object-cover shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <p className="font-semibold text-zinc-800 text-[11px] truncate">
-                                {user.name}
-                              </p>
-                              <p className="text-[10px] text-zinc-400 truncate capitalize">
-                                {user.role} • {user.department}
-                              </p>
+                  {showSwitchAccounts && (
+                    <div className="mt-1 space-y-1 p-1 bg-zinc-50 rounded-lg border border-zinc-200 animate-in fade-in">
+                      {switchableUsers.map((user: (typeof availableUsers)[number]) => {
+                        const isCurrent = user.id === currentUser.id;
+                        return (
+                          <button
+                            key={user.id}
+                            onClick={() => {
+                              setCurrentUser(user);
+                              setShowSwitchAccounts(false);
+                            }}
+                            className={`w-full flex items-center justify-between p-2 rounded text-left transition-colors cursor-pointer ${
+                              isCurrent
+                                ? 'bg-white border border-[#26394D]/30 shadow-2xs'
+                                : 'hover:bg-zinc-200/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={user.avatar}
+                                alt=""
+                                className="w-6 h-6 rounded-full object-cover shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <p className="font-semibold text-zinc-800 text-[11px] truncate">
+                                  {user.name}
+                                </p>
+                                <p className="text-[10px] text-zinc-400 truncate capitalize">
+                                  {user.role} • {user.department}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                          {isCurrent && <Check className="w-3.5 h-3.5 text-[#26394D] shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                            {isCurrent && <Check className="w-3.5 h-3.5 text-[#26394D] shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Sign Out / Logout Option */}
               <div className="pt-2">

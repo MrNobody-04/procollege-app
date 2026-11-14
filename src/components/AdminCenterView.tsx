@@ -34,7 +34,8 @@ import {
   Copy,
   ChevronDown,
   Pencil,
-  Check
+  Check,
+  Phone
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
@@ -94,6 +95,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     institutionalRequests,
     provisionInstitutionalRequest,
     registerUserByAdmin,
+    deleteUserByAdmin,
+    updateUserDetails,
     addChannel,
     enrollStudentsToCourse,
     removeStudentFromCourse,
@@ -731,9 +734,22 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   // New User Registration Form State
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserDepartment, setNewUserDepartment] = useState('');
+  const [newUserGuardianName, setNewUserGuardianName] = useState('');
+  const [newUserGuardianPhone, setNewUserGuardianPhone] = useState('');
   const [newUserRole, setNewUserRole] = useState<'student' | 'lecturer' | 'professor' | 'assistant_admin'>('student');
   const [newUserLicense, setNewUserLicense] = useState<LicenseSku>('ProCollege Verified for Students');
   const [createdCredentials, setCreatedCredentials] = useState<{ user: User; password?: string } | null>(null);
+
+  // Edit User Details State
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserPhone, setEditUserPhone] = useState('');
+  const [editUserDepartment, setEditUserDepartment] = useState('');
+  const [editUserGuardianName, setEditUserGuardianName] = useState('');
+  const [editUserGuardianPhone, setEditUserGuardianPhone] = useState('');
+  const [isSavingUserEdit, setIsSavingUserEdit] = useState(false);
 
   // New Class Form State (with Faculty Selector)
   const [selectedFacultyId, setSelectedFacultyId] = useState(faculties[0]?.id || 'fac_cs');
@@ -993,12 +1009,16 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim()) return;
 
+    const chosenDept = newUserDepartment.trim() || faculties[0]?.name || 'General Academic Department';
     const registered = registerUserByAdmin({
       name: newUserName.trim(),
       email: newUserEmail.trim(),
       role: newUserRole,
-      department: 'Computer Science & Engineering',
-      license: newUserLicense
+      department: chosenDept,
+      license: newUserLicense,
+      phone: newUserPhone.trim(),
+      guardianName: newUserRole === 'student' ? newUserGuardianName.trim() : undefined,
+      guardianPhone: newUserRole === 'student' ? newUserGuardianPhone.trim() : undefined
     });
 
     setCreatedCredentials({
@@ -1008,6 +1028,66 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
     setNewUserName('');
     setNewUserEmail('');
+    setNewUserPhone('');
+    setNewUserGuardianName('');
+    setNewUserGuardianPhone('');
+    setShowRegisterUserModal(false);
+  };
+
+  const handleOpenEditUser = (user: User) => {
+    setEditingUser(user);
+    setEditUserName(user.name);
+    setEditUserPhone(user.phone || '');
+    setEditUserDepartment(user.department || faculties[0]?.name || '');
+    setEditUserGuardianName(user.guardianName || '');
+    setEditUserGuardianPhone(user.guardianPhone || '');
+  };
+
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsSavingUserEdit(true);
+    try {
+      await updateUserDetails(editingUser.id, {
+        name: editUserName.trim(),
+        phone: editUserPhone.trim(),
+        department: editUserDepartment.trim(),
+        guardianName: editingUser.role === 'student' ? editUserGuardianName.trim() : undefined,
+        guardianPhone: editingUser.role === 'student' ? editUserGuardianPhone.trim() : undefined,
+      });
+      showDialog(`User details for "${editUserName.trim()}" updated successfully!`, {
+        type: 'success',
+        title: 'User Details Updated'
+      });
+      setEditingUser(null);
+    } catch (err: any) {
+      showDialog(`Failed to update user: ${err?.message || 'Unknown error'}`, {
+        type: 'error',
+        title: 'Update Failed'
+      });
+    } finally {
+      setIsSavingUserEdit(false);
+    }
+  };
+
+  const handleDeleteUserClick = (user: User) => {
+    const isStudent = user.role === 'student';
+    showDialog(
+      `Are you sure you want to permanently delete the ${isStudent ? 'student' : 'lecturer'} "${user.name}" (${user.email})? This action cannot be undone.`,
+      {
+        type: 'warning',
+        title: `Delete ${isStudent ? 'Student' : 'Lecturer'} Account`,
+        confirmText: 'Delete Account',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+          await deleteUserByAdmin(user.id);
+          showDialog(`Account for "${user.name}" has been permanently removed.`, {
+            type: 'success',
+            title: 'User Deleted'
+          });
+        }
+      }
+    );
   };
 
   const handleProvisionOrgAdmin = (req: InstitutionalRequest) => {
@@ -1361,16 +1441,17 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     setStudentsToAddToClass([]);
   };
 
-  // Courses belonging to a faculty / department
+  // Courses belonging to a faculty / department (Strict matching by facultyId or exact department name/code)
   const getFacultyCourses = (fac: FacultyDepartment) => {
     return courses.filter(c => {
-      const matchId = c.facultyId && c.facultyId === fac.id;
-      const matchName = c.department && c.department.toLowerCase() === fac.name.toLowerCase();
-      const matchCode = c.department && fac.code && c.department.toLowerCase().includes(fac.code.toLowerCase());
-      const matchInclude = c.department && fac.name && fac.name.toLowerCase().includes(c.department.toLowerCase());
-      // When there is only 1 faculty / department in the tenant, all tenant classes belong to it
-      const singleFacultyMatch = faculties.length === 1;
-      return matchId || matchName || matchCode || matchInclude || singleFacultyMatch;
+      if (c.facultyId) {
+        return c.facultyId === fac.id;
+      }
+      const cDept = (c.department || '').trim().toLowerCase();
+      const facName = (fac.name || '').trim().toLowerCase();
+      const facCode = (fac.code || '').trim().toLowerCase();
+      if (!cDept) return false;
+      return cDept === facName || cDept === facCode;
     });
   };
 
@@ -3582,7 +3663,9 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       <th className="py-3 px-4">User</th>
                       <th className="py-3 px-4">Role</th>
                       <th className="py-3 px-4">Login ID</th>
-                      <th className="py-3 px-4">Attendance Standing</th>
+                      <th className="py-3 px-4">Contact / Guardian</th>
+                      <th className="py-3 px-4">Department</th>
+                      <th className="py-3 px-4">Attendance</th>
                       <th className="py-3 px-4">License SKU</th>
                       <th className="py-3 px-4">Mute State</th>
                       <th className="py-3 px-4 text-right">Actions</th>
@@ -3591,11 +3674,11 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   <tbody className="divide-y divide-zinc-100">
                     {academicUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-zinc-500">
+                        <td colSpan={9} className="py-12 text-center text-zinc-500">
                           <div className="flex flex-col items-center justify-center space-y-2">
                             <Users className="w-8 h-8 text-zinc-300" />
                             <p className="font-semibold text-zinc-700">No campus students or lecturers registered in this institution yet.</p>
-                            <p className="text-zinc-400 text-xs max-w-sm">Use <strong>+ Register ID</strong> or <strong>Import Roster</strong> above to provision verified student and lecturer accounts.</p>
+                            <p className="text-zinc-400 text-xs max-w-sm">Use <strong>+ Register New User</strong> or <strong>Import Roster</strong> above to provision verified student and lecturer accounts.</p>
                           </div>
                         </td>
                       </tr>
@@ -3609,7 +3692,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                       .filter(u => {
                         if (!searchUserQuery.trim()) return true;
                         const q = searchUserQuery.toLowerCase().trim();
-                        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.department && u.department.toLowerCase().includes(q));
+                        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.department && u.department.toLowerCase().includes(q)) || (u.phone && u.phone.includes(q)) || (u.guardianName && u.guardianName.toLowerCase().includes(q));
                       })
                       .map(user => (
                         <tr key={user.id} className="hover:bg-zinc-50/80 transition-colors">
@@ -3646,6 +3729,28 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             </span>
                           </td>
                           <td className="py-3 px-4 font-mono font-medium text-zinc-700">{user.loginId || 'N/A'}</td>
+                          <td className="py-3 px-4">
+                            <div className="space-y-0.5 text-[11px]">
+                              {user.phone ? (
+                                <div className="flex items-center gap-1 text-zinc-700 font-medium">
+                                  <Phone className="w-3 h-3 text-zinc-400 shrink-0" />
+                                  <span>{user.phone}</span>
+                                </div>
+                              ) : (
+                                <span className="text-zinc-400 text-[10px]">—</span>
+                              )}
+                              {user.role === 'student' && user.guardianName && (
+                                <div className="text-zinc-500 text-[10px] flex items-center gap-1 flex-wrap">
+                                  <span className="font-semibold text-zinc-600">G:</span>
+                                  <span>{user.guardianName}</span>
+                                  {user.guardianPhone && <span className="text-zinc-400">({user.guardianPhone})</span>}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-zinc-600 text-[11px] font-medium max-w-[140px] truncate" title={user.department}>
+                            {user.department || 'General'}
+                          </td>
                           <td className="py-3 px-4">
                             {user.role === 'student' ? (() => {
                               const att = getStudentOverallAttendance(user.id);
@@ -3709,16 +3814,34 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             )}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => toggleUserMute(user.id)}
-                              className={`px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors ${
-                                user.isMuted
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                              }`}
-                            >
-                              {user.isMuted ? 'Unmute' : 'Mute'}
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditUser(user)}
+                                className="p-1.5 rounded-md text-zinc-500 hover:text-[#26394D] hover:bg-zinc-100 border border-zinc-200 transition-colors cursor-pointer"
+                                title="Edit phone, department & guardian details"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUserClick(user)}
+                                className="p-1.5 rounded-md text-zinc-400 hover:text-rose-600 hover:bg-rose-50 border border-zinc-200 hover:border-rose-200 transition-colors cursor-pointer"
+                                title={`Delete ${user.role} account`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => toggleUserMute(user.id)}
+                                className={`px-2 py-1 rounded text-[10px] font-semibold border transition-colors ${
+                                  user.isMuted
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                    : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100'
+                                }`}
+                              >
+                                {user.isMuted ? 'Unmute' : 'Mute'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -5334,40 +5457,65 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       {/* ========================================================= */}
       {showRegisterUserModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-zinc-200 space-y-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-zinc-200 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-              <h3 className="font-bold text-sm text-zinc-900">Register Campus User / Assistant Admin</h3>
-              <button onClick={() => setShowRegisterUserModal(false)} className="text-zinc-400 hover:text-zinc-600">✕</button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#26394D]/10 text-[#26394D] flex items-center justify-center font-bold">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">Provision Campus User</h3>
+                  <p className="text-[11px] text-zinc-500">Student, Lecturer, or Campus Staff</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRegisterUserModal(false)}
+                className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleRegisterUser} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Full Name *</label>
                 <input
                   type="text"
                   value={newUserName}
                   onChange={e => setNewUserName(e.target.value)}
                   placeholder="Full Name (Student, Lecturer, or Assistant Admin)"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-zinc-700 mb-1">Institutional Email</label>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Institutional Email *</label>
                 <input
                   type="email"
                   value={newUserEmail}
                   onChange={e => setNewUserEmail(e.target.value)}
-                  placeholder="name@institution.procollege.edu"
-                  className="w-full bg-zinc-50 border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                  placeholder="e.g. alex@institution.edu.np"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={newUserPhone}
+                  onChange={e => setNewUserPhone(e.target.value)}
+                  placeholder="e.g. +977 9812345678"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">Role</label>
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">Role *</label>
                   <select
                     value={newUserRole}
                     onChange={e => {
@@ -5381,7 +5529,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         setNewUserLicense('ProCollege Verified for Faculty');
                       }
                     }}
-                    className="w-full bg-white border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800"
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
                     <option value="student">Student</option>
                     <option value="lecturer">Lecturer</option>
@@ -5390,32 +5538,61 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 mb-1">License SKU</label>
+                  <label className="block text-xs font-semibold text-zinc-700 mb-1">Academic Department</label>
                   <select
-                    value={newUserLicense}
-                    onChange={e => setNewUserLicense(e.target.value as LicenseSku)}
-                    className="w-full bg-white border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-800"
+                    value={newUserDepartment || faculties[0]?.name || ''}
+                    onChange={e => setNewUserDepartment(e.target.value)}
+                    className="w-full bg-white border border-zinc-300 rounded-lg px-2 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
                   >
-                    {licenseOptions.map(l => (
-                      <option key={l} value={l}>
-                        {l}
+                    {faculties.map(fac => (
+                      <option key={fac.id} value={fac.name}>
+                        {fac.name} ({fac.code})
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
+              {newUserRole === 'student' && (
+                <div className="bg-zinc-50/90 p-3 rounded-xl border border-zinc-200 space-y-2.5">
+                  <h4 className="font-bold text-[11px] text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-indigo-600" />
+                    Guardian / Parent Information
+                  </h4>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Guardian Full Name</label>
+                    <input
+                      type="text"
+                      value={newUserGuardianName}
+                      onChange={e => setNewUserGuardianName(e.target.value)}
+                      placeholder="e.g. Ram Prasad Sharma"
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Guardian Contact Phone</label>
+                    <input
+                      type="tel"
+                      value={newUserGuardianPhone}
+                      onChange={e => setNewUserGuardianPhone(e.target.value)}
+                      placeholder="e.g. +977 9801234567"
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-800 focus:outline-none focus:border-[#26394D]"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-200">
                 <button
                   type="button"
                   onClick={() => setShowRegisterUserModal(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded"
+                  className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded cursor-pointer"
+                  className="px-4 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer"
                 >
                   Register User
                 </button>
@@ -5426,24 +5603,249 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       )}
 
       {/* ========================================================= */}
-      {/* MODAL 6: CREATED CREDENTIALS NOTIFICATION                 */}
+      {/* MODAL 6: CREATED CREDENTIALS NOTIFICATION WITH COPY       */}
       {/* ========================================================= */}
       {createdCredentials && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-xl max-w-sm w-full p-5 shadow-xl border border-zinc-200 space-y-3">
-            <h3 className="font-bold text-sm text-zinc-900">User Registered Successfully</h3>
-            <div className="bg-zinc-50 p-3 rounded text-xs space-y-1 font-mono text-zinc-700">
-              <p>Name: {createdCredentials.user.name}</p>
-              <p>Login ID: {createdCredentials.user.loginId}</p>
-              <p>Email: {createdCredentials.user.email}</p>
-              <p>Temp Password: {createdCredentials.password || 'ProCollege@2026'}</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-bold text-sm">
+                  ✓
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-zinc-900">User Registered Successfully</h3>
+                  <p className="text-xs text-zinc-500">Official institutional credentials provisioned</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreatedCredentials(null)}
+                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              onClick={() => setCreatedCredentials(null)}
-              className="w-full bg-[#26394D] text-white text-xs font-semibold py-2 rounded"
-            >
-              Done
-            </button>
+
+            <div className="bg-zinc-50/90 border border-zinc-200 rounded-xl p-4 space-y-3 font-mono text-xs">
+              <div className="flex items-center justify-between py-1 border-b border-zinc-200/60">
+                <span className="text-zinc-500 font-sans font-medium text-[11px]">Full Name</span>
+                <span className="font-bold text-zinc-900">{createdCredentials.user.name}</span>
+              </div>
+              
+              <div className="flex items-center justify-between py-1 border-b border-zinc-200/60">
+                <span className="text-zinc-500 font-sans font-medium text-[11px]">Assigned Role</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 font-sans">
+                  {createdCredentials.user.role}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-zinc-200/60">
+                <div>
+                  <span className="text-zinc-500 font-sans font-medium text-[11px] block">Login ID</span>
+                  <span className="font-bold text-zinc-900">{createdCredentials.user.loginId}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdCredentials.user.loginId || '');
+                    setCopiedField('id');
+                    setTimeout(() => setCopiedField(null), 2000);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-sans font-semibold rounded-md border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-700 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedField === 'id' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-zinc-500" />}
+                  {copiedField === 'id' ? 'Copied' : 'Copy ID'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-zinc-200/60">
+                <div className="min-w-0 flex-1 mr-2">
+                  <span className="text-zinc-500 font-sans font-medium text-[11px] block">Email</span>
+                  <span className="font-semibold text-zinc-900 truncate block">{createdCredentials.user.email}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdCredentials.user.email);
+                    setCopiedField('email');
+                    setTimeout(() => setCopiedField(null), 2000);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-sans font-semibold rounded-md border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-700 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  {copiedField === 'email' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-zinc-500" />}
+                  {copiedField === 'email' ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <span className="text-zinc-500 font-sans font-medium text-[11px] block">Temporary Password</span>
+                  <span className="font-bold text-indigo-900 bg-indigo-50/80 px-2 py-0.5 rounded border border-indigo-200">
+                    {createdCredentials.password || createdCredentials.user.temporaryPassword || 'ProCollege@2026'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pass = createdCredentials.password || createdCredentials.user.temporaryPassword || 'ProCollege@2026';
+                    navigator.clipboard.writeText(pass);
+                    setCopiedField('pass');
+                    setTimeout(() => setCopiedField(null), 2000);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-sans font-semibold rounded-md border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-700 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedField === 'pass' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-zinc-500" />}
+                  {copiedField === 'pass' ? 'Copied' : 'Copy Pass'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const pass = createdCredentials.password || createdCredentials.user.temporaryPassword || 'ProCollege@2026';
+                  const text = `ProCollege Account Credentials:
+Full Name: ${createdCredentials.user.name}
+Role: ${createdCredentials.user.role}
+Login ID: ${createdCredentials.user.loginId || 'N/A'}
+Institutional Email: ${createdCredentials.user.email}
+Temporary Password: ${pass}
+Department: ${createdCredentials.user.department || 'General'}
+Portal: https://procollege-app.sujan-bit-n2024.workers.dev`;
+                  navigator.clipboard.writeText(text);
+                  setCopiedField('all');
+                  setTimeout(() => setCopiedField(null), 2000);
+                }}
+                className="flex-1 flex items-center justify-center gap-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer"
+              >
+                {copiedField === 'all' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-zinc-600" />}
+                {copiedField === 'all' ? 'All Credentials Copied!' : 'Copy All Credentials'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatedCredentials(null)}
+                className="flex-1 bg-[#26394D] hover:bg-[#141E2B] text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 6.5: EDIT USER PROFILE (PHONE & GUARDIAN)           */}
+      {/* ========================================================= */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-zinc-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#26394D]/10 text-[#26394D] flex items-center justify-center font-bold text-sm">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">
+                    Edit {editingUser.role === 'student' ? 'Student' : 'Faculty'} Profile
+                  </h3>
+                  <p className="text-[11px] text-zinc-500">{editingUser.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={editUserName}
+                  onChange={e => setEditUserName(e.target.value)}
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={editUserPhone}
+                  onChange={e => setEditUserPhone(e.target.value)}
+                  placeholder="e.g. +977 9812345678"
+                  className="w-full bg-zinc-50 border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">Department</label>
+                <select
+                  value={editUserDepartment}
+                  onChange={e => setEditUserDepartment(e.target.value)}
+                  className="w-full bg-white border border-zinc-300 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D]"
+                >
+                  {faculties.map(fac => (
+                    <option key={fac.id} value={fac.name}>
+                      {fac.name} ({fac.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {editingUser.role === 'student' && (
+                <div className="bg-zinc-50/80 p-3 rounded-xl border border-zinc-200/80 space-y-3">
+                  <h4 className="font-bold text-[11px] text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-indigo-600" />
+                    Guardian / Parent Information
+                  </h4>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Guardian Full Name</label>
+                    <input
+                      type="text"
+                      value={editUserGuardianName}
+                      onChange={e => setEditUserGuardianName(e.target.value)}
+                      placeholder="e.g. Ram Prasad Sharma"
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Guardian Contact Phone</label>
+                    <input
+                      type="tel"
+                      value={editUserGuardianPhone}
+                      onChange={e => setEditUserGuardianPhone(e.target.value)}
+                      placeholder="e.g. +977 9801234567"
+                      className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-1.5 text-xs text-zinc-900 focus:outline-none focus:border-[#26394D]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingUserEdit}
+                  className="px-4 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingUserEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

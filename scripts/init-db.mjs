@@ -197,6 +197,9 @@ async function init() {
     await ensureColumn('users', 'otp_expires_at', 'TEXT');
     await ensureColumn('users', 'must_change_password', 'INTEGER DEFAULT 0');
     await ensureColumn('users', 'department', 'TEXT');
+    await ensureColumn('users', 'login_id', 'TEXT');
+    await ensureColumn('users', 'guardian_name', 'TEXT');
+    await ensureColumn('users', 'guardian_phone', 'TEXT');
     console.log('   ✔ Table `users` created / verified (with OTP & tenant isolation columns)');
 
     // 7. channels

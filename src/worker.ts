@@ -866,16 +866,20 @@ app.post('/api/auth/login', async (c) => {
     // B. Check against live Turso database users table
     const db = getDb(c);
     try { await db.execute(`ALTER TABLE colleges ADD COLUMN education_level TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN login_id TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN phone TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN guardian_name TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN guardian_phone TEXT;`); } catch {}
     const targetCollegeId = (body.collegeId || body.college_id || c.req.header('x-college-id') || '').trim();
 
     let querySql = `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
                    u.password, u.password_hash, u.institution_name, u.department, u.must_change_password,
-                   u.otp_code, u.otp_expires_at,
+                   u.otp_code, u.otp_expires_at, u.login_id, u.phone, u.guardian_name, u.guardian_phone,
                    c.name as college_name, c.code as college_code, c.status as college_status, c.education_level as college_education_level
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
-            WHERE LOWER(u.email) = LOWER(?)`;
-    const queryArgs: (string | number)[] = [email];
+            WHERE (LOWER(u.email) = LOWER(?) OR LOWER(u.id) = LOWER(?) OR (u.login_id IS NOT NULL AND LOWER(u.login_id) = LOWER(?)))`;
+    const queryArgs: (string | number)[] = [email, email, email];
     if (targetCollegeId) {
       querySql += ` AND (u.college_id = ? OR u.institution_id = ?)`;
       queryArgs.push(targetCollegeId, targetCollegeId);
@@ -997,10 +1001,10 @@ app.post('/api/auth/login', async (c) => {
       }
     }
 
-    // Zero-Cost 2FA OTP Verification Step for student accounts, institutional admins, or accounts requiring password changes:
+    // Zero-Cost 2FA OTP Verification Step for institutional administrators
     const skipOtp = c.req.query('skipOtp') === 'true';
     const mustChangePassword = Boolean(userRow.must_change_password);
-    const requires2FA = (userRole === 'student' || userRole === 'admin' || mustChangePassword) && !skipOtp && !isDeveloper && !isDeviceTrusted;
+    const requires2FA = (userRole === 'admin') && !skipOtp && !isDeveloper && !isDeviceTrusted;
 
     if (requires2FA) {
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1053,6 +1057,7 @@ app.post('/api/auth/login', async (c) => {
 
     const user = {
       id: String(userRow.id),
+      loginId: userRow.login_id ? String(userRow.login_id) : undefined,
       email: String(userRow.email),
       full_name: String(userRow.name),
       name: String(userRow.name),
@@ -1064,6 +1069,9 @@ app.post('/api/auth/login', async (c) => {
       section_id: userRow.section_id ? String(userRow.section_id) : null,
       avatar_url: String(userRow.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
       educationLevel: String(userRow.college_education_level || 'bachelor'),
+      phone: userRow.phone ? String(userRow.phone) : undefined,
+      guardianName: userRow.guardian_name ? String(userRow.guardian_name) : undefined,
+      guardianPhone: userRow.guardian_phone ? String(userRow.guardian_phone) : undefined,
     };
 
     const college = {
@@ -1106,9 +1114,9 @@ app.post('/api/auth/resend-otp', async (c) => {
       sql: `SELECT u.id, u.name, u.email, u.role, u.institution_name, u.college_id, u.institution_id, c.name as college_name
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
-            WHERE LOWER(u.email) = LOWER(?)
+            WHERE LOWER(u.email) = LOWER(?) OR LOWER(u.id) = LOWER(?) OR (u.login_id IS NOT NULL AND LOWER(u.login_id) = LOWER(?))
             LIMIT 1;`,
-      args: [email],
+      args: [email, email, email],
     });
 
     if (userRes.rows.length === 0) {
@@ -1274,9 +1282,9 @@ app.post('/api/auth/forgot-password/request-otp', async (c) => {
       sql: `SELECT u.id, u.name, u.email, u.role, u.institution_name, u.college_id, u.institution_id, c.name as college_name
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
-            WHERE LOWER(u.email) = LOWER(?)
+            WHERE LOWER(u.email) = LOWER(?) OR LOWER(u.id) = LOWER(?) OR (u.login_id IS NOT NULL AND LOWER(u.login_id) = LOWER(?))
             LIMIT 1;`,
-      args: [email]
+      args: [email, email, email]
     });
 
     if (userRes.rows.length === 0) {
@@ -1340,9 +1348,9 @@ app.post('/api/auth/forgot-password/verify-reset', async (c) => {
                    c.name as college_name, c.code as college_code, c.status as college_status
             FROM users u
             LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
-            WHERE LOWER(u.email) = LOWER(?)
+            WHERE LOWER(u.email) = LOWER(?) OR LOWER(u.id) = LOWER(?) OR (u.login_id IS NOT NULL AND LOWER(u.login_id) = LOWER(?))
             LIMIT 1;`,
-      args: [email]
+      args: [email, email, email]
     });
 
     if (userRes.rows.length === 0) {
@@ -2592,70 +2600,329 @@ app.post('/api/admin/import-roster', async (c) => {
   }
 });
 
-// 2. Register a new user in Turso (Restricted: Administrators Only)
-app.post('/api/auth/register', async (c) => {
+// 2. User Management (Provision, List, Update, Delete Students & Lecturers)
+async function handleCreateUser(c: any) {
   try {
-    // Public self-registration is strictly disabled
     const caller = extractUserFromHeader(c);
-    if (!caller || (caller.role !== 'admin' && caller.role !== 'developer')) {
-      return c.json({
-        error: 'Public self-registration is disabled. Student accounts must be provisioned by College Administration.'
-      }, 403);
-    }
     const body = await c.req.json();
+    const db = getDb(c);
+
+    try { await db.execute(`ALTER TABLE users ADD COLUMN login_id TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN phone TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN guardian_name TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN guardian_phone TEXT;`); } catch {}
+
     const email = (body.email || '').trim().toLowerCase();
     const name = (body.name || '').trim();
-    const password = (body.password || 'password123').trim();
-    const role = body.role || 'student';
-    const collegeId = body.college_id || 'padmashree-demo';
-    const sectionId = body.section_id || 'sec-sem5-a';
-    const avatarUrl = body.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&q=80';
-
     if (!email || !name) {
       return c.json({ error: 'Name and email are required' }, 400);
     }
 
-    const db = getDb(c);
+    const callerInstId = caller?.institution_id || caller?.college_id;
+    const callerInstName = caller?.institution_name;
+    let collegeId = (body.collegeId || body.college_id || body.institutionId || body.institution_id || c.req.header('x-college-id') || c.req.header('x-institution-id') || callerInstId || '').trim();
+    let institutionName = (body.institutionName || body.institution_name || callerInstName || 'Academic Institution').trim();
+
+    // Resolve or match valid college in DB to ensure foreign key constraint
+    if (!collegeId || collegeId === 'col_procollege_network') {
+      if (institutionName && institutionName !== 'Academic Institution') {
+        try {
+          const colCheck = await db.execute({
+            sql: 'SELECT id, name FROM colleges WHERE LOWER(name) = LOWER(?) UNION SELECT id, name FROM institutions WHERE LOWER(name) = LOWER(?) LIMIT 1;',
+            args: [institutionName, institutionName]
+          });
+          if (colCheck.rows.length > 0) {
+            collegeId = String(colCheck.rows[0].id);
+            institutionName = String(colCheck.rows[0].name || institutionName);
+          }
+        } catch {}
+      }
+    }
+
+    // Ensure collegeId is in colleges table so FOREIGN KEY constraint doesn't reject user creation
+    if (collegeId) {
+      try {
+        const colExists = await db.execute({
+          sql: 'SELECT id FROM colleges WHERE id = ? LIMIT 1;',
+          args: [collegeId]
+        });
+        if (colExists.rows.length === 0) {
+          await db.execute({
+            sql: `INSERT OR IGNORE INTO colleges (id, name, code, status) VALUES (?, ?, ?, 'active');`,
+            args: [collegeId, institutionName, 'COL']
+          });
+        }
+      } catch {}
+    } else {
+      try {
+        const firstCol = await db.execute('SELECT id, name FROM colleges LIMIT 1;');
+        if (firstCol.rows.length > 0) {
+          collegeId = String(firstCol.rows[0].id);
+          institutionName = String(firstCol.rows[0].name || institutionName);
+        }
+      } catch {}
+    }
+    const role = (body.role || 'student').trim().toLowerCase();
+    const department = (body.department || 'General Academic Department').trim();
+    const phone = (body.phone || '').trim();
+    const guardianName = (body.guardianName || body.guardian_name || '').trim();
+    const guardianPhone = (body.guardianPhone || body.guardian_phone || '').trim();
+    const loginId = (body.loginId || body.login_id || '').trim();
+    const password = (body.password || body.temporaryPassword || generateTemporaryPassword()).trim();
+    const passHash = await hashPassword(password);
+    const avatarUrl = body.avatar || body.avatar_url || (role === 'student'
+      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'
+      : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=256&q=80');
+
+    // Check if user already exists
     const existing = await db.execute({
-      sql: 'SELECT id FROM users WHERE LOWER(email) = LOWER(?);',
+      sql: 'SELECT id, college_id, institution_id FROM users WHERE LOWER(email) = LOWER(?);',
       args: [email],
     });
 
+    let userId: string;
     if (existing.rows.length > 0) {
-      return c.json({ error: 'An account with this email already exists' }, 409);
+      userId = String(existing.rows[0].id);
+      await db.execute({
+        sql: `UPDATE users SET
+                name = ?, phone = ?, role = ?, department = ?,
+                password = ?, password_hash = ?,
+                guardian_name = ?, guardian_phone = ?,
+                college_id = COALESCE(NULLIF(?, ''), college_id),
+                institution_id = COALESCE(NULLIF(?, ''), institution_id),
+                institution_name = COALESCE(NULLIF(?, ''), institution_name),
+                login_id = COALESCE(NULLIF(?, ''), login_id),
+                must_change_password = 0
+              WHERE id = ?;`,
+        args: [
+          name, phone, role, department,
+          password, passHash,
+          guardianName, guardianPhone,
+          collegeId, collegeId, institutionName,
+          loginId, userId
+        ]
+      });
+    } else {
+      userId = body.id || (role === 'student' ? `usr_std_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` : `usr_fac_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+      await db.execute({
+        sql: `INSERT INTO users (
+                id, login_id, college_id, institution_id, institution_name,
+                name, email, phone, role, password, password_hash,
+                department, guardian_name, guardian_phone,
+                avatar_url, must_change_password, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'));`,
+        args: [
+          userId, loginId || userId, collegeId, collegeId, institutionName,
+          name, email, phone, role, password, passHash,
+          department, guardianName, guardianPhone,
+          avatarUrl
+        ]
+      });
     }
 
-    const newId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    await db.execute({
-      sql: `INSERT INTO users (id, college_id, section_id, name, email, role, password, password_hash, avatar_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [newId, collegeId, sectionId, name, email, role, password, password, avatarUrl],
-    });
-
-    const user = {
-      id: newId,
-      email,
-      full_name: name,
+    const userObj = {
+      id: userId,
+      loginId: loginId || userId,
       name,
+      email,
+      phone,
+      guardianName,
+      guardianPhone,
       role,
-      college_id: collegeId,
-      section_id: sectionId,
-      avatar_url: avatarUrl,
+      department,
+      institutionName,
+      collegeId,
+      institutionId: collegeId,
+      avatar: avatarUrl,
+      temporaryPassword: password,
+      status: 'available',
     };
 
-    const token = 'tok_' + btoa(JSON.stringify({ id: newId, email, role, ts: Date.now() })).replace(/=/g, '');
+    const token = 'tok_' + btoa(JSON.stringify({ id: userId, email, role, ts: Date.now() })).replace(/=/g, '');
 
     return c.json({
       success: true,
       token,
-      user,
-      college: { id: collegeId, name: 'Padmashree College', code: 'PDC' },
+      user: userObj,
+      temporaryPassword: password,
+      message: `${role === 'student' ? 'Student' : 'Faculty'} user account provisioned successfully.`
     }, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
   }
-});
+}
+
+async function handleListUsers(c: any) {
+  try {
+    const caller = extractUserFromHeader(c);
+    const db = getDb(c);
+    const callerInstId = caller?.institution_id || caller?.college_id;
+    const instId = c.req.query('collegeId') || c.req.query('institutionId') || c.req.header('x-college-id') || callerInstId || '';
+    const instName = c.req.query('institution') || caller?.institution_name || '';
+
+    let sql = `SELECT id, login_id, name, email, phone, role, department, institution_name, college_id, institution_id, avatar_url, guardian_name, guardian_phone, created_at
+               FROM users WHERE role != 'developer'`;
+    const args: string[] = [];
+
+    if (instId && instId !== 'col_procollege_network') {
+      sql += ` AND (college_id = ? OR institution_id = ?)`;
+      args.push(instId, instId);
+    } else if (instName && instName !== 'all') {
+      sql += ` AND LOWER(institution_name) = LOWER(?)`;
+      args.push(instName);
+    }
+    sql += ` ORDER BY name ASC;`;
+
+    const res = await db.execute({ sql, args });
+    const users = res.rows.map(u => ({
+      id: String(u.id),
+      loginId: u.login_id ? String(u.login_id) : undefined,
+      name: String(u.name),
+      email: String(u.email),
+      phone: u.phone ? String(u.phone) : undefined,
+      role: String(u.role || 'student'),
+      license: (String(u.role) === 'student' ? 'ProCollege Verified for Students' : 'ProCollege Verified for Faculty'),
+      department: String(u.department || 'Academic Department'),
+      institutionName: String(u.institution_name || ''),
+      avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+      guardianName: u.guardian_name ? String(u.guardian_name) : undefined,
+      guardianPhone: u.guardian_phone ? String(u.guardian_phone) : undefined,
+      status: 'available',
+      createdAt: u.created_at ? String(u.created_at).split('T')[0] : undefined,
+    }));
+
+    return c.json({ success: true, users });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+}
+
+async function handleDeleteUser(c: any) {
+  try {
+    const caller = extractUserFromHeader(c);
+    const userId = c.req.param('userId') || c.req.param('id');
+    if (!userId) {
+      return c.json({ error: 'User ID is required' }, 400);
+    }
+    console.log(`[ADMIN-DELETE-USER] Requested deletion of user ${userId} by ${caller?.email || 'admin'}`);
+    const db = getDb(c);
+
+    const check = await db.execute({
+      sql: 'SELECT id, role, name, email FROM users WHERE id = ? LIMIT 1;',
+      args: [userId]
+    });
+    if (check.rows.length === 0) {
+      return c.json({ error: 'User not found in database' }, 404);
+    }
+
+    const targetUser = check.rows[0];
+    if (String(targetUser.role) === 'developer') {
+      return c.json({ error: 'Platform developer accounts cannot be deleted' }, 403);
+    }
+
+    await db.execute({
+      sql: 'DELETE FROM users WHERE id = ?;',
+      args: [userId]
+    });
+
+    try {
+      const coursesRes = await db.execute('SELECT id, enrolled_students FROM courses;');
+      for (const row of coursesRes.rows) {
+        if (row.enrolled_students) {
+          try {
+            const list = JSON.parse(String(row.enrolled_students));
+            if (Array.isArray(list) && list.some(s => s.id === userId || s.email === targetUser.email)) {
+              const updated = list.filter(s => s.id !== userId && s.email !== targetUser.email);
+              await db.execute({
+                sql: 'UPDATE courses SET enrolled_students = ?, member_count = ? WHERE id = ?;',
+                args: [JSON.stringify(updated), updated.length, row.id]
+              });
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
+    return c.json({
+      success: true,
+      message: `User ${targetUser.name} (${targetUser.email}) permanently removed.`
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+}
+
+async function handleUpdateUserDetails(c: any) {
+  try {
+    const userId = c.req.param('userId') || c.req.param('id');
+    if (!userId) {
+      return c.json({ error: 'User ID is required' }, 400);
+    }
+    const body = await c.req.json();
+    const db = getDb(c);
+
+    try { await db.execute(`ALTER TABLE users ADD COLUMN phone TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN guardian_name TEXT;`); } catch {}
+    try { await db.execute(`ALTER TABLE users ADD COLUMN guardian_phone TEXT;`); } catch {}
+
+    const check = await db.execute({
+      sql: 'SELECT * FROM users WHERE id = ? LIMIT 1;',
+      args: [userId]
+    });
+    if (check.rows.length === 0) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    const current = check.rows[0];
+    const newName = body.name !== undefined ? String(body.name).trim() : String(current.name);
+    const newPhone = body.phone !== undefined ? String(body.phone).trim() : String(current.phone || '');
+    const newGuardianName = body.guardianName !== undefined ? String(body.guardianName).trim() : (body.guardian_name !== undefined ? String(body.guardian_name).trim() : String(current.guardian_name || ''));
+    const newGuardianPhone = body.guardianPhone !== undefined ? String(body.guardianPhone).trim() : (body.guardian_phone !== undefined ? String(body.guardian_phone).trim() : String(current.guardian_phone || ''));
+    const newDept = body.department !== undefined ? String(body.department).trim() : String(current.department || '');
+    const newRole = body.role !== undefined ? String(body.role).trim() : String(current.role || 'student');
+
+    await db.execute({
+      sql: `UPDATE users SET
+              name = ?, phone = ?, guardian_name = ?, guardian_phone = ?,
+              department = ?, role = ?
+            WHERE id = ?;`,
+      args: [newName, newPhone, newGuardianName, newGuardianPhone, newDept, newRole, userId]
+    });
+
+    return c.json({
+      success: true,
+      user: {
+        id: userId,
+        name: newName,
+        email: current.email,
+        phone: newPhone,
+        guardianName: newGuardianName,
+        guardianPhone: newGuardianPhone,
+        department: newDept,
+        role: newRole
+      },
+      message: 'User details updated successfully.'
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+}
+
+app.post('/api/auth/register', handleCreateUser);
+app.post('/api/users', handleCreateUser);
+app.post('/api/admin/users', handleCreateUser);
+app.get('/api/users', handleListUsers);
+app.get('/api/admin/users', handleListUsers);
+app.delete('/api/admin/users/:userId', handleDeleteUser);
+app.delete('/api/users/:userId', handleDeleteUser);
+app.patch('/api/admin/users/:userId', handleUpdateUserDetails);
+app.patch('/api/users/:userId', handleUpdateUserDetails);
+app.patch('/api/admin/users/:userId/department', handleUpdateUserDetails);
+app.patch('/api/users/:userId/department', handleUpdateUserDetails);
 
 // 3. Verify session / me
 app.get('/api/auth/me', async (c) => {
@@ -2906,8 +3173,10 @@ app.get('/api/workspace/bootstrap', async (c) => {
         args: [institutionParam, collegeId],
       });
       usersRes = await db.execute({
-        sql: 'SELECT * FROM users WHERE institution_name = ? OR college_id = ? ORDER BY name ASC;',
-        args: [institutionParam, collegeId],
+        sql: `SELECT * FROM users 
+              WHERE institution_name = ? OR college_id = ? OR institution_id = ? OR LOWER(institution_name) = LOWER(?)
+              ORDER BY name ASC;`,
+        args: [institutionParam, collegeId, collegeId, institutionParam],
       });
       filesRes = await db.execute({
         sql: 'SELECT * FROM course_files WHERE college_id = ? OR course_id IN (SELECT id FROM courses WHERE institution_name = ? OR college_id = ?) ORDER BY uploaded_at DESC;',
@@ -3127,6 +3396,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       }
       return {
         id: String(u.id),
+        loginId: u.login_id ? String(u.login_id) : undefined,
         name: String(u.name),
         email: String(u.email),
         role: role as 'developer' | 'admin' | 'lecturer' | 'student',
@@ -3135,6 +3405,10 @@ app.get('/api/workspace/bootstrap', async (c) => {
         institutionName: String(u.institution_name || institutionParam),
         avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
         status: 'available' as const,
+        phone: u.phone ? String(u.phone) : undefined,
+        guardianName: u.guardian_name ? String(u.guardian_name) : undefined,
+        guardianPhone: u.guardian_phone ? String(u.guardian_phone) : undefined,
+        createdAt: u.created_at ? String(u.created_at).split('T')[0] : undefined,
       };
     });
 
@@ -3514,6 +3788,52 @@ app.delete('/api/courses/:id', async (c) => {
       args: [id],
     });
     return c.json({ success: true, deletedCourseId: id });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Update / Rename Course
+app.patch('/api/courses/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const db = getDb(c);
+    const body = await c.req.json();
+
+    const check = await db.execute({
+      sql: 'SELECT * FROM courses WHERE id = ? LIMIT 1;',
+      args: [id]
+    });
+    if (check.rows.length === 0) {
+      return c.json({ error: 'Course not found' }, 404);
+    }
+
+    const current = check.rows[0];
+    const newName = body.name !== undefined ? String(body.name).trim() : String(current.name);
+    const newCode = body.code !== undefined ? String(body.code).trim() : String(current.code);
+    const newDept = body.department !== undefined ? String(body.department).trim() : String(current.department || '');
+    const newTerm = body.term !== undefined ? String(body.term).trim() : String(current.term || '');
+    const newColor = body.color !== undefined ? String(body.color).trim() : String(current.color || '#4f46e5');
+
+    await db.execute({
+      sql: `UPDATE courses SET
+              name = ?, code = ?, department = ?, term = ?, color = ?
+            WHERE id = ?;`,
+      args: [newName, newCode, newDept, newTerm, newColor, id]
+    });
+
+    return c.json({
+      success: true,
+      course: {
+        id,
+        name: newName,
+        code: newCode,
+        department: newDept,
+        term: newTerm
+      },
+      message: 'Class details updated successfully.'
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);

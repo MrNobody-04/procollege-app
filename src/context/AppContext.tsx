@@ -86,6 +86,7 @@ interface AppContextType {
   setCurrentUser: (user: User) => void;
   availableUsers: User[];
   updateUserLicense: (userId: string, license: LicenseSku) => void;
+  updateUserDepartment: (userId: string, department: string) => void;
   toggleUserMute: (userId: string) => void;
   updateUserPresence: (status: PresenceStatus) => void;
   updateUserAvatar: (avatarUrl: string) => void;
@@ -99,6 +100,7 @@ interface AppContextType {
   setSelectedCourse: (course: CourseTeam) => void;
   activateCourse: (courseId: string) => void;
   createCourse: (newCourse: CourseTeam) => void;
+  updateCourse: (courseId: string, updates: Partial<CourseTeam>) => void;
   deleteCourse: (courseId: string) => void;
   addChannel: (courseId: string, channel: { name: string; description: string; subjectLecturerName?: string; subjectLecturerId?: string }) => void;
   enrollStudentsToCourse: (courseId: string, studentIds: string[]) => void;
@@ -204,8 +206,14 @@ interface AppContextType {
     email: string;
     role: 'student' | 'lecturer' | 'professor' | 'assistant_admin';
     department: string;
-    license: LicenseSku;
+    license?: LicenseSku;
+    phone?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    temporaryPassword?: string;
   }) => User;
+  deleteUserByAdmin: (userId: string) => Promise<void>;
+  updateUserDetails: (userId: string, data: Partial<User>) => Promise<void>;
 
   faculties: FacultyDepartment[];
   createFaculty: (faculty: Omit<FacultyDepartment, 'id'>) => void;
@@ -592,6 +600,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateUserDepartment = (userId: string, department: string) => {
+    setAvailableUsers(prev => prev.map(u => (u.id === userId ? { ...u, department } : u)));
+    if (currentUser.id === userId) {
+      setCurrentUser(prev => ({ ...prev, department }));
+    }
+    if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      fetch(`/api/users/${userId}/department`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ department })
+      }).catch(() => {});
+    }
+  };
+
   const toggleUserMute = (userId: string) => {
     setAvailableUsers(prev => prev.map(u => (u.id === userId ? { ...u, isMuted: !u.isMuted } : u)));
     if (currentUser.id === userId) {
@@ -695,6 +721,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           channels: courseWithInst.channels
         }),
       }).catch(console.error);
+    }
+  };
+
+  const updateCourse = (courseId: string, updates: Partial<CourseTeam>) => {
+    setCourses(prev =>
+      prev.map(c => {
+        if (c.id === courseId) {
+          return { ...c, ...updates };
+        }
+        return c;
+      })
+    );
+    if (selectedCourse?.id === courseId) {
+      setSelectedCourse(prev => (prev ? { ...prev, ...updates } : prev));
+    }
+    if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      fetch(`/api/courses/${courseId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(updates)
+      }).catch(() => {});
     }
   };
 
@@ -2125,7 +2176,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     email: string;
     role: 'student' | 'lecturer' | 'professor' | 'assistant_admin';
     department: string;
-    license: LicenseSku;
+    license?: LicenseSku;
+    phone?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    temporaryPassword?: string;
   }): User => {
     const year = new Date().getFullYear();
     const isStudent = userData.role === 'student';
@@ -2133,7 +2188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const deptPrefix = (userData.department || (isAssistantAdmin ? 'ADM' : 'GEN')).substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const loginId = isStudent ? `STU-${year}-${randomSuffix}` : isAssistantAdmin ? `ASST-${deptPrefix}-${randomSuffix}` : `FAC-${deptPrefix}-${randomSuffix}`;
-    const temporaryPassword = `ProCol-${Math.random().toString(36).substring(2, 8).toUpperCase()}!`;
+    const temporaryPassword = userData.temporaryPassword || `ProCol-${Math.random().toString(36).substring(2, 8).toUpperCase()}!`;
 
     const avatarMap: Record<string, string> = {
       student: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
@@ -2143,19 +2198,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'ProCollege University Network');
+    const newId = `usr_${isStudent ? 'std' : 'fac'}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const newUser: User = {
-      id: `user_${Date.now()}`,
+      id: newId,
       loginId,
       name: userData.name,
       email: userData.email,
       role: userData.role,
-      license: userData.license,
+      license: userData.license || (isStudent ? 'ProCollege Verified for Students' : 'ProCollege Verified for Faculty'),
       department: userData.department,
       institutionName: inst,
+      institutionId: currentUser.institutionId || currentUser.collegeId,
+      collegeId: currentUser.collegeId || currentUser.institutionId,
       avatar: avatarMap[userData.role] || avatarMap.student,
       status: 'available',
       statusMessage: `${isStudent ? 'Student' : isAssistantAdmin ? 'Assistant Admin' : 'Faculty'} Account Active`,
       temporaryPassword,
+      phone: userData.phone,
+      guardianName: userData.guardianName,
+      guardianPhone: userData.guardianPhone,
       createdAt: new Date().toISOString().split('T')[0]
     };
 
@@ -2176,23 +2237,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Persist new user to Turso database
     if (!isDemoMode) {
       const collegeId = currentUser.collegeId || currentUser.institutionId;
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
           ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
         },
         body: JSON.stringify({
+          id: newUser.id,
+          loginId: newUser.loginId,
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
           college_id: collegeId,
-          password: temporaryPassword
+          institutionId: collegeId,
+          institutionName: inst,
+          department: newUser.department,
+          phone: newUser.phone,
+          guardianName: newUser.guardianName,
+          guardianPhone: newUser.guardianPhone,
+          password: temporaryPassword,
+          license: newUser.license
         })
       }).catch(console.error);
     }
 
     return newUser;
+  };
+
+  const deleteUserByAdmin = async (userId: string) => {
+    // Optimistically remove from state
+    setAvailableUsers(prev => prev.filter(u => u.id !== userId));
+
+    // Remove from courses enrolled students
+    setCourses(prev => prev.map(c => ({
+      ...c,
+      enrolledStudents: c.enrolledStudents?.filter(s => s.id !== userId),
+      memberCount: (c.enrolledStudents?.filter(s => s.id !== userId).length) ?? c.memberCount
+    })));
+
+    if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const collegeId = currentUser.collegeId || currentUser.institutionId;
+      try {
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+          }
+        });
+      } catch (err) {
+        console.error('[USER_DELETE_ERROR]', err);
+      }
+    }
+  };
+
+  const updateUserDetails = async (userId: string, data: Partial<User>) => {
+    setAvailableUsers(prev => prev.map(u => (u.id === userId ? { ...u, ...data } : u)));
+    if (currentUser.id === userId) {
+      setCurrentUser(prev => ({ ...prev, ...data }));
+    }
+
+    if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const collegeId = currentUser.collegeId || currentUser.institutionId;
+      try {
+        await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+          },
+          body: JSON.stringify(data)
+        });
+      } catch (err) {
+        console.error('[USER_UPDATE_ERROR]', err);
+      }
+    }
   };
 
   const createFaculty = (data: Omit<FacultyDepartment, 'id'>) => {
@@ -2668,6 +2793,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentUser: switchUser,
         availableUsers: tenantUsers,
         updateUserLicense,
+        updateUserDepartment,
         toggleUserMute,
         updateUserPresence,
         updateUserAvatar,
@@ -2681,6 +2807,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedCourse,
         activateCourse,
         createCourse,
+        updateCourse,
         deleteCourse,
         addChannel,
         deleteChannel,
@@ -2748,6 +2875,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submitInstitutionalRequest,
         provisionInstitutionalRequest,
         registerUserByAdmin,
+        deleteUserByAdmin,
+        updateUserDetails,
 
         faculties: tenantFaculties,
         createFaculty,
