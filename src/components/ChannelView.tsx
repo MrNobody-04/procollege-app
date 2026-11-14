@@ -17,7 +17,8 @@ import {
   FolderLock,
   ChevronLeft,
   Eye,
-  Download
+  Download,
+  ClipboardCheck
 } from 'lucide-react';
 import { useApp, type ChannelTab } from '../context/AppContext';
 import { ThreadPostItem } from './ThreadPostItem';
@@ -243,6 +244,11 @@ export const ChannelView: React.FC = () => {
     )
   );
 
+  const studentAttendance =
+    currentUser.role === 'student' && selectedCourse && selectedChannel
+      ? getStudentSubjectAttendance(currentUser.id, selectedChannel.id)
+      : null;
+
   return (
     <div className={`flex-1 flex flex-col h-full bg-[#E8E9E2] min-w-0 overflow-hidden select-none ${mobileSidebarOpen ? 'hidden md:flex' : 'flex'}`}>
       {/* Channel Header Bar - Clean and Natural (No Hashtag, No Pill Box) */}
@@ -310,6 +316,47 @@ export const ChannelView: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Student Subject Attendance Standing Badge */}
+          {currentUser.role === 'student' && studentAttendance && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${studentAttendance.threshold.badgeClass} shadow-2xs`}
+              title={`${studentAttendance.percentage}% Attendance (${studentAttendance.presentCount}/${studentAttendance.totalSessions} sessions held)`}
+            >
+              <span>{studentAttendance.threshold.icon}</span>
+              <span>{studentAttendance.percentage}%</span>
+              <span className="hidden sm:inline font-medium text-[10px]">({studentAttendance.threshold.label})</span>
+            </span>
+          )}
+
+          {/* Teacher / Admin Roll-Call Action Buttons */}
+          {isOwner && selectedCourse && (
+            <>
+              {isGeneralChannel ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSchoolRollCallModal(true)}
+                  className="flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  title="Conduct daily school roll-call for all enrolled students in this class"
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Daily Roll-Call</span>
+                  <span className="sm:hidden">Roll-Call</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowSubjectRollCallModal(true)}
+                  className="flex items-center gap-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white px-2.5 sm:px-3 py-1.5 rounded text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  title={`Take session attendance for ${selectedChannel.name}`}
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Subject Attendance</span>
+                  <span className="sm:hidden">Attendance</span>
+                </button>
+              )}
+            </>
+          )}
+
           {canPublishInSubject && channelTab === 'assignments' && (
             <button
               onClick={() => setShowCreateAsgnModal(true)}
@@ -898,6 +945,25 @@ export const ChannelView: React.FC = () => {
               author: previewCourseFile.uploadedBy
             })
           }
+        />
+      )}
+
+      {/* School Roll-Call Modal */}
+      {selectedCourse && (
+        <SchoolRollCallModal
+          course={selectedCourse}
+          isOpen={showSchoolRollCallModal}
+          onClose={() => setShowSchoolRollCallModal(false)}
+        />
+      )}
+
+      {/* University Subject Roll-Call Modal */}
+      {selectedCourse && selectedChannel && (
+        <SubjectRollCallModal
+          course={selectedCourse}
+          subject={selectedChannel}
+          isOpen={showSubjectRollCallModal}
+          onClose={() => setShowSubjectRollCallModal(false)}
         />
       )}
     </div>

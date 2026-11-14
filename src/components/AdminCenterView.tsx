@@ -5071,19 +5071,19 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </div>
 
               {/* Multi-Admin Management During Org Creation */}
-              <div className="bg-purple-50/60 border border-purple-200 rounded-lg p-3 space-y-2.5">
+              <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
-                      <Shield className="w-3.5 h-3.5 text-purple-600" />
+                    <span className="text-xs font-bold text-zinc-900 flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-zinc-700" />
                       Additional Institutional Admins ({extraOrgAdmins.length})
                     </span>
-                    <p className="text-[10px] text-purple-700">Appoint multiple administrators for this institution during creation.</p>
+                    <p className="text-[10px] text-zinc-500">Appoint multiple administrators for this institution during creation.</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setExtraOrgAdmins(prev => [...prev, { name: '', email: '', department: 'Campus Operations' }])}
-                    className="text-xs text-purple-700 hover:text-purple-900 font-semibold flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border border-purple-200 shadow-2xs"
+                    className="text-xs text-zinc-700 hover:text-zinc-900 font-semibold flex items-center gap-1 cursor-pointer bg-white px-2 py-1 rounded border border-zinc-200 shadow-2xs"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Admin</span>
@@ -5093,7 +5093,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 {extraOrgAdmins.length > 0 && (
                   <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                     {extraOrgAdmins.map((ea, idx) => (
-                      <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-purple-200">
+                      <div key={idx} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-zinc-200">
                         <input
                           type="text"
                           required
@@ -5103,7 +5103,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             setExtraOrgAdmins(prev => prev.map((item, i) => i === idx ? { ...item, name: val } : item));
                           }}
                           placeholder={`Admin ${idx + 2} Name`}
-                          className="flex-1 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-purple-600"
+                          className="flex-1 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-zinc-400"
                         />
                         <input
                           type="email"
@@ -5114,7 +5114,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                             setExtraOrgAdmins(prev => prev.map((item, i) => i === idx ? { ...item, email: val } : item));
                           }}
                           placeholder={`admin${idx + 2}@campus.edu`}
-                          className="flex-1 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-purple-600"
+                          className="flex-1 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 text-xs text-zinc-800 focus:outline-none focus:border-zinc-400"
                         />
                         <button
                           type="button"
@@ -5141,7 +5141,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
               </button>
               <button
                 type="submit"
-                className="px-3.5 py-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-lg cursor-pointer"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg cursor-pointer transition-colors"
               >
                 Provision Institutional Admin
               </button>
@@ -5268,6 +5268,28 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                 </div>
               </div>
 
+              {/* Login ID (if issued) */}
+              {issuedCredsModal.loginId && (
+                <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Admin Login ID</p>
+                  <div className="flex items-center justify-between">
+                    <code className="text-xs font-mono font-bold text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200 select-all">
+                      {issuedCredsModal.loginId}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(issuedCredsModal.loginId!);
+                        setCopiedField('loginId');
+                        setTimeout(() => setCopiedField(null), 2000);
+                      }}
+                      className="text-[11px] text-[#173bff] hover:underline font-semibold cursor-pointer"
+                    >
+                      {copiedField === 'loginId' ? 'Copied!' : 'Copy ID'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Temporary Password */}
               <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Temporary Password</p>
@@ -5293,7 +5315,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
             <div className="pt-2">
               <button
                 onClick={() => {
-                  const summary = `🏛️ ProCollege Official Administrator Credentials\nInstitution: ${issuedCredsModal.institutionName}\nAdministrator: ${issuedCredsModal.adminName}\nLogin Email: ${issuedCredsModal.adminEmail}\nTemporary Password: ${issuedCredsModal.temporaryPassword}\nLogin Portal: ${window.location.origin}\n\n*Note: A 6-digit security OTP will be dispatched directly to your email upon sign in.`;
+                  const summary = `🏛️ ProCollege Official Administrator Credentials\nInstitution: ${issuedCredsModal.institutionName}\nAdministrator: ${issuedCredsModal.adminName}${issuedCredsModal.loginId ? `\nAdmin Login ID: ${issuedCredsModal.loginId}` : ''}\nLogin Email: ${issuedCredsModal.adminEmail}\nTemporary Password: ${issuedCredsModal.temporaryPassword}\nLogin Portal: ${window.location.origin}\n\n*Note: A 6-digit security OTP will be dispatched directly to your email upon sign in.`;
                   navigator.clipboard.writeText(summary);
                   setCopiedField('all');
                   setTimeout(() => setCopiedField(null), 2000);

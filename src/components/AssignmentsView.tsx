@@ -16,7 +16,7 @@ import { StudentAssignmentModal } from './StudentAssignmentModal';
 import type { Assignment } from '../types';
 
 export const AssignmentsView: React.FC = () => {
-  const { assignments, courses, currentUser } = useApp();
+  const { assignments, courses, currentUser, getStudentSubjectAttendance } = useApp();
 
   type FilterType = 'pending' | 'completed' | 'due-passed' | 'all';
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending');
@@ -318,6 +318,9 @@ export const AssignmentsView: React.FC = () => {
               const isPassed = isDeadlinePassed(asgn);
               const courseObj = courses.find(c => c.id === asgn.courseId);
               const displayCourseName = courseObj?.name || asgn.courseCode;
+              const subjectAttendance = isStudent && (asgn.channelId || asgn.targetChannelId)
+                ? getStudentSubjectAttendance(currentUser.id, asgn.channelId || asgn.targetChannelId!)
+                : null;
 
               return (
                 <div
@@ -340,6 +343,20 @@ export const AssignmentsView: React.FC = () => {
                         <span className="text-[#26394D]/40">•</span>
                         <span className="font-bold text-[#26394D]">{asgn.subjectName || 'Subject'}</span>
                       </span>
+
+                      {/* Student Attendance Standing Badge */}
+                      {isStudent && subjectAttendance && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${subjectAttendance.threshold.badgeClass}`}
+                          title={`Subject Attendance: ${subjectAttendance.percentage}% (${subjectAttendance.presentCount}/${subjectAttendance.totalSessions} sessions held)`}
+                        >
+                          <span>{subjectAttendance.threshold.icon}</span>
+                          <span>{subjectAttendance.percentage}%</span>
+                          {subjectAttendance.threshold.isRestricted && (
+                            <span className="text-rose-700 font-bold">• Submission Restricted</span>
+                          )}
+                        </span>
+                      )}
 
                       {asgn.scheduleDate && new Date(asgn.scheduleDate).getTime() > currentTime && (
                         <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 shrink-0">

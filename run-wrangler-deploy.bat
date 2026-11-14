@@ -12,7 +12,15 @@ if %ERRORLEVEL% EQU 0 (
     echo.
     echo [SUCCESS] Logged in to Cloudflare!
     echo.
-    echo Step 2: Deploying updated ProCollege Worker...
+    echo Step 2: Building frontend with Vite...
+    call npm.cmd run build
+    if %ERRORLEVEL% NEQ 0 (
+        echo [ERROR] Build failed! Aborting deployment.
+        pause
+        exit /b %ERRORLEVEL%
+    )
+    echo.
+    echo Step 3: Deploying updated ProCollege Worker & Assets...
     call npx.cmd wrangler deploy
     echo.
     echo ========================================================

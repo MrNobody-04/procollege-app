@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "dev:worker": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "db:init": "node scripts/init-db.mjs",
     "secrets:push": "node scripts/push-secrets.mjs",
     "storage:audit": "node scripts/verify-storage.mjs"
