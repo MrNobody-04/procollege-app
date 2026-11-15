@@ -26,6 +26,7 @@ export type Env = {
   CLOUDINARY_API_KEY?: string;
   CLOUDINARY_API_SECRET?: string;
   JWT_SECRET?: string;
+  OTP_HMAC_SECRET?: string;
   DEVELOPER_EMAIL?: string;
   DEVELOPER_PASSWORD?: string;
   ALLOW_LEGACY_TOKENS?: string | boolean;
@@ -66,14 +67,142 @@ function getDb(c: { env: Env }) {
   return createClient({ url, authToken });
 }
 
-// Helper to securely hash passwords using Web Crypto (Edge-compatible SHA-256)
+const PBKDF2_ITERATIONS = 50000;
+
+// Helper to securely hash passwords using PBKDF2-HMAC-SHA256 (Edge Web Crypto, 50,000 iterations, random 16-byte salt)
 async function hashPassword(password: string): Promise<string> {
+  const enc = new TextEncoder();
+  const saltBytes = new Uint8Array(16);
+  crypto.getRandomValues(saltBytes);
+  const saltHex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBytes,
+      iterations: PBKDF2_ITERATIONS,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    256
+  );
+
+  const hashHex = Array.from(new Uint8Array(derivedBits))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return `$pbkdf2$v1$${PBKDF2_ITERATIONS}$${saltHex}$${hashHex}`;
+}
+
+// Legacy SHA-256 hash calculation for backwards compatibility
+async function hashLegacyPassword(password: string): Promise<string> {
   const enc = new TextEncoder();
   const salt = 'procollege_edge_salt_2026';
   const data = enc.encode(password + salt);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Verify password against stored hash, supporting both PBKDF2 and legacy SHA-256 with auto-upgrade flag
+async function verifyPassword(
+  password: string,
+  storedHash: string,
+  storedPlain = ''
+): Promise<{ valid: boolean; needsUpgrade: boolean }> {
+  if (!storedHash && !storedPlain) {
+    return { valid: false, needsUpgrade: false };
+  }
+
+  // 1. PBKDF2 format: $pbkdf2$v1$<iterations>$<salt_hex>$<hash_hex>
+  if (storedHash && storedHash.startsWith('$pbkdf2$v1$')) {
+    try {
+      const parts = storedHash.split('$');
+      if (parts.length >= 6) {
+        const iters = parseInt(parts[3], 10);
+        const saltHex = parts[4];
+        const expectedHashHex = parts[5];
+
+        const saltBytes = new Uint8Array(saltHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+          'raw',
+          enc.encode(password),
+          { name: 'PBKDF2' },
+          false,
+          ['deriveBits']
+        );
+
+        const derivedBits = await crypto.subtle.deriveBits(
+          {
+            name: 'PBKDF2',
+            salt: saltBytes,
+            iterations: iters,
+            hash: 'SHA-256'
+          },
+          keyMaterial,
+          256
+        );
+
+        const computedHashHex = Array.from(new Uint8Array(derivedBits))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+
+        if (computedHashHex.toLowerCase() === expectedHashHex.toLowerCase()) {
+          return { valid: true, needsUpgrade: false };
+        }
+      }
+    } catch (err) {
+      console.warn('[AUTH] Error during PBKDF2 verification:', err);
+    }
+    return { valid: false, needsUpgrade: false };
+  }
+
+  // 2. Legacy SHA-256 format
+  if (storedHash) {
+    const legacyHash = await hashLegacyPassword(password);
+    if (legacyHash.toLowerCase() === storedHash.toLowerCase()) {
+      return { valid: true, needsUpgrade: true };
+    }
+  }
+
+  // 3. Fallback to stored plain password (dev legacy rows)
+  if (storedPlain && storedPlain === password) {
+    return { valid: true, needsUpgrade: true };
+  }
+
+  return { valid: false, needsUpgrade: false };
+}
+
+// Compute HMAC-SHA256 hash for OTP codes using server secret
+async function hashOtpCode(code: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, enc.encode(code));
+  return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Helper to retrieve OTP HMAC secret with fallback to JWT_SECRET
+function getOtpSecret(c: any): string {
+  const secret = c.env?.OTP_HMAC_SECRET || c.env?.JWT_SECRET;
+  if (!secret) {
+    throw new Error('[SECURITY FATAL] OTP_HMAC_SECRET or JWT_SECRET must be configured');
+  }
+  return secret;
 }
 
 // Generate secure readable temporary 8-character password
@@ -579,7 +708,7 @@ async function send2FAEmail(params: {
         recipientEmail,
         recipientName,
         subject,
-        params.code,
+        null, // Redacted: OTP codes are never logged to database
         providerUsed,
         success ? 'delivered' : 'failed',
         lastError || (success ? null : 'No active email provider configured (configure in Platform Settings)'),
@@ -589,7 +718,7 @@ async function send2FAEmail(params: {
     console.warn('[EMAIL-LOG] Failed to write log:', err);
   }
 
-  console.log(`[EMAIL-2FA] Dispatched 2FA code ${params.code} to ${recipientEmail} via ${providerUsed}: success=${success}`);
+  console.log(`[EMAIL-2FA] Dispatched 2FA verification email to ${recipientEmail} via ${providerUsed}: success=${success}`);
   return { success, provider: providerUsed, error: lastError };
 }
 
@@ -1115,21 +1244,19 @@ app.post('/api/auth/login', async (c) => {
       return c.json({ error: 'Account not found. Please check your institutional email address.' }, 404);
     }
 
-    const inputHash = await hashPassword(password);
-
     // If no target college specified and user has accounts across multiple colleges:
     if (!targetCollegeId && result.rows.length > 1) {
-      const matchingRows = result.rows.filter((u: any) => {
+      const matchChecks = await Promise.all(result.rows.map(async (u: any) => {
         const storedPass = String(u.password || '');
         const storedHash = String(u.password_hash || '');
         const userRole = String(u.role || '');
         const isDeveloper = userRole === 'developer' || userRole === 'platform_admin';
         const isAdmin = userRole === 'admin';
         const isPrivileged = isDeveloper || isAdmin;
-        return (storedHash && storedHash === inputHash) ||
-               (storedPass && storedPass === password) ||
-               (!isPrivileged && password === 'password123');
-      });
+        const vRes = await verifyPassword(password, storedHash, storedPass);
+        return (vRes.valid || (!isPrivileged && password === 'password123')) ? u : null;
+      }));
+      const matchingRows = matchChecks.filter(Boolean);
 
       if (matchingRows.length === 0) {
         return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
@@ -1157,13 +1284,28 @@ app.post('/api/auth/login', async (c) => {
     const isAdmin = userRole === 'admin';
     const isPrivileged = isDeveloper || isAdmin;
 
-    const isValid =
-      (storedHash && storedHash === inputHash) ||
-      (storedPass && storedPass === password) ||
-      (!isPrivileged && password === 'password123');
+    const verifyResult = await verifyPassword(password, storedHash, storedPass);
+    let isValid = verifyResult.valid;
+    if (!isValid && !isPrivileged && password === 'password123') {
+      isValid = true;
+    }
 
     if (!isValid) {
       return c.json({ error: 'Incorrect password. Please verify your credentials.' }, 401);
+    }
+
+    // Transparent password upgrade: upgrade legacy SHA-256 or plain to PBKDF2
+    if (verifyResult.needsUpgrade) {
+      try {
+        const newPbkdf2Hash = await hashPassword(password);
+        await db.execute({
+          sql: `UPDATE users SET password_hash = ? WHERE id = ?;`,
+          args: [newPbkdf2Hash, userRow.id]
+        });
+        console.log(`[AUTH-PASSWORD-UPGRADE] Transparently upgraded password to PBKDF2 for ${userRow.email}`);
+      } catch (upgErr) {
+        console.warn('[AUTH-PASSWORD-UPGRADE] Failed to update user row with PBKDF2 hash:', upgErr);
+      }
     }
 
     // Check organization workflow status
@@ -1235,11 +1377,20 @@ app.post('/api/auth/login', async (c) => {
     if (requires2FA) {
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min window
+      const otpSecret = getOtpSecret(c);
+      const hashedOtp = await hashOtpCode(otpCode, otpSecret);
 
-      await db.execute({
-        sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
-        args: [otpCode, otpExpires, userRow.id],
-      });
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ?, otp_attempts = 0 WHERE id = ?;',
+          args: [hashedOtp, otpExpires, userRow.id],
+        });
+      } catch {
+        await db.execute({
+          sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
+          args: [hashedOtp, otpExpires, userRow.id],
+        });
+      }
 
       console.log(`[AUTH-OTP] Generated fresh 2FA OTP for ${userRow.email} (valid for 10 min)`);
 
@@ -1354,11 +1505,20 @@ app.post('/api/auth/resend-otp', async (c) => {
     const userRow = userRes.rows[0];
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const otpSecret = getOtpSecret(c);
+    const hashedOtp = await hashOtpCode(otpCode, otpSecret);
 
-    await db.execute({
-      sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
-      args: [otpCode, otpExpires, userRow.id],
-    });
+    try {
+      await db.execute({
+        sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ?, otp_attempts = 0 WHERE id = ?;',
+        args: [hashedOtp, otpExpires, userRow.id],
+      });
+    } catch {
+      await db.execute({
+        sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
+        args: [hashedOtp, otpExpires, userRow.id],
+      });
+    }
 
     const emailResult = await send2FAEmail({
       to: String(userRow.email),
@@ -1415,19 +1575,66 @@ app.post('/api/auth/verify-otp', async (c) => {
     const expiresAt = userRow.otp_expires_at ? new Date(String(userRow.otp_expires_at)).getTime() : 0;
     const now = Date.now();
 
-    if (!storedOtp || storedOtp !== otpCode) {
+    // Check attempt limits (tolerates column absent)
+    let currentAttempts = 0;
+    try {
+      const attemptCheck = await db.execute({
+        sql: 'SELECT otp_attempts FROM users WHERE id = ? LIMIT 1;',
+        args: [userRow.id]
+      });
+      if (attemptCheck.rows.length > 0 && attemptCheck.rows[0].otp_attempts !== null && attemptCheck.rows[0].otp_attempts !== undefined) {
+        currentAttempts = Number(attemptCheck.rows[0].otp_attempts) || 0;
+      }
+    } catch {}
+
+    if (currentAttempts >= 5) {
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?;',
+          args: [userRow.id]
+        });
+      } catch {}
+      return c.json({ error: 'Too many failed OTP attempts. This code has been invalidated. Please log in again to request a new code.' }, 400);
+    }
+
+    const otpSecret = getOtpSecret(c);
+    const expectedHmac = await hashOtpCode(otpCode, otpSecret);
+
+    // Verify OTP code against HMAC hash (or legacy plain text if pre-existing)
+    const isOtpValid = storedOtp && (storedOtp === expectedHmac || storedOtp === otpCode);
+
+    if (!isOtpValid) {
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_attempts = COALESCE(otp_attempts, 0) + 1 WHERE id = ?;',
+          args: [userRow.id]
+        });
+      } catch {}
       return c.json({ error: 'Invalid 6-digit OTP code. Please verify your code.' }, 400);
     }
 
     if (expiresAt > 0 && now > expiresAt) {
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?;',
+          args: [userRow.id]
+        });
+      } catch {}
       return c.json({ error: 'Verification code has expired. Please log in again to generate a new code.' }, 400);
     }
 
-    // Clear used OTP in Turso
-    await db.execute({
-      sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE id = ?;',
-      args: [userRow.id],
-    });
+    // Clear used OTP in Turso and reset attempts
+    try {
+      await db.execute({
+        sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?;',
+        args: [userRow.id],
+      });
+    } catch {
+      await db.execute({
+        sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE id = ?;',
+        args: [userRow.id],
+      });
+    }
 
     const isDeveloper = userRow.role === 'developer' || userRow.role === 'platform_admin';
     const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || (isDeveloper ? 'platform_root' : 'col_client'));
@@ -1522,11 +1729,20 @@ app.post('/api/auth/forgot-password/request-otp', async (c) => {
     const userRow = userRes.rows[0];
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const otpSecret = getOtpSecret(c);
+    const hashedOtp = await hashOtpCode(otpCode, otpSecret);
 
-    await db.execute({
-      sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
-      args: [otpCode, otpExpires, userRow.id]
-    });
+    try {
+      await db.execute({
+        sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ?, otp_attempts = 0 WHERE id = ?;',
+        args: [hashedOtp, otpExpires, userRow.id]
+      });
+    } catch {
+      await db.execute({
+        sql: 'UPDATE users SET otp_code = ?, otp_expires_at = ? WHERE id = ?;',
+        args: [hashedOtp, otpExpires, userRow.id]
+      });
+    }
 
     const emailResult = await send2FAEmail({
       to: String(userRow.email),
@@ -1590,24 +1806,71 @@ app.post('/api/auth/forgot-password/verify-reset', async (c) => {
     const expiresAt = userRow.otp_expires_at ? new Date(String(userRow.otp_expires_at)).getTime() : 0;
     const now = Date.now();
 
-    if (!storedOtp || storedOtp !== otpCode) {
+    // Check attempt limits (tolerates column absent)
+    let currentAttempts = 0;
+    try {
+      const attemptCheck = await db.execute({
+        sql: 'SELECT otp_attempts FROM users WHERE id = ? LIMIT 1;',
+        args: [userRow.id]
+      });
+      if (attemptCheck.rows.length > 0 && attemptCheck.rows[0].otp_attempts !== null && attemptCheck.rows[0].otp_attempts !== undefined) {
+        currentAttempts = Number(attemptCheck.rows[0].otp_attempts) || 0;
+      }
+    } catch {}
+
+    if (currentAttempts >= 5) {
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?;',
+          args: [userRow.id]
+        });
+      } catch {}
+      return c.json({ error: 'Too many failed attempts. This verification code has been invalidated. Please request a new password reset code.' }, 400);
+    }
+
+    const otpSecret = getOtpSecret(c);
+    const expectedHmac = await hashOtpCode(otpCode, otpSecret);
+    const isOtpValid = storedOtp && (storedOtp === expectedHmac || storedOtp === otpCode);
+
+    if (!isOtpValid) {
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_attempts = COALESCE(otp_attempts, 0) + 1 WHERE id = ?;',
+          args: [userRow.id]
+        });
+      } catch {}
       return c.json({ error: 'Invalid 6-digit verification code. Please check your code.' }, 400);
     }
 
     if (expiresAt > 0 && now > expiresAt) {
+      try {
+        await db.execute({
+          sql: 'UPDATE users SET otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0 WHERE id = ?;',
+          args: [userRow.id]
+        });
+      } catch {}
       return c.json({ error: 'Verification code has expired. Please request a new password reset code.' }, 400);
     }
 
-    // Securely hash password
+    // Securely hash password using PBKDF2
     const passHash = await hashPassword(newPassword);
 
-    // Update password and clear OTP
-    await db.execute({
-      sql: `UPDATE users 
-            SET password = ?, password_hash = ?, otp_code = NULL, otp_expires_at = NULL, must_change_password = 0 
-            WHERE id = ?;`,
-      args: [newPassword, passHash, userRow.id]
-    });
+    // Update password, clear OTP, and reset attempts
+    try {
+      await db.execute({
+        sql: `UPDATE users 
+              SET password = ?, password_hash = ?, otp_code = NULL, otp_expires_at = NULL, otp_attempts = 0, must_change_password = 0 
+              WHERE id = ?;`,
+        args: [newPassword, passHash, userRow.id]
+      });
+    } catch {
+      await db.execute({
+        sql: `UPDATE users 
+              SET password = ?, password_hash = ?, otp_code = NULL, otp_expires_at = NULL, must_change_password = 0 
+              WHERE id = ?;`,
+        args: [newPassword, passHash, userRow.id]
+      });
+    }
 
     // Register trusted device so session is recognized immediately
     const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || generateSecureToken('hash_')).trim();
@@ -1925,6 +2188,8 @@ app.post('/api/platform/institutions/provision', async (c) => {
     // Generate initial 2FA OTP code valid for 48h
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const otpSecret = getOtpSecret(c);
+    const hashedOtp = await hashOtpCode(otpCode, otpSecret);
 
     // 2. Insert Admin into users with mandatory password change and 2FA OTP
     await db.execute({
@@ -1932,7 +2197,7 @@ app.post('/api/platform/institutions/provision', async (c) => {
               id, college_id, institution_id, institution_name, name, email,
               role, password, password_hash, must_change_password, otp_code, otp_expires_at, department, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 1, ?, ?, ?, datetime('now'));`,
-      args: [adminId, institutionId, institutionId, name, contactName, email, tempPassword, passHash, otpCode, otpExpires, department],
+      args: [adminId, institutionId, institutionId, name, contactName, email, tempPassword, passHash, hashedOtp, otpExpires, department],
     });
 
     // Send 2FA verification email to primary admin
@@ -1973,6 +2238,7 @@ app.post('/api/platform/institutions/provision', async (c) => {
           const extraTempPass = extra.temporaryPassword || generateTemporaryPassword();
           const extraPassHash = await hashPassword(extraTempPass);
           const extraOtp = Math.floor(100000 + Math.random() * 900000).toString();
+          const extraHashedOtp = await hashOtpCode(extraOtp, otpSecret);
           const extraDept = (extra.department || 'Campus Administration').trim();
 
           await db.execute({
@@ -1980,7 +2246,7 @@ app.post('/api/platform/institutions/provision', async (c) => {
                     id, college_id, institution_id, institution_name, name, email,
                     role, password, password_hash, must_change_password, otp_code, otp_expires_at, department, created_at
                   ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 1, ?, ?, ?, datetime('now'));`,
-            args: [extraAdminId, institutionId, institutionId, name, extraName, extraEmail, extraTempPass, extraPassHash, extraOtp, otpExpires, extraDept],
+            args: [extraAdminId, institutionId, institutionId, name, extraName, extraEmail, extraTempPass, extraPassHash, extraHashedOtp, otpExpires, extraDept],
           });
 
           await send2FAEmail({
@@ -2415,13 +2681,15 @@ app.post('/api/platform/institutions/:id/admins', async (c) => {
 
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const otpSecret = getOtpSecret(c);
+    const hashedOtp = await hashOtpCode(otpCode, otpSecret);
 
     await db.execute({
       sql: `INSERT OR REPLACE INTO users (
               id, college_id, institution_id, institution_name, name, email,
               role, password, password_hash, must_change_password, otp_code, otp_expires_at, department, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, 'admin', ?, ?, 1, ?, ?, ?, datetime('now'));`,
-      args: [adminId, id, id, orgName, name, email, tempPassword, passHash, otpCode, otpExpires, department],
+      args: [adminId, id, id, orgName, name, email, tempPassword, passHash, hashedOtp, otpExpires, department],
     });
 
     // Send 2FA email notification
@@ -2489,12 +2757,14 @@ app.post('/api/platform/institutions/:id/admins/:adminId/reset', async (c) => {
     const newHash = await hashPassword(newTempPassword);
     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const otpSecret = getOtpSecret(c);
+    const newHashedOtp = await hashOtpCode(newOtp, otpSecret);
 
     await db.execute({
       sql: `UPDATE users
-            SET password = ?, password_hash = ?, otp_code = ?, otp_expires_at = ?, must_change_password = 1
+            SET password = ?, password_hash = ?, otp_code = ?, otp_expires_at = ?, otp_attempts = 0, must_change_password = 1
             WHERE id = ?;`,
-      args: [newTempPassword, newHash, newOtp, otpExpires, adminId],
+      args: [newTempPassword, newHash, newHashedOtp, otpExpires, adminId],
     });
 
     await send2FAEmail({

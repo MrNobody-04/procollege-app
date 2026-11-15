@@ -42,6 +42,7 @@ async function setupDatabase() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL,
+      password TEXT,
       password_hash TEXT,
       role TEXT NOT NULL,
       college_id TEXT,
@@ -50,7 +51,11 @@ async function setupDatabase() {
       status TEXT DEFAULT 'active',
       section_id TEXT,
       login_id TEXT,
-      avatar_url TEXT
+      avatar_url TEXT,
+      otp_code TEXT,
+      otp_expires_at TEXT,
+      otp_attempts INTEGER DEFAULT 0,
+      must_change_password INTEGER DEFAULT 0
     );
   `);
 

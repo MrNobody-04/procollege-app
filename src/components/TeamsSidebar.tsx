@@ -56,10 +56,9 @@ export const TeamsSidebar: React.FC = () => {
 
     if (!isPlatformDev && !isCampusAdmin) {
       if (currentUser.role === 'student') {
-        const hasExplicit = Array.isArray(c.enrolledStudents) && c.enrolledStudents.length > 0;
-        const isEnrolled = hasExplicit && c.enrolledStudents
-          ? c.enrolledStudents.some(s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase()))
-          : Boolean(c.institutionName && currentUser.institutionName && c.institutionName.toLowerCase() === currentUser.institutionName.toLowerCase());
+        const isEnrolled = Array.isArray(c.enrolledStudents) && c.enrolledStudents.some(
+          s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase())
+        );
         if (!isEnrolled) return false;
       } else if (currentUser.role === 'lecturer' || currentUser.role === 'professor' || (currentUser as any).role === 'teacher') {
         const isLead = c.instructor?.id === currentUser.id || c.instructor?.email === currentUser.email;

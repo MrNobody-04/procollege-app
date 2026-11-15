@@ -403,16 +403,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const loadedCourses: CourseTeam[] = data.courses || [];
         setCourses(loadedCourses);
         if (loadedCourses.length > 0) {
-          setSelectedCourse(prev => {
-            const found = prev ? loadedCourses.find((c: CourseTeam) => c.id === prev.id) : null;
-            return found || loadedCourses[0];
-          });
-          const firstC = loadedCourses[0];
-          if (firstC.channels && firstC.channels.length > 0) {
-            setSelectedChannel(prev => {
-              const found = prev ? firstC.channels.find((ch: Channel) => ch.id === prev.id) : null;
-              return found || firstC.channels[0];
+          const isStudent = (userRole || currentUser.role) === 'student';
+          const studentEligible = isStudent
+            ? loadedCourses.filter(c =>
+                Array.isArray(c.enrolledStudents) &&
+                c.enrolledStudents.some(s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase()))
+              )
+            : loadedCourses;
+
+          if (studentEligible.length > 0) {
+            setSelectedCourse(prev => {
+              const found = prev ? studentEligible.find((c: CourseTeam) => c.id === prev.id) : null;
+              return found || studentEligible[0];
             });
+            const firstC = studentEligible[0];
+            if (firstC.channels && firstC.channels.length > 0) {
+              setSelectedChannel(prev => {
+                const found = prev ? firstC.channels.find((ch: Channel) => ch.id === prev.id) : null;
+                return found || firstC.channels[0];
+              });
+            }
+          } else if (isStudent) {
+            setSelectedCourse(null as any);
+            setSelectedChannel(null as any);
           }
         } else {
           setSelectedCourse(null as any);
@@ -2888,15 +2901,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Keep selectedCourse in sync when switching institution or tenant
   useEffect(() => {
-    if (tenantCourses.length > 0) {
-      if (!selectedCourse || !tenantCourses.some((c: CourseTeam) => c.id === selectedCourse.id)) {
-        setSelectedCourse(tenantCourses[0]);
-        if (tenantCourses[0].channels && tenantCourses[0].channels.length > 0) {
-          setSelectedChannel(tenantCourses[0].channels[0]);
+    let eligibleCourses = tenantCourses;
+    if (currentUser.role === 'student') {
+      eligibleCourses = tenantCourses.filter(c =>
+        Array.isArray(c.enrolledStudents) &&
+        c.enrolledStudents.some(s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase()))
+      );
+    }
+    if (eligibleCourses.length > 0) {
+      if (!selectedCourse || !eligibleCourses.some((c: CourseTeam) => c.id === selectedCourse.id)) {
+        setSelectedCourse(eligibleCourses[0]);
+        if (eligibleCourses[0].channels && eligibleCourses[0].channels.length > 0) {
+          setSelectedChannel(eligibleCourses[0].channels[0]);
         }
       }
+    } else if (currentUser.role === 'student') {
+      if (selectedCourse && !eligibleCourses.some((c: CourseTeam) => c.id === selectedCourse.id)) {
+        setSelectedCourse(null as any);
+        setSelectedChannel(null as any);
+      }
     }
-  }, [tenantCourses, selectedCourse?.id]);
+  }, [tenantCourses, currentUser.id, currentUser.email, currentUser.role, selectedCourse?.id]);
 
   const fetchInstitutionAdmins = async (instId: string) => {
     try {

@@ -47,16 +47,11 @@ export const AssignmentsView: React.FC = () => {
       if (c.institutionName && userInstitution && c.institutionName.toLowerCase() !== userInstitution.toLowerCase()) return false;
     }
     if (isStudent) {
-      const hasExplicit = Array.isArray(c.enrolledStudents) && c.enrolledStudents.length > 0;
-      if (hasExplicit && c.enrolledStudents) {
-        return c.enrolledStudents.some(
-          s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase())
-        );
-      }
       return Boolean(
-        c.institutionName &&
-        userInstitution &&
-        c.institutionName.toLowerCase() === userInstitution.toLowerCase()
+        Array.isArray(c.enrolledStudents) &&
+        c.enrolledStudents.some(
+          s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase())
+        )
       );
     }
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer') {

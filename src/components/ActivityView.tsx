@@ -60,10 +60,11 @@ export const ActivityView: React.FC = () => {
     // 2. Student enrollment boundary for assignment alerts
     if (currentUser.role === 'student' && n.type === 'assignment' && n.courseId) {
       const course = courses.find(c => c.id === n.courseId);
-      if (course && course.enrolledStudents && course.enrolledStudents.length > 0) {
-        const isEnrolled = course.enrolledStudents.some(s => s.id === currentUser.id);
-        if (!isEnrolled) return false;
-      }
+      if (!course) return false;
+      const isEnrolled = Array.isArray(course.enrolledStudents) && course.enrolledStudents.some(
+        s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase())
+      );
+      if (!isEnrolled) return false;
     }
     return true;
   });
