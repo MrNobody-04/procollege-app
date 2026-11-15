@@ -147,12 +147,13 @@ export const AdminRosterUpload: React.FC = () => {
     if (parsedRows.length === 0) return;
     setIsImporting(true);
     try {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       const res = await fetch('/api/admin/import-roster', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-user-role': currentUser.role || 'admin',
-          'Authorization': `Bearer ${localStorage.getItem('procollege_token') || 'admin'}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           students: parsedRows,

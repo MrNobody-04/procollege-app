@@ -103,8 +103,8 @@ interface AppContextType {
   updateCourse: (courseId: string, updates: Partial<CourseTeam>) => void;
   deleteCourse: (courseId: string) => void;
   addChannel: (courseId: string, channel: { name: string; description: string; subjectLecturerName?: string; subjectLecturerId?: string }) => void;
-  enrollStudentsToCourse: (courseId: string, studentIds: string[]) => void;
-  removeStudentFromCourse: (courseId: string, studentId: string) => void;
+  enrollStudentsToCourse: (courseId: string, studentIds: string[]) => Promise<void> | void;
+  removeStudentFromCourse: (courseId: string, studentId: string) => Promise<void> | void;
   updateChannelLecturer: (courseId: string, channelId: string, lecturerId: string, lecturerName: string) => void;
   rolloverCourseToNextSemester: (sourceCourseId: string, data: {
     code: string;
@@ -385,7 +385,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isDev = (userRole || currentUser.role) === 'developer' || (userRole || currentUser.role) === 'platform_admin';
       const inst = instName || currentUser.institutionName || (isDev ? 'all' : 'Public English School');
       const role = userRole || currentUser.role;
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       const res = await fetch(`/api/workspace/bootstrap?institution=${encodeURIComponent(inst)}&role=${encodeURIComponent(role)}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -652,6 +652,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logoutUser = () => {
     try {
       localStorage.removeItem('procollege_token');
+      localStorage.removeItem('procollege_auth_token');
       localStorage.removeItem('procollege_user');
       localStorage.removeItem('procollege_college');
     } catch {
@@ -904,9 +905,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Enroll students to a course
-  const enrollStudentsToCourse = (courseId: string, studentIds: string[]) => {
+  const enrollStudentsToCourse = async (courseId: string, studentIds: string[]) => {
     const studentsToEnroll = availableUsers.filter(u => studentIds.includes(u.id));
 
+    let finalEnrolled: User[] = [];
     setCourses(prev =>
       prev.map(c => {
         if (c.id === courseId) {
@@ -914,6 +916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const currentIds = new Set(currentEnrolled.map(s => s.id));
           const newlyAdded = studentsToEnroll.filter(s => !currentIds.has(s.id));
           const updatedEnrolled = [...currentEnrolled, ...newlyAdded];
+          finalEnrolled = updatedEnrolled;
           return {
             ...c,
             enrolledStudents: updatedEnrolled,
@@ -938,23 +941,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       });
     }
+
+    if (!isDemoMode && finalEnrolled.length > 0) {
+      try {
+        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        await fetch(`/api/courses/${courseId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ enrolledStudents: finalEnrolled })
+        });
+      } catch (err) {
+        console.error('Failed to sync student enrollment to backend:', err);
+      }
+    }
   };
 
   // Remove student from course
-  const removeStudentFromCourse = (courseId: string, studentId: string) => {
+  const removeStudentFromCourse = async (courseId: string, studentId: string) => {
     setCourses(prev =>
       prev.map(c => {
-        if (c.id === courseId && c.enrolledStudents) {
-          const updated = c.enrolledStudents.filter(s => s.id !== studentId);
+        if (c.id === courseId) {
+          const current = c.enrolledStudents || [];
+          const updated = current.filter(s => s.id !== studentId);
           return {
             ...c,
             enrolledStudents: updated,
-            memberCount: Math.max(1, updated.length)
+            memberCount: updated.length
           };
         }
         return c;
       })
     );
+
+    if (selectedCourse?.id === courseId) {
+      setSelectedCourse(prev => {
+        if (!prev) return prev;
+        const updated = (prev.enrolledStudents || []).filter(s => s.id !== studentId);
+        return {
+          ...prev,
+          enrolledStudents: updated,
+          memberCount: updated.length
+        };
+      });
+    }
+
+    if (!isDemoMode) {
+      try {
+        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        await fetch(`/api/courses/${courseId}/students/${encodeURIComponent(studentId)}`, {
+          method: 'DELETE',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+      } catch (err) {
+        console.error('Failed to sync student removal to backend:', err);
+      }
+    }
   };
 
   // Update a channel's dedicated lecturer
@@ -975,7 +1021,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist to backend Turso DB
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch(`/api/channels/${encodeURIComponent(channelId)}/lecturer`, {
         method: 'PATCH',
         headers: {
@@ -1008,7 +1054,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Automatically carry over all enrolled students from source course!
     const carriedStudents = source?.enrolledStudents && source.enrolledStudents.length > 0
       ? [...source.enrolledStudents]
-      : availableUsers.filter(u => u.role === 'student');
+      : [];
 
     // Create the channels for the new semester
     const newChannels: Channel[] = [
@@ -1213,7 +1259,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            college_id: (selectedCourse as any)?.collegeId || (selectedCourse as any)?.institutionId || 'campus',
+            college_id: (selectedCourse as any)?.collegeId || (selectedCourse as any)?.institutionId || currentUser.collegeId || currentUser.institutionId || undefined,
             institution_name: currentUser.institutionName || selectedCourse?.institutionName || 'Academic Institution',
             title: title || `${selectedCourse?.code || 'Campus'} Announcement`,
             content: content,
@@ -1377,9 +1423,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Sync to live Turso assignments table with strict boundary data - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch('/api/assignments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           id: asgnId,
           institution_name: institutionName,
@@ -1394,17 +1444,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           channelId,
           subject_name: subjectName,
           subjectName,
-          created_by: currentUser.name,
+          created_by: currentUser.id,
+          created_by_id: currentUser.id,
           created_by_email: createdByEmail,
           createdByEmail,
           title: newAsgn.title,
           instructions: newAsgn.instructions,
           due_at: newAsgn.dueAt,
           dueTimestamp,
+          close_at: newAsgn.closeAt || newAsgn.dueAt,
+          is_strict_no_late: newAsgn.isStrictNoLateSubmission ? 1 : 0,
+          isStrictNoLateSubmission: newAsgn.isStrictNoLateSubmission,
           max_points: newAsgn.points,
-          rubric: newAsgn.rubric
+          rubric: newAsgn.rubric,
+          referenceFiles: newAsgn.referenceFiles
         }),
-      }).catch(() => {});
+      }).catch(err => console.warn('Assignment sync to Turso failed:', err));
     }
 
     // Channel Notification Routing: Post automated assignment card in target channel
@@ -1577,41 +1632,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       day: 'numeric'
     })} at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 
+    let finalSubFiles: SubmittedFile[] = [];
+
     setAssignments(prev =>
       prev.map(asgn => {
         if (asgn.id !== asgnId) return asgn;
 
-        return {
-          ...asgn,
-          submissions: asgn.submissions.map(s => {
-            if (s.studentId === studentId) {
-              return {
-                ...s,
+        const existingSub = asgn.submissions.find(s => s.studentId === studentId);
+        if (existingSub) {
+          const lockedFiles = existingSub.files.length > 0
+            ? existingSub.files.map(f => ({ ...f, isReadOnly: true }))
+            : [
+                {
+                  name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
+                  size: '1.8 MB',
+                  type: 'pdf' as const,
+                  isReadOnly: true,
+                  uploadedAt: 'Just now'
+                }
+              ];
+          finalSubFiles = lockedFiles;
+          return {
+            ...asgn,
+            submissions: asgn.submissions.map(s => {
+              if (s.studentId === studentId) {
+                return {
+                  ...s,
+                  status: isLate ? 'turned-in-late' : 'turned-in',
+                  submittedAt: serverTimestamp,
+                  fileName: lockedFiles[0]?.name || `${s.studentName.replace(/\s+/g, '_')}_Submission.pdf`,
+                  fileSize: lockedFiles[0]?.size || '1.8 MB',
+                  files: lockedFiles
+                };
+              }
+              return s;
+            })
+          };
+        } else {
+          const newFile: SubmittedFile = {
+            name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
+            size: '1.8 MB',
+            type: 'pdf',
+            isReadOnly: true,
+            uploadedAt: 'Just now'
+          };
+          finalSubFiles = [newFile];
+          return {
+            ...asgn,
+            submissions: [
+              ...asgn.submissions,
+              {
+                studentId,
+                studentName: currentUser.name,
                 status: isLate ? 'turned-in-late' : 'turned-in',
                 submittedAt: serverTimestamp,
-                fileName: s.files[0]?.name || `${s.studentName.replace(/\s+/g, '_')}_Submission.pdf`,
-                fileSize: s.files[0]?.size || '1.8 MB',
-                // Lock files to read-only upon submission
-                files: s.files.map(f => ({ ...f, isReadOnly: true }))
-              };
-            }
-            return s;
-          })
-        };
+                fileName: newFile.name,
+                fileSize: newFile.size,
+                files: [newFile]
+              }
+            ]
+          };
+        }
       })
     );
 
     // Sync submission with live Turso database with server-side deadline lock (R3, R4) - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch(`/api/assignments/${encodeURIComponent(asgnId)}/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           student_id: studentId,
           student_name: currentUser.name,
           submission_text: `Turned in by ${currentUser.name}`,
-          file_name: `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
-          file_size: '1.8 MB',
+          file_name: finalSubFiles[0]?.name || `${currentUser.name.replace(/\s+/g, '_')}_Submission.pdf`,
+          file_size: finalSubFiles[0]?.size || '1.8 MB',
+          files: finalSubFiles,
         }),
       }).then(async res => {
         if (res.status === 403) {
@@ -1628,7 +1728,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             })
           );
         }
-      }).catch(() => {});
+      }).catch(err => console.warn('Submission sync failed:', err));
     }
 
     return { success: true, message: `Submission recorded: ${serverTimestamp}` };
@@ -1839,7 +1939,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || '';
+        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
         await fetch('/api/attendance/school/bulk', {
           method: 'POST',
           headers: {
@@ -1891,7 +1991,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || '';
+        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
         await fetch('/api/attendance/subject/bulk', {
           method: 'POST',
           headers: {
@@ -1936,7 +2036,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || '';
+        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
         await fetch(`/api/assignments/${encodeURIComponent(assignmentId)}/overrides`, {
           method: 'POST',
           headers: {
@@ -1977,10 +2077,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist to Turso - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch(`/api/courses/${file.courseId}/files`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           'x-user-role': currentUser.role,
           'x-institution-name': currentUser.institutionName || 'Academic Institution',
         },
@@ -1992,6 +2094,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           category: file.category,
           size: file.size,
           type: 'pdf',
+          url: (file as any).url,
           uploadedBy: file.uploadedBy,
           isClassMaterials: file.isClassMaterials,
           permission: file.permission,
@@ -2033,9 +2136,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist delete to Turso - Zero writes in demo mode
     if (!isDemoMode) {
+      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
       fetch(`/api/courses/${target.courseId}/files/${fileId}`, {
         method: 'DELETE',
         headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           'x-user-role': currentUser.role,
           'x-institution-name': currentUser.institutionName || 'Academic Institution',
         },

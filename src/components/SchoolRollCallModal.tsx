@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Calendar,
@@ -25,7 +25,6 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
     saveSchoolRollCall,
     schoolAttendance,
     showDialog,
-    availableUsers,
     currentUser,
     getStudentSchoolAttendance
   } = useApp();
@@ -33,21 +32,20 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fallback to student users in this institution if enrolledStudents is empty
-  const students = (course.enrolledStudents && course.enrolledStudents.length > 0)
-    ? course.enrolledStudents
-    : availableUsers.filter(u => u.role === 'student').slice(0, 5);
+  // Strictly use enrolled students of this specific course
+  const students = course.enrolledStudents || [];
 
-  // Initialize status map for the selected date
-  const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>(() => {
-    const initial: Record<string, AttendanceStatus> = {};
+  // Synchronize status map whenever course, date, or attendance records change
+  const [statusMap, setStatusMap] = useState<Record<string, AttendanceStatus>>({});
+
+  useEffect(() => {
+    const updated: Record<string, AttendanceStatus> = {};
     students.forEach(s => {
-      // Find if already recorded for this class and date
       const existing = schoolAttendance.find(r => r.classId === course.id && r.studentId === s.id && r.date === date);
-      initial[s.id] = (existing?.status as AttendanceStatus) || 'present';
+      updated[s.id] = (existing?.status as AttendanceStatus) || 'present';
     });
-    return initial;
-  });
+    setStatusMap(updated);
+  }, [course.id, date, schoolAttendance, course.enrolledStudents]);
 
   if (!isOpen) return null;
 
@@ -175,9 +173,10 @@ export const SchoolRollCallModal: React.FC<SchoolRollCallModalProps> = ({
         {/* Student Roll-Call List */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 divide-y divide-zinc-100">
           {students.length === 0 ? (
-            <div className="p-8 text-center text-zinc-400 text-xs">
-              <Users className="w-8 h-8 mx-auto mb-2 text-zinc-300" />
-              No students enrolled in this class yet.
+            <div className="p-10 text-center text-zinc-500 text-xs flex flex-col items-center justify-center gap-2">
+              <Users className="w-9 h-9 text-zinc-300" />
+              <p className="font-semibold text-zinc-700">No students enrolled in this class yet.</p>
+              <p className="text-zinc-400 max-w-xs">Use the "Manage Students" option on the class card to enroll students before taking roll-call.</p>
             </div>
           ) : (
             students.map((student, idx) => {

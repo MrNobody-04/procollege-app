@@ -247,7 +247,7 @@ export const CalendarView: React.FC = () => {
 
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     const shortNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    const days = [];
+    const days: any[] = [];
 
     for (let i = 0; i < 5; i++) {
       const d = new Date(monday);

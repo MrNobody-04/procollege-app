@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { createClient } from '@libsql/client/web';
+import { signJwt, verifyJwt, validateLegacyTokenPayload } from './lib/jwt.ts';
 
 export interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
@@ -27,6 +28,8 @@ export type Env = {
   JWT_SECRET?: string;
   DEVELOPER_EMAIL?: string;
   DEVELOPER_PASSWORD?: string;
+  ALLOW_LEGACY_TOKENS?: string | boolean;
+  LEGACY_TOKEN_CUTOFF?: string | number;
   procollege_vault?: D1Database;
   ASSETS: {
     fetch: (request: Request | string, init?: RequestInit) => Promise<Response>;
@@ -42,6 +45,9 @@ const DEFAULT_ABLY_KEY = 'wbIoLQ.bER0PQ:cmYHzvBCwqC4sOZ5frsiGLHssDBjCcLSm9eY3faK
 
 // Helper to get Turso client from context with safe fallback
 function getDb(c: { env: Env }) {
+  if ((c.env as any)?.__db) {
+    return (c.env as any).__db;
+  }
   const url = c.env?.TURSO_DB_URL || DEFAULT_TURSO_URL;
   const authToken = c.env?.TURSO_AUTH_TOKEN || DEFAULT_TURSO_AUTH_TOKEN;
   return createClient({ url, authToken });
@@ -65,33 +71,135 @@ function generateTemporaryPassword(): string {
   return Array.from(arr).map(b => chars[b % chars.length]).join('');
 }
 
-// Helper to decode token or read authenticated user headers
-function extractUserFromHeader(c: any): { id?: string; email?: string; role?: string; institution_id?: string; college_id?: string; institution_name?: string } | null {
-  const roleHeader = c.req.header('x-user-role');
-  const authHeader = c.req.header('Authorization') || '';
-  if (roleHeader) {
-    return {
-      role: roleHeader,
-      email: c.req.header('x-user-email') || '',
-      institution_id: c.req.header('x-institution-id') || c.req.header('x-college-id') || '',
-      institution_name: c.req.header('x-institution-name') || '',
-    };
+// Helper to verify signed JWT token or safely resolve legacy token from DB
+async function extractUserFromHeader(c: any): Promise<{
+  id?: string;
+  email?: string;
+  role?: string;
+  institution_id?: string;
+  college_id?: string;
+  institution_name?: string;
+  is_legacy?: boolean;
+} | null> {
+  const cached = c.get('authenticatedCaller');
+  if (cached !== undefined) {
+    return cached;
   }
+
+  const authHeader = c.req.header('Authorization') || '';
   if (authHeader.startsWith('Bearer ')) {
+    const rawToken = authHeader.slice(7).trim();
+    if (rawToken && rawToken.split('.').length === 3) {
+      // 1. Standard HS256 JWT Token
+      const verifyRes = await verifyJwt(rawToken, c.env?.JWT_SECRET);
+      if (verifyRes.valid && verifyRes.payload) {
+        const p = verifyRes.payload;
+        const user = {
+          id: String(p.id),
+          email: String(p.email || ''),
+          role: String(p.role || ''),
+          institution_id: String(p.institution_id || p.college_id || ''),
+          college_id: String(p.college_id || p.institution_id || ''),
+          institution_name: String(p.institution_name || ''),
+          is_legacy: false,
+        };
+        c.set('authenticatedCaller', user);
+        return user;
+      }
+      c.set('authenticatedCaller', null);
+      return null;
+    }
+
+    // 2. Legacy Base64 Token (tok_...)
+    const legacyRes = validateLegacyTokenPayload(rawToken, {
+      allowLegacyTokens: c.env?.ALLOW_LEGACY_TOKENS,
+      legacyTokenCutoff: c.env?.LEGACY_TOKEN_CUTOFF,
+    });
+
+    if (!legacyRes.valid || !legacyRes.userId) {
+      c.set('authenticatedCaller', null);
+      return null;
+    }
+
+    const userId = legacyRes.userId;
+
+    // Special developer override check
+    if (userId === 'user_dev_root' && c.env?.DEVELOPER_EMAIL) {
+      const user = {
+        id: 'user_dev_root',
+        email: c.env.DEVELOPER_EMAIL,
+        role: 'developer',
+        institution_id: 'col_platform_root',
+        college_id: 'col_platform_root',
+        institution_name: 'ProCollege Platform Operations',
+        is_legacy: true,
+      };
+      c.set('authenticatedCaller', user);
+      return user;
+    }
+
+    // Strictly resolve genuine user role and tenant from Database (Never trust claims in legacy token)
     try {
-      const rawToken = authHeader.slice(7).replace(/^tok_/, '');
-      const decoded = JSON.parse(atob(rawToken));
-      return decoded;
+      const db = getDb(c);
+      const result = await db.execute({
+        sql: `SELECT u.id, u.email, u.role, u.college_id, u.institution_id, u.institution_name, u.status,
+                     c.name as college_name, c.status as college_status
+              FROM users u
+              LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
+              WHERE u.id = ?;`,
+        args: [userId],
+      });
+
+      if (result.rows.length === 0) {
+        c.set('authenticatedCaller', null);
+        return null;
+      }
+
+      const row = result.rows[0];
+      const status = row.status ? String(row.status).toLowerCase() : 'active';
+      if (status !== 'active') {
+        c.set('authenticatedCaller', null);
+        return null;
+      }
+
+      const user = {
+        id: String(row.id),
+        email: String(row.email || ''),
+        role: String(row.role || ''),
+        institution_id: String(row.institution_id || row.college_id || 'col_client'),
+        college_id: String(row.college_id || row.institution_id || 'col_client'),
+        institution_name: String(row.college_name || row.institution_name || 'Academic Institution'),
+        is_legacy: true,
+      };
+      c.set('authenticatedCaller', user);
+      return user;
     } catch {
+      c.set('authenticatedCaller', null);
       return null;
     }
   }
+
+  // Stage 1 backward-compatibility fallback if NO Authorization header was provided
+  const roleHeader = c.req.header('x-user-role');
+  if (roleHeader) {
+    const user = {
+      role: roleHeader,
+      email: c.req.header('x-user-email') || '',
+      institution_id: c.req.header('x-institution-id') || c.req.header('x-college-id') || '',
+      college_id: c.req.header('x-college-id') || c.req.header('x-institution-id') || '',
+      institution_name: c.req.header('x-institution-name') || '',
+    };
+    c.set('authenticatedCaller', user);
+    return user;
+  }
+
+  c.set('authenticatedCaller', null);
   return null;
 }
 
 // Helper to resolve and ensure a valid college_id that satisfies FOREIGN KEY constraint
 async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
-  const caller = extractUserFromHeader(c);
+  const caller = await extractUserFromHeader(c);
   let cid = (body?.college_id || body?.collegeId || body?.institution_id || body?.institutionId ||
              c.req.header('x-college-id') || c.req.header('x-institution-id') ||
              caller?.college_id || caller?.institution_id || '').trim();
@@ -99,7 +207,7 @@ async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
   const instName = (body?.institution_name || body?.institutionName ||
                     c.req.header('x-institution-name') || caller?.institution_name || '').trim();
 
-  if ((!cid || cid === 'padmashree-demo' || cid === 'col_procollege_network') && instName) {
+  if ((!cid || cid === 'padmashree-demo' || cid === 'col_procollege_network' || cid === 'campus' || cid === 'all') && instName) {
     try {
       const found = await db.execute({
         sql: "SELECT id FROM colleges WHERE LOWER(name) = LOWER(?) UNION SELECT id FROM institutions WHERE LOWER(name) = LOWER(?) LIMIT 1;",
@@ -111,8 +219,8 @@ async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
     } catch {}
   }
 
-  // Check if cid exists in colleges table
-  if (cid && cid !== 'padmashree-demo') {
+  // Check if cid exists in colleges table (skip placeholders like 'campus' or 'padmashree-demo')
+  if (cid && cid !== 'padmashree-demo' && cid !== 'campus' && cid !== 'all') {
     try {
       const exists = await db.execute({
         sql: "SELECT id FROM colleges WHERE id = ? LIMIT 1;",
@@ -121,24 +229,26 @@ async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
       if (exists.rows.length > 0) {
         return cid;
       }
-      // If cid not in colleges, try to register it so FK constraints never fail
-      await db.execute({
-        sql: "INSERT OR IGNORE INTO colleges (id, name) VALUES (?, ?);",
-        args: [cid, instName || cid]
-      });
-      return cid;
+      // If cid not in colleges, only register legitimate IDs (never 'campus')
+      if (cid.startsWith('col_') || cid.startsWith('inst_')) {
+        await db.execute({
+          sql: "INSERT OR IGNORE INTO colleges (id, name) VALUES (?, ?);",
+          args: [cid, instName || cid]
+        });
+        return cid;
+      }
     } catch {}
   }
 
   // Fallback: pick the first real college from colleges table
   try {
-    const firstCol = await db.execute("SELECT id FROM colleges WHERE id != 'platform_root' LIMIT 1;");
+    const firstCol = await db.execute("SELECT id FROM colleges WHERE id != 'platform_root' AND id != 'campus' LIMIT 1;");
     if (firstCol.rows.length > 0 && firstCol.rows[0].id) {
       return String(firstCol.rows[0].id);
     }
   } catch {}
 
-  return 'col_public-english-boarding-school_wr3t';
+  return 'platform_root';
 }
 
 // --- 2FA Multi-Provider Email Dispatch Engine ---
@@ -429,7 +539,7 @@ app.use('/api/*', async (c, next) => {
     return next();
   }
 
-  const caller = extractUserFromHeader(c);
+  const caller = await extractUserFromHeader(c);
   if (caller && (caller.role === 'developer' || caller.role === 'platform_admin')) {
     return next();
   }
@@ -848,10 +958,10 @@ app.post('/api/auth/login', async (c) => {
         email: devEnvEmail,
         role: 'developer',
         institution_id: 'col_platform_root',
+        college_id: 'col_platform_root',
         institution_name: 'ProCollege Global Core Engine',
-        ts: Date.now(),
       };
-      const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+      const token = await signJwt(tokenPayload, c.env.JWT_SECRET);
 
       const user = {
         id: 'user_dev_root',
@@ -917,7 +1027,7 @@ app.post('/api/auth/login', async (c) => {
 
     // If no target college specified and user has accounts across multiple colleges:
     if (!targetCollegeId && result.rows.length > 1) {
-      const matchingRows = result.rows.filter(u => {
+      const matchingRows = result.rows.filter((u: any) => {
         const storedPass = String(u.password || '');
         const storedHash = String(u.password_hash || '');
         const userRole = String(u.role || '');
@@ -937,7 +1047,7 @@ app.post('/api/auth/login', async (c) => {
         return c.json({
           success: true,
           requireCollegeSelect: true,
-          colleges: matchingRows.map(r => ({
+          colleges: matchingRows.map((r: any) => ({
             id: String(r.college_id || r.institution_id),
             name: String(r.college_name || r.institution_name || 'Academic Institution'),
             code: String(r.college_code || ''),
@@ -1062,16 +1172,16 @@ app.post('/api/auth/login', async (c) => {
     const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || (isDeveloper ? 'platform_root' : 'col_client'));
     const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || (isDeveloper ? 'ProCollege Platform Operations' : 'Academic Institution'));
 
-    // Generate lightweight edge token embedding institution_id and role
+    // Generate signed JWT token embedding user identity, institution_id, role, iat, and exp
     const tokenPayload = {
-      id: userRow.id,
-      email: userRow.email,
+      id: String(userRow.id),
+      email: String(userRow.email),
       role: userRole === 'developer' || userRole === 'platform_admin' ? 'developer' : userRole === 'admin' ? 'admin' : userRole === 'student' ? 'student' : 'lecturer',
       institution_id: resolvedInstitutionId,
+      college_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
-      ts: Date.now(),
     };
-    const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+    const token = await signJwt(tokenPayload, c.env.JWT_SECRET);
 
     const user = {
       id: String(userRow.id),
@@ -1225,16 +1335,16 @@ app.post('/api/auth/verify-otp', async (c) => {
     const resolvedInstitutionId = String(userRow.institution_id || userRow.college_id || (isDeveloper ? 'platform_root' : 'col_client'));
     const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || (isDeveloper ? 'ProCollege Platform Operations' : 'Academic Institution'));
 
-    // Generate authenticated JWT edge token
+    // Generate authenticated signed JWT edge token
     const tokenPayload = {
-      id: userRow.id,
-      email: userRow.email,
+      id: String(userRow.id),
+      email: String(userRow.email),
       role: userRow.role === 'developer' || userRow.role === 'platform_admin' ? 'developer' : userRow.role === 'admin' ? 'admin' : userRow.role === 'student' ? 'student' : 'lecturer',
       institution_id: resolvedInstitutionId,
+      college_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
-      ts: Date.now(),
     };
-    const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+    const token = await signJwt(tokenPayload, c.env.JWT_SECRET);
 
     const user = {
       id: String(userRow.id),
@@ -1422,14 +1532,14 @@ app.post('/api/auth/forgot-password/verify-reset', async (c) => {
     const resolvedInstitutionName = String(userRow.college_name || userRow.institution_name || (isDeveloper ? 'ProCollege Platform Operations' : 'Academic Institution'));
 
     const tokenPayload = {
-      id: userRow.id,
-      email: userRow.email,
+      id: String(userRow.id),
+      email: String(userRow.email),
       role: userRow.role === 'developer' || userRow.role === 'platform_admin' ? 'developer' : userRow.role === 'admin' ? 'admin' : userRow.role === 'student' ? 'student' : 'lecturer',
       institution_id: resolvedInstitutionId,
+      college_id: resolvedInstitutionId,
       institution_name: resolvedInstitutionName,
-      ts: Date.now(),
     };
-    const token = 'tok_' + btoa(JSON.stringify(tokenPayload)).replace(/=/g, '');
+    const token = await signJwt(tokenPayload, c.env.JWT_SECRET);
 
     const user = {
       id: String(userRow.id),
@@ -1470,7 +1580,7 @@ app.post('/api/auth/forgot-password/verify-reset', async (c) => {
 // 1.2 Change temporary password
 app.post('/api/auth/change-password', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     const body = await c.req.json();
     const email = (body.email || caller?.email || '').trim().toLowerCase();
     const userId = (body.userId || caller?.id || '').trim();
@@ -1505,7 +1615,7 @@ app.post('/api/auth/change-password', async (c) => {
 // 1.3 List all registered organizations with active student counts and billing status
 app.get('/api/platform/institutions', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -1590,7 +1700,7 @@ app.get('/api/platform/institutions', async (c) => {
       }
     }
 
-    const organizations = instRes.rows.map(row => {
+    const organizations = instRes.rows.map((row: any) => {
       const id = String(row.id);
       const adminList = adminsMap.get(id) || [];
       const primaryAdmin = adminList[0];
@@ -1630,7 +1740,7 @@ app.get('/api/platform/institutions', async (c) => {
 // 1.4 Toggle an organization's status (active <-> paused)
 app.post('/api/platform/institutions/:id/toggle-status', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -1674,7 +1784,7 @@ app.post('/api/platform/institutions/:id/toggle-status', async (c) => {
 // 1.5 Provision a new university/organization with its administrative tenant
 app.post('/api/platform/institutions/provision', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -1859,7 +1969,7 @@ app.post('/api/platform/institutions/provision', async (c) => {
 // 1.6 Delete an organization completely (Platform Developer Master Only)
 app.delete('/api/platform/institutions/:id', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2007,7 +2117,7 @@ app.delete('/api/platform/institutions/:id', async (c) => {
 // 1.7 Renew subscription for an organization (+1 year)
 app.post('/api/platform/institutions/:id/renew', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2040,7 +2150,7 @@ app.post('/api/platform/institutions/:id/renew', async (c) => {
 // 1.75 Update Education Level / Tier for an Organization
 app.patch('/api/platform/institutions/:id/education-level', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller) {
       return c.json({ error: 'Unauthorized: Authentication required' }, 401);
     }
@@ -2077,7 +2187,7 @@ app.patch('/api/platform/institutions/:id/education-level', async (c) => {
 // 1.8 Reset Admin Password & 2FA OTP for an Organization (Platform Developer Master Only)
 app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2137,7 +2247,7 @@ app.post('/api/platform/institutions/:id/reset-admin-password', async (c) => {
 // 1.82 List all Institutional Admins for an Organization
 app.get('/api/platform/institutions/:id/admins', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2153,7 +2263,7 @@ app.get('/api/platform/institutions/:id/admins', async (c) => {
       args: [id, id],
     });
 
-    const admins = adminsRes.rows.map(r => ({
+    const admins = adminsRes.rows.map((r: any) => ({
       id: String(r.id),
       name: String(r.name),
       email: String(r.email),
@@ -2175,7 +2285,7 @@ app.get('/api/platform/institutions/:id/admins', async (c) => {
 // 1.83 Appoint a new Institutional Admin to an existing Organization
 app.post('/api/platform/institutions/:id/admins', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2253,7 +2363,7 @@ app.post('/api/platform/institutions/:id/admins', async (c) => {
 // 1.84 Reset password & 2FA OTP for a specific Institutional Admin
 app.post('/api/platform/institutions/:id/admins/:adminId/reset', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2317,7 +2427,7 @@ app.post('/api/platform/institutions/:id/admins/:adminId/reset', async (c) => {
 // 1.85 Remove an Institutional Admin
 app.delete('/api/platform/institutions/:id/admins/:adminId', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2352,7 +2462,7 @@ app.delete('/api/platform/institutions/:id/admins/:adminId', async (c) => {
 // 1.86 Rename / Edit an Institutional Admin
 app.patch('/api/platform/institutions/:id/admins/:adminId', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2403,7 +2513,7 @@ app.patch('/api/platform/institutions/:id/admins/:adminId', async (c) => {
 // 1.81 Get Platform Email Gateway Settings
 app.get('/api/platform/email-settings', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2436,7 +2546,7 @@ app.get('/api/platform/email-settings', async (c) => {
 // 1.82 Update Platform Email Gateway Settings
 app.post('/api/platform/email-settings', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2475,7 +2585,7 @@ app.post('/api/platform/email-settings', async (c) => {
 // 1.83 Send Test 2FA Verification Email
 app.post('/api/platform/send-test-email', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2518,7 +2628,7 @@ app.post('/api/platform/send-test-email', async (c) => {
 // 1.84 Get Recent Email Delivery Audit Logs
 app.get('/api/platform/email-logs', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'developer' && caller.role !== 'platform_admin')) {
       return c.json({ error: 'Unauthorized: Platform administrator access required' }, 403);
     }
@@ -2539,7 +2649,7 @@ app.get('/api/platform/email-logs', async (c) => {
 // 1.3 Admin Bulk Excel/CSV Roster Import & Credential Distribution
 app.post('/api/admin/import-roster', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     if (!caller || (caller.role !== 'admin' && caller.role !== 'developer')) {
       return c.json({ error: 'Unauthorized: Only authenticated college administrators can import student rosters' }, 403);
     }
@@ -2724,7 +2834,7 @@ app.post('/api/admin/import-roster', async (c) => {
 // 2. User Management (Provision, List, Update, Delete Students & Lecturers)
 async function handleCreateUser(c: any) {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     const body = await c.req.json();
     const db = getDb(c);
 
@@ -2861,7 +2971,14 @@ async function handleCreateUser(c: any) {
       status: 'available',
     };
 
-    const token = 'tok_' + btoa(JSON.stringify({ id: userId, email, role, ts: Date.now() })).replace(/=/g, '');
+    const token = await signJwt({
+      id: userId,
+      email,
+      role,
+      institution_id: collegeId,
+      college_id: collegeId,
+      institution_name: institutionName,
+    }, c.env.JWT_SECRET);
 
     return c.json({
       success: true,
@@ -2878,7 +2995,7 @@ async function handleCreateUser(c: any) {
 
 async function handleListUsers(c: any) {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     const db = getDb(c);
     const callerInstId = caller?.institution_id || caller?.college_id;
     const instId = c.req.query('collegeId') || c.req.query('institutionId') || c.req.header('x-college-id') || callerInstId || '';
@@ -2898,7 +3015,7 @@ async function handleListUsers(c: any) {
     sql += ` ORDER BY name ASC;`;
 
     const res = await db.execute({ sql, args });
-    const users = res.rows.map(u => ({
+    const users = res.rows.map((u: any) => ({
       id: String(u.id),
       loginId: u.login_id ? String(u.login_id) : undefined,
       name: String(u.name),
@@ -2925,7 +3042,7 @@ async function handleListUsers(c: any) {
 
 async function handleDeleteUser(c: any) {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     const userId = c.req.param('userId') || c.req.param('id');
     if (!userId) {
       return c.json({ error: 'User ID is required' }, 400);
@@ -3050,22 +3167,40 @@ app.patch('/api/users/:userId/department', handleUpdateUserDetails);
 
 // 3. Verify session / me
 app.get('/api/auth/me', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return c.json({ error: 'Unauthorized: Missing bearer token' }, 401);
+  const caller = await extractUserFromHeader(c);
+  if (!caller || !caller.id) {
+    return c.json({ error: 'Unauthorized: Invalid or expired session token' }, 401);
   }
 
-  const rawToken = authHeader.slice(7);
   try {
-    const decoded = JSON.parse(atob(rawToken.replace(/^tok_/, '')));
+    if (caller.id === 'user_dev_root') {
+      return c.json({
+        user: {
+          id: 'user_dev_root',
+          email: caller.email,
+          full_name: 'Platform Creator',
+          name: 'Platform Creator',
+          role: 'developer',
+          college_id: 'col_platform_root',
+          section_id: null,
+          avatar_url: '',
+        },
+        college: {
+          id: 'col_platform_root',
+          name: 'ProCollege Global Core Engine',
+          code: 'PLAT',
+        },
+      });
+    }
+
     const db = getDb(c);
     const result = await db.execute({
-      sql: `SELECT u.id, u.college_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
+      sql: `SELECT u.id, u.college_id, u.institution_id, u.section_id, u.name, u.email, u.role, u.avatar_url,
                    c.name as college_name, c.code as college_code
             FROM users u
-            LEFT JOIN colleges c ON u.college_id = c.id
+            LEFT JOIN colleges c ON (u.college_id = c.id OR u.institution_id = c.id)
             WHERE u.id = ?;`,
-      args: [decoded.id],
+      args: [caller.id],
     });
 
     if (result.rows.length === 0) {
@@ -3080,18 +3215,19 @@ app.get('/api/auth/me', async (c) => {
         full_name: String(u.name),
         name: String(u.name),
         role: String(u.role),
-        college_id: String(u.college_id),
+        college_id: String(u.college_id || u.institution_id || caller.college_id || ''),
         section_id: u.section_id ? String(u.section_id) : null,
-        avatar_url: String(u.avatar_url),
+        avatar_url: String(u.avatar_url || ''),
       },
       college: {
-        id: String(u.college_id),
-        name: String(u.college_name || 'Padmashree College'),
-        code: String(u.college_code || 'PDC'),
+        id: String(u.college_id || u.institution_id || caller.college_id || ''),
+        name: String(u.college_name || caller.institution_name || 'Academic Institution'),
+        code: String(u.college_code || 'COL'),
       },
     });
-  } catch {
-    return c.json({ error: 'Invalid or expired session token' }, 401);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
   }
 });
 
@@ -3215,7 +3351,7 @@ app.post('/api/notices', async (c) => {
 // 6. Bootstrap workspace data for a logged-in user's institution
 app.get('/api/workspace/bootstrap', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     const callerInstId = caller?.institution_id || caller?.college_id;
     const callerInstName = caller?.institution_name;
 
@@ -3288,8 +3424,16 @@ app.get('/api/workspace/bootstrap', async (c) => {
         args: [collegeId, institutionParam, collegeId, institutionParam],
       });
       assignmentsRes = await db.execute({
-        sql: 'SELECT * FROM assignments WHERE institution_name = ? OR college_id = ? ORDER BY created_at DESC;',
-        args: [institutionParam, collegeId],
+        sql: `SELECT * FROM assignments 
+              WHERE institution_name = ? 
+                 OR college_id = ? 
+                 OR LOWER(institution_name) = LOWER(?)
+                 OR course_id IN (
+                    SELECT id FROM courses 
+                    WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+                 )
+              ORDER BY created_at DESC;`,
+        args: [institutionParam, collegeId, institutionParam, institutionParam, collegeId, institutionParam],
       });
       submissionsRes = await db.execute('SELECT * FROM assignment_submissions;');
       noticesRes = await db.execute({
@@ -3321,7 +3465,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
     }
 
     // Map channels to courses
-    const allChannels = channelsRes.rows.map(ch => ({
+    const allChannels = channelsRes.rows.map((ch: any) => ({
       id: String(ch.id),
       courseId: ch.course_id ? String(ch.course_id) : '',
       name: String(ch.name),
@@ -3333,7 +3477,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       subjectLecturerId: ch.subject_lecturer_id ? String(ch.subject_lecturer_id) : undefined,
     }));
 
-    const allCourses = coursesRes.rows.map(cRow => {
+    const allCourses = coursesRes.rows.map((cRow: any) => {
       let instructor = {
         id: String(cRow.instructor_id || 'usr_lead_prof'),
         name: String(cRow.instructor_name || 'Lead Instructor'),
@@ -3358,7 +3502,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         } catch {}
       }
 
-      const courseChannels = allChannels.filter(ch => ch.courseId === String(cRow.id));
+      const courseChannels = allChannels.filter((ch: any) => ch.courseId === String(cRow.id));
       if (courseChannels.length === 0) {
         courseChannels.push({
           id: `ch_${cRow.id}_gen`,
@@ -3395,8 +3539,8 @@ app.get('/api/workspace/bootstrap', async (c) => {
     });
 
     // Map submissions to assignments
-    const allSubmissions = submissionsRes.rows.map(s => {
-      let parsedFiles = [];
+    const allSubmissions = submissionsRes.rows.map((s: any) => {
+      let parsedFiles: any[] = [];
       if (s.files) {
         try {
           parsedFiles = JSON.parse(String(s.files));
@@ -3428,7 +3572,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       };
     });
 
-    const allAssignments = assignmentsRes.rows.map(a => {
+    const allAssignments = assignmentsRes.rows.map((a: any) => {
       let rubric = [
         { id: 'r1', criterion: 'Technical accuracy and code execution', maxPoints: 60 },
         { id: 'r2', criterion: 'Documentation and report quality', maxPoints: 40 },
@@ -3439,9 +3583,16 @@ app.get('/api/workspace/bootstrap', async (c) => {
         } catch {}
       }
 
-      const asgnSubs = allSubmissions.filter(s => s.assignmentId === String(a.id));
+      const asgnSubs = allSubmissions.filter((s: any) => s.assignmentId === String(a.id));
       const channelId = String(a.channel_id || a.target_channel_id || 'ch_cs301_lec');
       const subjectName = String(a.subject_name || a.subject || '');
+
+      let referenceFiles: any[] = [];
+      if (a.reference_files) {
+        try {
+          referenceFiles = JSON.parse(String(a.reference_files));
+        } catch {}
+      }
 
       return {
         id: String(a.id),
@@ -3457,7 +3608,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         instructions: String(a.instructions || a.description || ''),
         points: Number(a.max_points || 100),
         referenceMaterialMode: 'students-cant-edit' as const,
-        referenceFiles: [],
+        referenceFiles,
         dueAt: String(a.due_at || a.due_date || 'Nov 25, 2026, 11:59 PM'),
         dueTimestamp: a.due_timestamp ? Number(a.due_timestamp) : (a.due_at ? new Date(String(a.due_at)).getTime() : 1795651140000),
         closeAt: a.close_at ? String(a.close_at) : String(a.due_at || 'Nov 25, 2026, 11:59 PM'),
@@ -3467,7 +3618,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       };
     });
 
-    const allDepartments = (departmentsRes?.rows || facultiesRes?.rows || []).map(f => {
+    const allDepartments = (departmentsRes?.rows || facultiesRes?.rows || []).map((f: any) => {
       let subjects = [];
       if (f.subjects) {
         try { subjects = typeof f.subjects === 'string' ? JSON.parse(String(f.subjects)) : f.subjects; } catch {}
@@ -3509,7 +3660,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       } catch {}
     }
 
-    const allUsers = usersRes.rows.map(u => {
+    const allUsers = usersRes.rows.map((u: any) => {
       let role = String(u.role || 'student');
       if (role === 'teacher' || role === 'professor' || role === 'ta') {
         role = 'lecturer';
@@ -3536,13 +3687,15 @@ app.get('/api/workspace/bootstrap', async (c) => {
       };
     });
 
-    const allFiles = filesRes.rows.map(f => ({
+    const allFiles = filesRes.rows.map((f: any) => ({
       id: String(f.id),
       courseId: String(f.course_id),
       channelId: f.channel_id ? String(f.channel_id) : undefined,
       name: String(f.name),
       category: (f.category || 'Class Materials') as any,
       size: String(f.size || '1.0 MB'),
+      type: f.type ? String(f.type) : undefined,
+      url: f.url ? String(f.url) : undefined,
       uploadedAt: String(f.uploaded_at || 'Recently'),
       uploadedBy: String(f.uploaded_by || 'Instructor'),
       isClassMaterials: Boolean(f.is_class_material ?? 1),
@@ -3560,7 +3713,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
       files: allFiles,
       notices: noticesRes.rows,
       users: allUsers,
-      schoolAttendance: (schoolAttRes?.rows || []).map(r => ({
+      schoolAttendance: (schoolAttRes?.rows || []).map((r: any) => ({
         id: String(r.id),
         sessionId: String(r.session_id),
         collegeId: r.college_id ? String(r.college_id) : undefined,
@@ -3571,7 +3724,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         takenByUserId: String(r.taken_by_user_id),
         createdAt: String(r.created_at || ''),
       })),
-      subjectAttendance: (subjectAttRes?.rows || []).map(r => ({
+      subjectAttendance: (subjectAttRes?.rows || []).map((r: any) => ({
         id: String(r.id),
         sessionId: String(r.session_id),
         collegeId: r.college_id ? String(r.college_id) : undefined,
@@ -3583,7 +3736,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         takenByUserId: String(r.taken_by_user_id),
         createdAt: String(r.created_at || ''),
       })),
-      attendanceOverrides: (overridesRes?.rows || []).map(r => ({
+      attendanceOverrides: (overridesRes?.rows || []).map((r: any) => ({
         id: String(r.id),
         assignmentId: String(r.assignment_id),
         studentId: String(r.student_id),
@@ -3603,7 +3756,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
 // Get all departments / faculties
 app.get('/api/departments', async (c) => {
   try {
-    const caller = extractUserFromHeader(c);
+    const caller = await extractUserFromHeader(c);
     const callerInstId = caller?.institution_id || caller?.college_id;
     const callerInstName = caller?.institution_name;
     const instParam = c.req.query('institution') || callerInstName;
@@ -3633,7 +3786,7 @@ app.get('/api/departments', async (c) => {
       }
     }
 
-    const departments = res.rows.map(r => ({
+    const departments = res.rows.map((r: any) => ({
       id: String(r.id),
       name: String(r.name),
       code: String(r.code),
@@ -3943,7 +4096,7 @@ app.delete('/api/courses/:id', async (c) => {
   }
 });
 
-// Update / Rename Course
+// Update / Rename Course & Enrollment
 app.patch('/api/courses/:id', async (c) => {
   const id = c.req.param('id');
   try {
@@ -3965,11 +4118,21 @@ app.patch('/api/courses/:id', async (c) => {
     const newTerm = body.term !== undefined ? String(body.term).trim() : String(current.term || '');
     const newColor = body.color !== undefined ? String(body.color).trim() : String(current.color || '#4f46e5');
 
+    let newEnrolled = current.enrolled_students;
+    let newMemberCount = current.member_count;
+    if (body.enrolledStudents !== undefined) {
+      newEnrolled = JSON.stringify(body.enrolledStudents);
+      newMemberCount = Array.isArray(body.enrolledStudents) ? body.enrolledStudents.length : Number(body.memberCount || 0);
+    } else if (body.memberCount !== undefined) {
+      newMemberCount = Number(body.memberCount);
+    }
+
     await db.execute({
       sql: `UPDATE courses SET
-              name = ?, code = ?, department = ?, term = ?, color = ?
+              name = ?, code = ?, department = ?, term = ?, color = ?,
+              enrolled_students = ?, member_count = ?
             WHERE id = ?;`,
-      args: [newName, newCode, newDept, newTerm, newColor, id]
+      args: [newName, newCode, newDept, newTerm, newColor, newEnrolled, newMemberCount, id]
     });
 
     return c.json({
@@ -3979,10 +4142,40 @@ app.patch('/api/courses/:id', async (c) => {
         name: newName,
         code: newCode,
         department: newDept,
-        term: newTerm
+        term: newTerm,
+        memberCount: newMemberCount
       },
       message: 'Class details updated successfully.'
     });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Remove student from course
+app.delete('/api/courses/:id/students/:studentId', async (c) => {
+  const courseId = c.req.param('id');
+  const studentId = c.req.param('studentId');
+  try {
+    const db = getDb(c);
+    const check = await db.execute({
+      sql: 'SELECT enrolled_students FROM courses WHERE id = ? LIMIT 1;',
+      args: [courseId]
+    });
+    if (check.rows.length === 0) {
+      return c.json({ error: 'Course not found' }, 404);
+    }
+    let list: any[] = [];
+    if (check.rows[0].enrolled_students) {
+      try { list = JSON.parse(String(check.rows[0].enrolled_students)); } catch {}
+    }
+    const updated = list.filter((s: any) => s.id !== studentId && s.email !== studentId);
+    await db.execute({
+      sql: 'UPDATE courses SET enrolled_students = ?, member_count = ? WHERE id = ?;',
+      args: [JSON.stringify(updated), updated.length, courseId]
+    });
+    return c.json({ success: true, courseId, removedStudentId: studentId, remainingCount: updated.length });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
@@ -4190,19 +4383,19 @@ app.post('/api/assignments', async (c) => {
     const collegeId = await resolveCollegeId(c, body, db);
     const id = body.id || `asgn_${Date.now()}`;
     const institutionName = body.institution_name || body.institutionName || 'PUBLIC ENGLISH BOARDING SCHOOL';
-    const facultyId = body.faculty_id || body.facultyId || 'fac_cs';
-    const courseId = body.course_id || body.courseId || 'course_cs301';
-    const courseCode = body.course_code || body.courseCode || 'CS 301';
-    const channelId = body.channel_id || body.channelId || body.targetChannelId || 'ch_cs301_lec';
+    const facultyId = body.faculty_id || body.facultyId || '';
+    const courseId = body.course_id || body.courseId || '';
+    const courseCode = body.course_code || body.courseCode || '';
+    const channelId = body.channel_id || body.channelId || body.targetChannelId || '';
     const subjectName = body.subject_name || body.subjectName || 'Subject Coursework';
-    const sectionId = body.section_id || body.sectionId || 'sec-sem5-a';
     const title = (body.title || '').trim();
     const instructions = (body.instructions || body.description || '').trim();
     const dueAt = body.due_at || body.dueAt || 'Nov 25, 2026, 11:59 PM';
-    const dueTimestamp = body.dueTimestamp || (body.due_at ? new Date(body.due_at).getTime() : 1795651140000);
+    const dueTimestamp = body.dueTimestamp || (body.due_at ? new Date(body.due_at).getTime() : Date.now() + 7 * 86400000);
+    const closeAt = body.close_at || body.closeAt || dueAt;
+    const isStrictNoLate = body.is_strict_no_late !== undefined ? (body.is_strict_no_late ? 1 : 0) : (body.isStrictNoLateSubmission ? 1 : 0);
     const maxPoints = Number(body.max_points || body.points || 100);
     const rubric = body.rubric ? JSON.stringify(body.rubric) : null;
-    let createdBy = body.created_by || body.createdBy || 'Course Lecturer';
     let createdByEmail = body.created_by_email || body.createdByEmail || '';
 
     if (!title) {
@@ -4214,7 +4407,8 @@ app.post('/api/assignments', async (c) => {
       { name: 'faculty_id', type: 'TEXT' },
       { name: 'channel_id', type: 'TEXT' },
       { name: 'subject_name', type: 'TEXT' },
-      { name: 'created_by_email', type: 'TEXT' }
+      { name: 'created_by_email', type: 'TEXT' },
+      { name: 'reference_files', type: 'TEXT' }
     ];
     for (const col of colsToEnsure) {
       try {
@@ -4222,16 +4416,206 @@ app.post('/api/assignments', async (c) => {
       } catch {}
     }
 
+    // Safely resolve sectionId so foreign key constraint NEVER fails
+    let validSectionId: string | null = null;
+    const rawSectionId = body.section_id || body.sectionId;
+    if (rawSectionId && rawSectionId !== 'sec-sem5-a') {
+      try {
+        const secRes = await db.execute({
+          sql: 'SELECT id FROM sections WHERE id = ? LIMIT 1;',
+          args: [rawSectionId]
+        });
+        if (secRes.rows.length > 0) validSectionId = rawSectionId;
+      } catch {}
+    }
+
+    // Safely resolve createdBy so foreign key constraint to users(id) NEVER fails
+    let validCreatedBy: string | null = null;
+    const rawCreatedBy = body.created_by_id || body.createdById || body.created_by || body.createdBy;
+    if (rawCreatedBy) {
+      try {
+        const userRes = await db.execute({
+          sql: 'SELECT id FROM users WHERE id = ? OR email = ? LIMIT 1;',
+          args: [rawCreatedBy, rawCreatedBy]
+        });
+        if (userRes.rows.length > 0) {
+          validCreatedBy = String(userRes.rows[0].id);
+        }
+      } catch {}
+    }
+    if (!validCreatedBy && createdByEmail) {
+      try {
+        const emailRes = await db.execute({
+          sql: 'SELECT id FROM users WHERE email = ? LIMIT 1;',
+          args: [createdByEmail]
+        });
+        if (emailRes.rows.length > 0) {
+          validCreatedBy = String(emailRes.rows[0].id);
+        }
+      } catch {}
+    }
+
+    // Safely serialize reference files
+    const referenceFiles = body.referenceFiles || body.reference_files || [];
+    const referenceFilesStr = Array.isArray(referenceFiles) && referenceFiles.length > 0
+      ? JSON.stringify(referenceFiles)
+      : (typeof referenceFiles === 'string' ? referenceFiles : null);
+
     await db.execute({
-      sql: `INSERT INTO assignments (id, college_id, institution_name, faculty_id, course_id, course_code, section_id, channel_id, subject_name, title, description, instructions, due_at, due_timestamp, close_at, is_strict_no_late, max_points, rubric, created_by, created_by_email)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?);`,
-      args: [id, collegeId, institutionName, facultyId, courseId, courseCode, sectionId, channelId, subjectName, title, instructions, instructions, dueAt, dueTimestamp, dueAt, maxPoints, rubric, createdBy, createdByEmail],
+      sql: `INSERT OR REPLACE INTO assignments (
+              id, college_id, institution_name, faculty_id, course_id, course_code,
+              section_id, channel_id, subject_name, title, description, instructions,
+              due_at, due_timestamp, close_at, is_strict_no_late, max_points, rubric,
+              created_by, created_by_email, reference_files
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [
+        id, collegeId, institutionName, facultyId, courseId, courseCode,
+        validSectionId, channelId, subjectName, title, instructions, instructions,
+        dueAt, dueTimestamp, closeAt, isStrictNoLate, maxPoints, rubric,
+        validCreatedBy, createdByEmail, referenceFilesStr
+      ],
     });
 
     return c.json({
       success: true,
-      assignment: { id, title, courseCode, channelId, subjectName, dueAt, dueTimestamp, maxPoints },
+      assignment: {
+        id,
+        institutionName,
+        facultyId,
+        courseId,
+        courseCode,
+        channelId,
+        targetChannelId: channelId,
+        subjectName,
+        title,
+        instructions,
+        dueAt,
+        dueTimestamp,
+        closeAt,
+        isStrictNoLateSubmission: Boolean(isStrictNoLate),
+        points: maxPoints,
+        referenceFiles: Array.isArray(referenceFiles) ? referenceFiles : [],
+        rubric: body.rubric || [],
+        submissions: []
+      },
     }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Dedicated GET /api/assignments endpoint
+app.get('/api/assignments', async (c) => {
+  try {
+    const db = getDb(c);
+    const courseId = c.req.query('courseId') || c.req.query('course_id');
+    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || '';
+    const collegeId = c.req.query('collegeId') || c.req.header('x-college-id') || '';
+
+    let asgnRes;
+    if (courseId) {
+      asgnRes = await db.execute({
+        sql: 'SELECT * FROM assignments WHERE course_id = ? ORDER BY created_at DESC;',
+        args: [courseId]
+      });
+    } else if (institutionParam || collegeId) {
+      asgnRes = await db.execute({
+        sql: `SELECT * FROM assignments 
+              WHERE institution_name = ? 
+                 OR college_id = ? 
+                 OR LOWER(institution_name) = LOWER(?)
+                 OR course_id IN (
+                    SELECT id FROM courses 
+                    WHERE institution_name = ? OR college_id = ? OR LOWER(institution_name) = LOWER(?)
+                 )
+              ORDER BY created_at DESC;`,
+        args: [institutionParam, collegeId, institutionParam, institutionParam, collegeId, institutionParam]
+      });
+    } else {
+      asgnRes = await db.execute("SELECT * FROM assignments WHERE college_id != 'padmashree-demo' ORDER BY created_at DESC;");
+    }
+
+    const subsRes = await db.execute('SELECT * FROM assignment_submissions;');
+    const allSubs = subsRes.rows.map((s: any) => {
+      let files: any[] = [];
+      if (s.files) {
+        try { files = JSON.parse(String(s.files)); } catch {}
+      } else if (s.file_name) {
+        files = [{ name: String(s.file_name), size: String(s.file_size || '1.8 MB'), type: 'pdf', isReadOnly: true, uploadedAt: String(s.submitted_at || 'Just now') }];
+      }
+      return {
+        id: String(s.id),
+        assignmentId: String(s.assignment_id),
+        studentId: String(s.student_id),
+        studentName: String(s.student_name || 'Student'),
+        status: String(s.status || 'turned-in'),
+        submittedAt: String(s.submitted_at || ''),
+        fileName: s.file_name ? String(s.file_name) : undefined,
+        fileSize: s.file_size ? String(s.file_size) : undefined,
+        files,
+        grade: s.grade ? Number(s.grade) : undefined,
+        feedback: s.feedback ? String(s.feedback) : undefined,
+      };
+    });
+
+    const assignments = asgnRes.rows.map((a: any) => {
+      let rubric = [];
+      if (a.rubric) {
+        try { rubric = JSON.parse(String(a.rubric)); } catch {}
+      }
+      let referenceFiles = [];
+      if (a.reference_files) {
+        try { referenceFiles = JSON.parse(String(a.reference_files)); } catch {}
+      }
+      const matchedSubs = allSubs.filter((s: any) => s.assignmentId === String(a.id));
+      const channelId = String(a.channel_id || a.target_channel_id || '');
+
+      return {
+        id: String(a.id),
+        institutionName: String(a.institution_name || ''),
+        facultyId: String(a.faculty_id || ''),
+        courseId: String(a.course_id || ''),
+        courseCode: String(a.course_code || ''),
+        channelId,
+        targetChannelId: channelId,
+        subjectName: String(a.subject_name || a.subject || ''),
+        createdByEmail: String(a.created_by_email || a.created_by || ''),
+        title: String(a.title),
+        instructions: String(a.instructions || a.description || ''),
+        points: Number(a.max_points || 100),
+        referenceMaterialMode: 'students-cant-edit' as const,
+        referenceFiles,
+        dueAt: String(a.due_at || a.due_date || 'Nov 25, 2026, 11:59 PM'),
+        dueTimestamp: a.due_timestamp ? Number(a.due_timestamp) : (a.due_at ? new Date(String(a.due_at)).getTime() : Date.now() + 7 * 86400000),
+        closeAt: a.close_at ? String(a.close_at) : String(a.due_at || ''),
+        isStrictNoLateSubmission: Boolean(a.is_strict_no_late ?? 1),
+        rubric,
+        submissions: matchedSubs,
+      };
+    });
+
+    return c.json({ success: true, assignments });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// Delete assignment and cascade submissions
+app.delete('/api/assignments/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const db = getDb(c);
+    await db.execute({
+      sql: 'DELETE FROM assignment_submissions WHERE assignment_id = ?;',
+      args: [id]
+    });
+    await db.execute({
+      sql: 'DELETE FROM assignments WHERE id = ?;',
+      args: [id]
+    });
+    return c.json({ success: true, deletedId: id });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
@@ -4248,9 +4632,25 @@ app.post('/api/assignments/:id/submit', async (c) => {
     const submissionText = body.submission_text || body.notes || '';
     const fileName = body.file_name || body.fileName || 'Submission.pdf';
     const fileSize = body.file_size || body.fileSize || '1.8 MB';
-    const files = body.files ? JSON.stringify(body.files) : JSON.stringify([
-      { name: fileName, size: fileSize, type: 'pdf', isReadOnly: true, uploadedAt: 'Just now' }
-    ]);
+    
+    // Preserve full files array including base64 data URLs
+    let filesJson = '[]';
+    if (body.files && Array.isArray(body.files) && body.files.length > 0) {
+      filesJson = JSON.stringify(body.files);
+    } else if (body.files && typeof body.files === 'string') {
+      filesJson = body.files;
+    } else {
+      filesJson = JSON.stringify([
+        {
+          name: fileName,
+          size: fileSize,
+          type: body.file_type || body.fileType || 'pdf',
+          url: body.url || body.fileUrl || body.dataUrl || undefined,
+          isReadOnly: true,
+          uploadedAt: 'Just now'
+        }
+      ]);
+    }
     const submittedAt = new Date().toISOString();
 
     const db = getDb(c);
@@ -4300,7 +4700,7 @@ app.post('/api/assignments/:id/submit', async (c) => {
     await db.execute({
       sql: `INSERT OR REPLACE INTO assignment_submissions (id, assignment_id, student_id, student_name, status, submission_text, file_name, file_size, files, submitted_at)
             VALUES (?, ?, ?, ?, 'turned-in', ?, ?, ?, ?, ?);`,
-      args: [id, assignmentId, studentId, studentName, submissionText, fileName, fileSize, files, submittedAt],
+      args: [id, assignmentId, studentId, studentName, submissionText, fileName, fileSize, filesJson, submittedAt],
     });
 
     return c.json({
@@ -4591,21 +4991,27 @@ app.post('/api/courses/:courseId/files', async (c) => {
     const name = (body.name || 'document.pdf').trim();
     const category = body.category || 'Class Materials';
     const size = body.size || '1.2 MB';
-    const type = body.type || 'pdf';
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    const type = body.type || (ext === 'pdf' ? 'pdf' : ['doc', 'docx'].includes(ext) ? 'doc' : ['xls', 'xlsx'].includes(ext) ? 'sheet' : ['ppt', 'pptx'].includes(ext) ? 'presentation' : ['png', 'jpg', 'jpeg', 'webp'].includes(ext) ? 'image' : 'other');
     const uploadedBy = body.uploadedBy || body.uploaded_by || 'Instructor';
     const isClassMaterial = body.isClassMaterials ? 1 : 0;
     const permission = body.permission || 'read-only';
+    const url = body.url || body.fileUrl || body.dataUrl || null;
     const uploadedAt = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+    try {
+      await db.execute('ALTER TABLE course_files ADD COLUMN url TEXT;');
+    } catch {}
+
     await db.execute({
-      sql: `INSERT INTO course_files (id, course_id, college_id, channel_id, name, category, size, type, uploaded_by, is_class_material, permission, uploaded_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [id, courseId, collegeId, channelId, name, category, size, type, uploadedBy, isClassMaterial, permission, uploadedAt],
+      sql: `INSERT OR REPLACE INTO course_files (id, course_id, college_id, channel_id, name, category, size, type, uploaded_by, is_class_material, permission, uploaded_at, url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, courseId, collegeId, channelId, name, category, size, type, uploadedBy, isClassMaterial, permission, uploadedAt, url],
     });
 
     return c.json({
       success: true,
-      file: { id, courseId, channelId, name, category, size, uploadedBy, isClassMaterials: Boolean(isClassMaterial), permission, uploadedAt }
+      file: { id, courseId, channelId, name, category, size, type, url, uploadedBy, isClassMaterials: Boolean(isClassMaterial), permission, uploadedAt }
     }, 201);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

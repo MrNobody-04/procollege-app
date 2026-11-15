@@ -43,15 +43,26 @@ export const AssignmentsView: React.FC = () => {
   // 1. Scoped classes for current user
   const userCourses = courses.filter(c => {
     if (currentUser.role !== 'developer') {
-      if (c.institutionName && userInstitution && c.institutionName !== userInstitution) return false;
+      if (c.institutionName && userInstitution && c.institutionName.toLowerCase() !== userInstitution.toLowerCase()) return false;
     }
     if (isStudent) {
-      return Boolean(c.enrolledStudents?.some(s => s.id === currentUser.id));
+      const hasExplicit = Array.isArray(c.enrolledStudents) && c.enrolledStudents.length > 0;
+      if (hasExplicit && c.enrolledStudents) {
+        return c.enrolledStudents.some(
+          s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase())
+        );
+      }
+      return Boolean(
+        c.institutionName &&
+        userInstitution &&
+        c.institutionName.toLowerCase() === userInstitution.toLowerCase()
+      );
     }
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer') {
       return (
         c.instructor.id === currentUser.id ||
-        c.coOwners?.some(co => co.id === currentUser.id) ||
+        (c.instructor.email && currentUser.email && c.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        c.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase())) ||
         c.channels.some(
           ch =>
             !ch.isGeneral &&
@@ -69,7 +80,7 @@ export const AssignmentsView: React.FC = () => {
   const scopedAssignments = assignments.filter(a => {
     // Institution boundary
     if (currentUser.role !== 'developer') {
-      if (a.institutionName && userInstitution && a.institutionName !== userInstitution) return false;
+      if (a.institutionName && userInstitution && a.institutionName.toLowerCase() !== userInstitution.toLowerCase()) return false;
     }
     // Must belong to an accessible course
     if (!userCourseIds.has(a.courseId)) return false;
@@ -79,7 +90,9 @@ export const AssignmentsView: React.FC = () => {
       const course = courses.find(c => c.id === a.courseId);
       if (!course) return false;
       const isCourseLead =
-        course.instructor.id === currentUser.id || course.coOwners?.some(co => co.id === currentUser.id);
+        course.instructor.id === currentUser.id ||
+        (course.instructor.email && currentUser.email && course.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        course.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase()));
       if (!isCourseLead) {
         const asgnChanId = a.channelId || a.targetChannelId;
         const channel = course.channels.find(ch => ch.id === asgnChanId);
@@ -88,7 +101,7 @@ export const AssignmentsView: React.FC = () => {
           (channel.subjectLecturerId === currentUser.id ||
             (channel.subjectLecturerName &&
               channel.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase())));
-        if (!isSubjectLecturer && a.createdByEmail !== currentUser.email) return false;
+        if (!isSubjectLecturer && a.createdByEmail?.toLowerCase() !== currentUser.email?.toLowerCase()) return false;
       }
     }
 

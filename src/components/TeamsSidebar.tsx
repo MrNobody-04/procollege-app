@@ -50,11 +50,35 @@ export const TeamsSidebar: React.FC = () => {
   };
 
   const visibleCourses = courses.filter(c => {
-    // 1. Filter by faculty if selected
+    // 1. Role-based scoping: Admins and Platform Developers see all campus classes
+    const isPlatformDev = currentUser.role === 'developer' || currentUser.role === 'platform_admin';
+    const isCampusAdmin = currentUser.role === 'admin' || currentUser.role === 'assistant_admin';
+
+    if (!isPlatformDev && !isCampusAdmin) {
+      if (currentUser.role === 'student') {
+        const hasExplicit = Array.isArray(c.enrolledStudents) && c.enrolledStudents.length > 0;
+        const isEnrolled = hasExplicit && c.enrolledStudents
+          ? c.enrolledStudents.some(s => s.id === currentUser.id || (s.email && currentUser.email && s.email.toLowerCase() === currentUser.email.toLowerCase()))
+          : Boolean(c.institutionName && currentUser.institutionName && c.institutionName.toLowerCase() === currentUser.institutionName.toLowerCase());
+        if (!isEnrolled) return false;
+      } else if (currentUser.role === 'lecturer' || currentUser.role === 'professor' || (currentUser as any).role === 'teacher') {
+        const isLead = c.instructor?.id === currentUser.id || c.instructor?.email === currentUser.email;
+        const isCoOwner = c.coOwners?.some(co => co.id === currentUser.id || co.email === currentUser.email);
+        const isSubjectTeacher = c.channels?.some(
+          ch => !ch.isGeneral && (
+            ch.subjectLecturerId === currentUser.id ||
+            (ch.subjectLecturerName && ch.subjectLecturerName.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
+          )
+        );
+        if (!isLead && !isCoOwner && !isSubjectTeacher) return false;
+      }
+    }
+
+    // 2. Filter by faculty if selected
     if (selectedFacultyFilter !== 'all') {
       const targetFac = faculties.find(f => f.id === selectedFacultyFilter);
       if (targetFac) {
-        const directIdMatch = c.facultyId && c.facultyId === targetFac.id;
+        const directIdMatch = (c.facultyId && c.facultyId === targetFac.id) || (c.departmentId && c.departmentId === targetFac.id);
         const matchName = c.department.toLowerCase() === targetFac.name.toLowerCase();
         const matchCode = c.department.toLowerCase().includes(targetFac.code.toLowerCase());
         const matchInclude = targetFac.name.toLowerCase().includes(c.department.toLowerCase());
@@ -64,7 +88,7 @@ export const TeamsSidebar: React.FC = () => {
       }
     }
 
-    // 2. Filter by search filterText
+    // 3. Filter by search filterText
     if (!filterText.trim()) return true;
     const q = filterText.toLowerCase();
     return (

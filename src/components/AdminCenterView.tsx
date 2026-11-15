@@ -123,6 +123,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     resetInstitutionAdminPassword,
     removeInstitutionAdmin,
     renameInstitutionAdmin,
+    getStudentSchoolAttendance,
     getStudentOverallAttendance,
     institutionEducationLevel,
     setInstitutionEducationLevel
@@ -1479,13 +1480,38 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   };
 
   // Save Enrolled Students
-  const handleSaveEnrolledStudents = () => {
+  const handleSaveEnrolledStudents = async () => {
     if (!selectedCourseForAction) return;
     if (studentsToAddToClass.length > 0) {
-      enrollStudentsToCourse(selectedCourseForAction.id, studentsToAddToClass);
+      await enrollStudentsToCourse(selectedCourseForAction.id, studentsToAddToClass);
+      const addedUsers = availableUsers.filter(u => studentsToAddToClass.includes(u.id));
+      setSelectedCourseForAction(prev => {
+        if (!prev) return null;
+        const current = prev.enrolledStudents || [];
+        const currentIds = new Set(current.map(s => s.id));
+        const newEnrolled = [...current, ...addedUsers.filter(u => !currentIds.has(u.id))];
+        return {
+          ...prev,
+          enrolledStudents: newEnrolled,
+          memberCount: newEnrolled.length
+        };
+      });
     }
     setShowManageStudentsModal(false);
     setStudentsToAddToClass([]);
+  };
+
+  const handleRemoveStudentFromClass = async (courseId: string, studentId: string) => {
+    await removeStudentFromCourse(courseId, studentId);
+    setSelectedCourseForAction(prev => {
+      if (!prev) return null;
+      const updated = (prev.enrolledStudents || []).filter(s => s.id !== studentId);
+      return {
+        ...prev,
+        enrolledStudents: updated,
+        memberCount: updated.length
+      };
+    });
   };
 
   // Courses belonging to a faculty / department (Strict matching by facultyId or exact department name/code)
@@ -1682,11 +1708,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   };
 
   const renderExactClassCard = (course: CourseTeam, _isRightColumn?: boolean) => {
-    const enrolled = course.enrolledStudents && course.enrolledStudents.length > 0
-      ? course.enrolledStudents
-      : (academicUsers.filter(u => u.role === 'student').length > 0
-          ? academicUsers.filter(u => u.role === 'student').slice(0, 3)
-          : []);
+    const enrolled = course.enrolledStudents || [];
 
     // Show Announcements + all subject modules
     const allChannels: Channel[] = course.channels && course.channels.length > 0
@@ -1789,7 +1811,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
           ) : enrolled.length <= 4 ? (
             <div className="flex items-center gap-2 flex-wrap">
               {enrolled.map((student: any) => {
-                const att = getStudentOverallAttendance(student.id);
+                const att = getStudentSchoolAttendance(student.id, course.id);
                 const t = att.threshold;
                 return (
                   <button
@@ -5356,127 +5378,145 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       {/* ========================================================= */}
       {/* MODAL 4: MANAGE ENROLLED STUDENTS                         */}
       {/* ========================================================= */}
-      {showManageStudentsModal && selectedCourseForAction && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-hidden">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[88vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#26394D]" />
-                <div>
-                  <h3 className="font-bold text-sm text-zinc-900">Manage Enrolled Students</h3>
-                  <p className="text-[11px] text-zinc-500">{selectedCourseForAction.name}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowManageStudentsModal(false)}
-                className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+      {showManageStudentsModal && selectedCourseForAction && (() => {
+        const activeCourse = courses.find(c => c.id === selectedCourseForAction.id) || selectedCourseForAction;
+        const enrolled = activeCourse.enrolledStudents || [];
+        const enrolledIds = new Set(enrolled.map(s => s.id));
+        const availableToAdd = allStudents.filter(s => !enrolledIds.has(s.id));
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-              {/* Currently Enrolled Students */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-zinc-800 block">
-                  Currently Enrolled Students ({(selectedCourseForAction.enrolledStudents || []).length})
-                </span>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                  {(selectedCourseForAction.enrolledStudents || []).map(student => (
-                    <div key={student.id} className="flex items-center justify-between bg-zinc-50 p-2 rounded border border-zinc-200 text-xs">
-                      <div className="flex items-center gap-2">
-                        <img src={student.avatar} alt={student.name} className="w-5 h-5 rounded-full object-cover" />
-                        <div>
-                          <span className="font-semibold text-zinc-800">{student.name}</span>
-                          <span className="text-[10px] text-zinc-400 ml-2 font-mono">{student.loginId}</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => removeStudentFromCourse(selectedCourseForAction.id, student.id)}
-                        className="text-xs text-rose-600 hover:text-rose-800 font-medium cursor-pointer"
-                        title="Remove student from class"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-hidden">
+            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-zinc-200 flex flex-col max-h-[88vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between shrink-0 bg-white">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#26394D]" />
+                  <div>
+                    <h3 className="font-bold text-sm text-zinc-900">Manage Enrolled Students</h3>
+                    <p className="text-[11px] text-zinc-500">{activeCourse.name}</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setShowManageStudentsModal(false)}
+                  className="text-zinc-400 hover:text-zinc-600 p-1.5 hover:bg-zinc-100 rounded-lg cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Add More Students to Class */}
-              <div className="space-y-2 pt-2 border-t border-zinc-200">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-800">
-                    Available Students to Add
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                {/* Currently Enrolled Students */}
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-zinc-800 block">
+                    Currently Enrolled Students ({enrolled.length})
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentIds = new Set((selectedCourseForAction.enrolledStudents || []).map(s => s.id));
-                      const unenrolled = allStudents.filter(s => !currentIds.has(s.id)).map(s => s.id);
-                      setStudentsToAddToClass(unenrolled);
-                    }}
-                    className="text-xs text-[#26394D] font-semibold hover:underline cursor-pointer"
-                  >
-                    Enroll All Available
-                  </button>
+                  {enrolled.length === 0 ? (
+                    <div className="p-3 bg-zinc-50 rounded-lg border border-dashed border-zinc-200 text-center">
+                      <p className="text-xs text-zinc-500 italic">No students are currently enrolled in this class.</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">Select from the available students below to enroll them.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {enrolled.map(student => (
+                        <div key={student.id} className="flex items-center justify-between bg-zinc-50 p-2.5 rounded-lg border border-zinc-200 text-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img src={student.avatar} alt={student.name} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-semibold text-zinc-800 block truncate">{student.name}</span>
+                              <span className="text-[10px] text-zinc-400 font-mono block">{student.loginId || student.email}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStudentFromClass(activeCourse.id, student.id)}
+                            className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 hover:bg-rose-50 rounded-md cursor-pointer transition-colors shrink-0"
+                            title="Remove student from class"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                  {allStudents
-                    .filter(s => !(selectedCourseForAction.enrolledStudents || []).some(es => es.id === s.id))
-                    .map(student => {
-                      const isChecked = studentsToAddToClass.includes(student.id);
-                      return (
-                        <label
-                          key={student.id}
-                          className={`flex items-center justify-between p-2 rounded border text-xs cursor-pointer ${
-                            isChecked ? 'bg-indigo-50/60 border-indigo-200' : 'bg-white border-zinc-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={e => {
-                                if (e.target.checked) {
-                                  setStudentsToAddToClass(prev => [...prev, student.id]);
-                                } else {
-                                  setStudentsToAddToClass(prev => prev.filter(id => id !== student.id));
-                                }
-                              }}
-                              className="rounded text-[#26394D]"
-                            />
-                            <span className="font-medium text-zinc-800">{student.name}</span>
-                          </div>
-                          <span className="text-[10px] text-zinc-400 font-mono">{student.loginId}</span>
-                        </label>
-                      );
-                    })}
+                {/* Add More Students to Class */}
+                <div className="space-y-2 pt-3 border-t border-zinc-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">
+                      Available Students to Add ({availableToAdd.length})
+                    </span>
+                    {availableToAdd.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const unenrolledIds = availableToAdd.map(s => s.id);
+                          setStudentsToAddToClass(unenrolledIds);
+                        }}
+                        className="text-xs text-[#26394D] font-semibold hover:underline cursor-pointer"
+                      >
+                        Enroll All Available
+                      </button>
+                    )}
+                  </div>
+
+                  {availableToAdd.length === 0 ? (
+                    <p className="text-xs text-zinc-400 italic py-1">All registered students are already enrolled in this class.</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {availableToAdd.map(student => {
+                        const isChecked = studentsToAddToClass.includes(student.id);
+                        return (
+                          <label
+                            key={student.id}
+                            className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                              isChecked ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' : 'bg-white border-zinc-200 text-zinc-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={e => {
+                                  if (e.target.checked) {
+                                    setStudentsToAddToClass(prev => [...prev, student.id]);
+                                  } else {
+                                    setStudentsToAddToClass(prev => prev.filter(id => id !== student.id));
+                                  }
+                                }}
+                                className="rounded text-[#26394D]"
+                              />
+                              <span className="font-medium truncate">{student.name}</span>
+                            </div>
+                            <span className="text-[10px] text-zinc-400 font-mono ml-2 shrink-0">{student.loginId || student.email}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
 
-            <div className="p-3 sm:p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowManageStudentsModal(false)}
-                className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEnrolledStudents}
-                disabled={studentsToAddToClass.length === 0}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] disabled:bg-zinc-300 text-white rounded-lg cursor-pointer"
-              >
-                Add {studentsToAddToClass.length} Selected Student(s)
-              </button>
+              <div className="p-3 sm:p-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowManageStudentsModal(false)}
+                  className="px-3.5 py-1.5 text-xs text-zinc-600 hover:text-zinc-800 font-medium cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEnrolledStudents}
+                  disabled={studentsToAddToClass.length === 0}
+                  className="px-3.5 py-1.5 text-xs font-semibold bg-[#26394D] hover:bg-[#141E2B] disabled:bg-zinc-300 text-white rounded-lg cursor-pointer"
+                >
+                  Add {studentsToAddToClass.length} Selected Student(s)
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
       {/* MODAL 4B: MANAGE FACULTY MEMBERS                          */}
