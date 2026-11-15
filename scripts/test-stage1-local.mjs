@@ -4,9 +4,14 @@
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { createClient } from '@libsql/client';
 import app from '../src/worker.ts';
 import { signJwt } from '../src/lib/jwt.ts';
+
+function computeLegacySha256(pwd) {
+  return crypto.createHash('sha256').update(pwd + 'procollege_edge_salt_2026').digest('hex');
+}
 
 const DB_FILE = 'local-stage1-test.db';
 const DB_URL = `file:${DB_FILE}`;
@@ -133,10 +138,21 @@ async function setupDatabase() {
       ('usr_inactive_admin', 'Inactive Admin', 'inactive_admin@campus.local', 'admin', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'suspended'),
       ('usr_test_lecturer', 'Prof Newton', 'newton@campus.local', 'lecturer', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'active'),
       ('usr_test_student', 'Alice Student', 'alice@campus.local', 'student', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'active'),
+      ('usr_legacy_user', 'Legacy User', 'legacy@campus.local', 'student', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'active'),
       ('usr_inactive_user', 'Inactive User', 'inactive@campus.local', 'student', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'suspended'),
       ('usr_other_student', 'Other Student', 'other@different.local', 'student', 'col_other_college', 'col_other_college', 'Other College', 'active');
     `,
     args: []
+  });
+
+  // Set legacy SHA-256 hashes for transparent upgrade test and admin 2FA test
+  await db.execute({
+    sql: `UPDATE users SET password_hash = ? WHERE id = 'usr_legacy_user';`,
+    args: [computeLegacySha256('LegacyPass123!')]
+  });
+  await db.execute({
+    sql: `UPDATE users SET password_hash = ? WHERE id = 'usr_test_admin';`,
+    args: [computeLegacySha256('AdminPass123!')]
   });
 
   // Seed 1 test course
