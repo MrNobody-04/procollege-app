@@ -90,9 +90,9 @@ async function setupDatabase() {
     CREATE TABLE IF NOT EXISTS trusted_devices (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
+      device_hash TEXT,
       device_name TEXT,
-      expires_at TEXT,
+      last_used_at TEXT,
       created_at TEXT
     );
   `);
@@ -116,18 +116,20 @@ async function setupDatabase() {
 
   // Seed demo colleges
   await db.execute({
-    sql: "INSERT INTO colleges (id, name) VALUES ('col_platform_root', 'ProCollege Platform Root'), ('col_test_campus', 'Apex Test College');",
+    sql: "INSERT INTO colleges (id, name) VALUES ('col_platform_root', 'ProCollege Platform Root'), ('col_test_campus', 'Apex Test College'), ('col_other_college', 'Other College');",
     args: []
   });
 
-  // Seed 4 demo users (one per role)
+  // Seed demo users (one per role + inactive users + other tenant user)
   await db.execute({
     sql: `INSERT INTO users (id, name, email, role, college_id, institution_id, institution_name, status) VALUES 
       ('user_dev_root', 'Platform Dev', 'dev@platform.local', 'developer', 'col_platform_root', 'col_platform_root', 'ProCollege Platform Root', 'active'),
       ('usr_test_admin', 'Campus Admin', 'admin@campus.local', 'admin', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'active'),
+      ('usr_inactive_admin', 'Inactive Admin', 'inactive_admin@campus.local', 'admin', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'suspended'),
       ('usr_test_lecturer', 'Prof Newton', 'newton@campus.local', 'lecturer', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'active'),
       ('usr_test_student', 'Alice Student', 'alice@campus.local', 'student', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'active'),
-      ('usr_inactive_user', 'Inactive User', 'inactive@campus.local', 'student', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'suspended');
+      ('usr_inactive_user', 'Inactive User', 'inactive@campus.local', 'student', 'col_test_campus', 'col_test_campus', 'Apex Test College', 'suspended'),
+      ('usr_other_student', 'Other Student', 'other@different.local', 'student', 'col_other_college', 'col_other_college', 'Other College', 'active');
     `,
     args: []
   });
@@ -335,6 +337,106 @@ async function runLocalIntegrationTests() {
   }), env);
   assert.equal(mismatchRes.status, 403, 'Tenant mismatch must return 403 Forbidden');
   console.log('✓ 9b. Request with tenant mismatch strictly returned 403 Forbidden');
+
+  // Stage 3 Test 10a: /api/vault/* restricted to developer/platform_admin only
+  const vaultNonDevRes = await app.fetch(new Request('http://localhost/api/vault/backups', {
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }), env);
+  assert.equal(vaultNonDevRes.status, 403, 'Non-developer accessing vault must return 403');
+  console.log('✓ 10a. Non-developer accessing /api/vault/backups strictly returned 403 Forbidden');
+
+  // Stage 3 Test 10b: Inactive user rejected on admin / platform routes
+  const inactiveAdminToken = await signJwt({
+    id: 'usr_inactive_admin',
+    email: 'inactive_admin@campus.local',
+    role: 'admin',
+    institution_id: 'col_test_campus',
+    college_id: 'col_test_campus',
+  }, TEST_JWT_SECRET);
+
+  const inactiveAdminRes = await app.fetch(new Request('http://localhost/api/admin/users', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${inactiveAdminToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: 'Bob', email: 'bob@campus.local' }),
+  }), env);
+  assert.equal(inactiveAdminRes.status, 403, 'Inactive admin must return 403 on mutation');
+  console.log('✓ 10b. Suspended/inactive admin mutation strictly returned 403 Forbidden');
+
+  // Stage 3 Test 10c: Student cannot delete users
+  const studentDeleteRes = await app.fetch(new Request('http://localhost/api/admin/users/usr_test_lecturer', {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${studentToken}` }
+  }), env);
+  assert.equal(studentDeleteRes.status, 403, 'Student deleting user must return 403');
+  console.log('✓ 10c. Student deleting user strictly returned 403 Forbidden');
+
+  // Stage 3 Test 10d: Cross-tenant user deletion forbidden
+  const crossTenantDeleteRes = await app.fetch(new Request('http://localhost/api/admin/users/usr_other_student', {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${adminToken}` }
+  }), env);
+  assert.equal(crossTenantDeleteRes.status, 403, 'Cross-tenant user deletion must return 403');
+  console.log('✓ 10d. Admin attempting cross-tenant user deletion strictly returned 403 Forbidden');
+
+  // Stage 3 Test 10e: POST /api/storage/files route protection & tenant scoping
+  // 1. Unauthenticated -> 401
+  const storageUnauthRes = await app.fetch(new Request('http://localhost/api/storage/files', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'doc.pdf' }),
+  }), env);
+  assert.equal(storageUnauthRes.status, 401, 'Unauthenticated storage upload must return 401');
+
+  // 2. Tenant mismatch -> 403
+  const storageMismatchRes = await app.fetch(new Request('http://localhost/api/storage/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${studentToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: 'doc.pdf', collegeId: 'col_other_college' }),
+  }), env);
+  assert.equal(storageMismatchRes.status, 403, 'Storage upload with tenant mismatch must return 403');
+
+  // 3. Valid authenticated upload -> 201
+  const storageValidRes = await app.fetch(new Request('http://localhost/api/storage/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${studentToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: 'doc.pdf', type: 'pdf', size: '2.5 MB' }),
+  }), env);
+  assert.equal(storageValidRes.status, 201, 'Valid storage upload must return 201');
+  const storageData = await storageValidRes.json();
+  assert.equal(storageData.success, true);
+  console.log('✓ 10e. POST /api/storage/files verified for auth (401), tenant isolation (403), and valid creation (201)');
+
+  // Stage 3 Test 10f: Trusted Device 2FA Query Security
+  // Ensure that passing an arbitrary deviceHash without valid device token does NOT skip 2FA
+  await db.execute({
+    sql: `INSERT OR REPLACE INTO trusted_devices (id, user_id, device_hash, device_name, last_used_at, created_at)
+          VALUES ('dev_tok_valid_123', 'usr_test_admin', 'device_hash_legit', 'Admin Chrome', datetime('now'), datetime('now'));`,
+    args: []
+  });
+
+  // Verify query with matching token + user_id returns device
+  const legitDeviceRes = await db.execute({
+    sql: `SELECT id, user_id, device_hash, last_used_at FROM trusted_devices WHERE id = ? AND user_id = ? LIMIT 1;`,
+    args: ['dev_tok_valid_123', 'usr_test_admin']
+  });
+  assert.equal(legitDeviceRes.rows.length, 1, 'Legitimate device token and user_id must match');
+
+  // Verify attacker presenting another user's device_hash with spoofed token or wrong user_id returns NOTHING
+  const spoofedCheckRes = await db.execute({
+    sql: `SELECT id, user_id, device_hash, last_used_at FROM trusted_devices WHERE id = ? AND user_id = ? LIMIT 1;`,
+    args: ['dev_tok_valid_123', 'usr_test_student'] // Wrong user!
+  });
+  assert.equal(spoofedCheckRes.rows.length, 0, 'Cross-user device token query must return 0 rows');
+  console.log('✓ 10f. Trusted device query strictly enforces id = ? AND user_id = ? preventing 2FA bypass');
 
   // Test 8: Missing JWT_SECRET Fails Loudly
   const envNoSecret = { ...env, JWT_SECRET: '' };

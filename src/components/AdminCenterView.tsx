@@ -638,7 +638,13 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const handleTriggerBackup = async () => {
     setIsTriggeringBackup(true);
     try {
-      const res = await fetch('/api/vault/backup', { method: 'POST' });
+      const token = getStoredToken();
+      const res = await fetch('/api/vault/backup', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       setBackupSnapshot(data);
       showDialog(

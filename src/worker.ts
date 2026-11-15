@@ -36,7 +36,20 @@ export type Env = {
   };
 };
 
-const app = new Hono<{ Bindings: Env }>();
+export type Variables = {
+  authenticatedCaller?: {
+    id?: string;
+    email?: string;
+    role?: string;
+    institution_id?: string;
+    college_id?: string;
+    institution_name?: string;
+    name?: string;
+    is_legacy?: boolean;
+  } | null;
+};
+
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 const DEFAULT_TURSO_URL = 'libsql://procollege-app-mrnobody-04.aws-ap-south-1.turso.io';
 const DEFAULT_TURSO_AUTH_TOKEN =
@@ -79,6 +92,7 @@ async function extractUserFromHeader(c: any): Promise<{
   institution_id?: string;
   college_id?: string;
   institution_name?: string;
+  name?: string;
   is_legacy?: boolean;
 } | null> {
   const cached = c.get('authenticatedCaller');
@@ -181,6 +195,87 @@ async function extractUserFromHeader(c: any): Promise<{
 
   c.set('authenticatedCaller', null);
   return null;
+}
+
+// Generate cryptographically secure random token (e.g. for trusted device cookies)
+function generateSecureToken(prefix = 'dev_tok_'): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `${prefix}${Date.now()}_${hex}`;
+}
+
+// Enforce active user verification in database for privileged and scoped operations
+async function requireActiveCaller(c: any, allowedRoles?: string[]): Promise<{
+  caller: {
+    id: string;
+    email?: string;
+    role: string;
+    institution_id?: string;
+    college_id?: string;
+    institution_name?: string;
+    name?: string;
+    is_legacy?: boolean;
+  };
+  error?: Response;
+}> {
+  const caller = await extractUserFromHeader(c);
+  if (!caller || !caller.id) {
+    return {
+      caller: null as any,
+      error: c.json({ error: 'Unauthorized: Authentication token required' }, 401)
+    };
+  }
+
+  if (allowedRoles && allowedRoles.length > 0) {
+    const role = String(caller.role || '');
+    if (!allowedRoles.includes(role)) {
+      return {
+        caller: caller as any,
+        error: c.json({ error: 'Forbidden: Insufficient privileges for this operation' }, 403)
+      };
+    }
+  }
+
+  // Developer root account does not require a database row
+  if (caller.id === 'user_dev_root' || (caller.role === 'developer' && caller.id === 'user_dev_root')) {
+    return { caller: caller as any };
+  }
+
+  // Verify active user status in database
+  try {
+    const db = getDb(c);
+    const userRes = await db.execute({
+      sql: 'SELECT id, status, role, college_id, institution_id, name, email FROM users WHERE id = ? LIMIT 1;',
+      args: [caller.id],
+    });
+
+    if (userRes.rows.length === 0) {
+      if (caller.role === 'developer') {
+        return { caller: caller as any };
+      }
+      return {
+        caller: caller as any,
+        error: c.json({ error: 'Unauthorized: Account not found' }, 401)
+      };
+    }
+
+    const row = userRes.rows[0];
+    const status = String(row.status || 'active').toLowerCase();
+    if (status !== 'active') {
+      return {
+        caller: caller as any,
+        error: c.json({ error: 'Forbidden: Account is suspended or inactive' }, 403)
+      };
+    }
+
+    if (!caller.name && row.name) (caller as any).name = String(row.name);
+    if (!caller.email && row.email) (caller as any).email = String(row.email);
+  } catch (err) {
+    console.warn('[AUTH] Error verifying active user status in DB:', err);
+  }
+
+  return { caller: caller as any };
 }
 
 // Helper to resolve and ensure a valid college_id that satisfies FOREIGN KEY constraint
@@ -561,6 +656,21 @@ app.use('/api/*', async (c, next) => {
     }
   }
 
+  return next();
+});
+
+// Stage 3 Route Guards: Strict RBAC and active DB status check for Platform & Vault
+app.use('/api/platform/*', async (c, next) => {
+  const { caller, error } = await requireActiveCaller(c, ['developer', 'platform_admin']);
+  if (error) return error;
+  c.set('authenticatedCaller', caller);
+  return next();
+});
+
+app.use('/api/vault/*', async (c, next) => {
+  const { caller, error } = await requireActiveCaller(c, ['developer', 'platform_admin']);
+  if (error) return error;
+  c.set('authenticatedCaller', caller);
   return next();
 });
 
@@ -1078,32 +1188,38 @@ app.post('/api/auth/login', async (c) => {
     let isDeviceTrusted = false;
     let matchedDeviceToken = clientDeviceToken;
 
-    if (clientDeviceToken || clientDeviceHash) {
+    if (clientDeviceToken) {
       try {
         const tdCheck = await db.execute({
           sql: `SELECT id, user_id, device_hash, last_used_at 
                 FROM trusted_devices 
-                WHERE user_id = ? AND (id = ? OR device_hash = ?)
+                WHERE id = ? AND user_id = ?
                 LIMIT 1;`,
-          args: [userRow.id, clientDeviceToken || '__none__', clientDeviceHash || '__none__']
+          args: [clientDeviceToken, userRow.id]
         });
 
         if (tdCheck.rows.length > 0) {
           const tdRow = tdCheck.rows[0];
-          const lastUsed = tdRow.last_used_at ? new Date(String(tdRow.last_used_at)).getTime() : 0;
-          const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-          // Valid only if active within 30 days
-          if (Date.now() - lastUsed < thirtyDaysMs) {
-            isDeviceTrusted = true;
-            matchedDeviceToken = String(tdRow.id);
-            // Refresh last_used_at
-            await db.execute({
-              sql: `UPDATE trusted_devices SET last_used_at = datetime('now') WHERE id = ?;`,
-              args: [tdRow.id]
-            });
-            console.log(`[AUTH-TRUSTED-DEVICE] Recognized trusted device ${tdRow.id} for ${userRow.email}. Skipping 2FA.`);
+          // If device hash is registered and client passed a hash, verify they match
+          const hashMatches = !clientDeviceHash || !tdRow.device_hash || tdRow.device_hash === clientDeviceHash;
+          if (!hashMatches) {
+            console.log(`[AUTH-TRUSTED-DEVICE] Device hash mismatch for device ${tdRow.id}. Requiring 2FA.`);
           } else {
-            console.log(`[AUTH-TRUSTED-DEVICE] Device ${tdRow.id} for ${userRow.email} expired (> 30 days). Requiring 2FA.`);
+            const lastUsed = tdRow.last_used_at ? new Date(String(tdRow.last_used_at)).getTime() : 0;
+            const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+            // Valid only if active within 30 days
+            if (Date.now() - lastUsed < thirtyDaysMs) {
+              isDeviceTrusted = true;
+              matchedDeviceToken = String(tdRow.id);
+              // Refresh last_used_at
+              await db.execute({
+                sql: `UPDATE trusted_devices SET last_used_at = datetime('now') WHERE id = ?;`,
+                args: [tdRow.id]
+              });
+              console.log(`[AUTH-TRUSTED-DEVICE] Recognized trusted device ${tdRow.id} for ${userRow.email}. Skipping 2FA.`);
+            } else {
+              console.log(`[AUTH-TRUSTED-DEVICE] Device ${tdRow.id} for ${userRow.email} expired (> 30 days). Requiring 2FA.`);
+            }
           }
         }
       } catch (tdErr) {
@@ -1350,9 +1466,9 @@ app.post('/api/auth/verify-otp', async (c) => {
     };
 
     // Persistent Trusted Device 2FA: register device in trusted_devices table upon successful 2FA
-    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || `hash_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`).trim();
+    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || generateSecureToken('hash_')).trim();
     const deviceName = (body.deviceName || c.req.header('user-agent') || 'Trusted Device').substring(0, 100);
-    const newDeviceToken = `dev_tok_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const newDeviceToken = generateSecureToken('dev_tok_');
 
     try {
       await db.execute({
@@ -1360,7 +1476,7 @@ app.post('/api/auth/verify-otp', async (c) => {
               VALUES (?, ?, ?, ?, datetime('now'), datetime('now'));`,
         args: [newDeviceToken, userRow.id, clientDeviceHash, deviceName]
       });
-      c.header('Set-Cookie', `procollege_device_token=${newDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax`);
+      c.header('Set-Cookie', `procollege_device_token=${newDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Lax`);
     } catch (tdErr) {
       console.warn('[AUTH] Failed to save trusted device on 2FA verify:', tdErr);
     }
@@ -1494,9 +1610,9 @@ app.post('/api/auth/forgot-password/verify-reset', async (c) => {
     });
 
     // Register trusted device so session is recognized immediately
-    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || `hash_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`).trim();
+    const clientDeviceHash = (body.deviceHash || c.req.header('x-device-hash') || generateSecureToken('hash_')).trim();
     const deviceName = (body.deviceName || c.req.header('user-agent') || 'Trusted Device').substring(0, 100);
-    const newDeviceToken = `dev_tok_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const newDeviceToken = generateSecureToken('dev_tok_');
 
     try {
       await db.execute({
@@ -1504,7 +1620,7 @@ app.post('/api/auth/forgot-password/verify-reset', async (c) => {
               VALUES (?, ?, ?, ?, datetime('now'), datetime('now'));`,
         args: [newDeviceToken, userRow.id, clientDeviceHash, deviceName]
       });
-      c.header('Set-Cookie', `procollege_device_token=${newDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax`);
+      c.header('Set-Cookie', `procollege_device_token=${newDeviceToken}; Max-Age=2592000; Path=/; HttpOnly; Secure; SameSite=Lax`);
     } catch (tdErr) {
       console.warn('[AUTH] Failed to register trusted device on reset:', tdErr);
     }
@@ -2631,10 +2747,8 @@ app.get('/api/platform/email-logs', async (c) => {
 // 1.3 Admin Bulk Excel/CSV Roster Import & Credential Distribution
 app.post('/api/admin/import-roster', async (c) => {
   try {
-    const caller = await extractUserFromHeader(c);
-    if (!caller || (caller.role !== 'admin' && caller.role !== 'developer')) {
-      return c.json({ error: 'Unauthorized: Only authenticated college administrators can import student rosters' }, 403);
-    }
+    const { caller, error } = await requireActiveCaller(c, ['admin', 'developer', 'platform_admin']);
+    if (error) return error;
 
     const body = await c.req.json();
     const students: Array<{
@@ -2657,6 +2771,11 @@ app.post('/api/admin/import-roster', async (c) => {
     const callerInstId = caller.institution_id || caller.college_id;
     let institutionId = body.institutionId || body.institution_id || body.collegeId || callerInstId;
     let institutionName = body.institutionName || caller.institution_name;
+
+    const isDev = caller.role === 'developer' || caller.role === 'platform_admin';
+    if (!isDev && callerInstId && institutionId && institutionId !== callerInstId) {
+      return c.json({ error: 'Forbidden: Tenant isolation mismatch' }, 403);
+    }
 
     const db = getDb(c);
 
@@ -2816,7 +2935,9 @@ app.post('/api/admin/import-roster', async (c) => {
 // 2. User Management (Provision, List, Update, Delete Students & Lecturers)
 async function handleCreateUser(c: any) {
   try {
-    const caller = await extractUserFromHeader(c);
+    const { caller, error } = await requireActiveCaller(c, ['admin', 'developer', 'platform_admin']);
+    if (error) return error;
+
     const body = await c.req.json();
     const db = getDb(c);
 
@@ -2831,9 +2952,14 @@ async function handleCreateUser(c: any) {
       return c.json({ error: 'Name and email are required' }, 400);
     }
 
-    const isDev = caller?.role === 'developer' || caller?.role === 'platform_admin';
-    const callerInstId = (caller?.institution_id || caller?.college_id || '').trim();
-    const callerInstName = (caller?.institution_name || '').trim();
+    const requestedRole = (body.role || 'student').trim().toLowerCase();
+    if ((requestedRole === 'developer' || requestedRole === 'platform_admin') && caller.role !== 'developer') {
+      return c.json({ error: 'Forbidden: Only platform developers can create administrative platform accounts' }, 403);
+    }
+
+    const isDev = caller.role === 'developer' || caller.role === 'platform_admin';
+    const callerInstId = (caller.institution_id || caller.college_id || '').trim();
+    const callerInstName = (caller.institution_name || '').trim();
 
     const requestedId = (body.collegeId || body.college_id || body.institutionId || body.institution_id || '').trim();
     if (!isDev && requestedId && callerInstId && requestedId !== callerInstId && requestedId !== 'col_procollege_network') {
@@ -3041,16 +3167,18 @@ async function handleListUsers(c: any) {
 
 async function handleDeleteUser(c: any) {
   try {
-    const caller = await extractUserFromHeader(c);
+    const { caller, error } = await requireActiveCaller(c, ['admin', 'developer', 'platform_admin']);
+    if (error) return error;
+
     const userId = c.req.param('userId') || c.req.param('id');
     if (!userId) {
       return c.json({ error: 'User ID is required' }, 400);
     }
-    console.log(`[ADMIN-DELETE-USER] Requested deletion of user ${userId} by ${caller?.email || 'admin'}`);
+    console.log(`[ADMIN-DELETE-USER] Requested deletion of user ${userId} by ${caller.email || 'admin'}`);
     const db = getDb(c);
 
     const check = await db.execute({
-      sql: 'SELECT id, role, name, email FROM users WHERE id = ? LIMIT 1;',
+      sql: 'SELECT id, role, name, email, college_id, institution_id FROM users WHERE id = ? LIMIT 1;',
       args: [userId]
     });
     if (check.rows.length === 0) {
@@ -3058,8 +3186,15 @@ async function handleDeleteUser(c: any) {
     }
 
     const targetUser = check.rows[0];
-    if (String(targetUser.role) === 'developer') {
-      return c.json({ error: 'Platform developer accounts cannot be deleted' }, 403);
+    if (String(targetUser.role) === 'developer' || String(targetUser.role) === 'platform_admin') {
+      return c.json({ error: 'Platform administrator accounts cannot be deleted here' }, 403);
+    }
+
+    const isDev = caller.role === 'developer' || caller.role === 'platform_admin';
+    const callerInstId = (caller.institution_id || caller.college_id || '').trim();
+    const targetInstId = String(targetUser.college_id || targetUser.institution_id || '').trim();
+    if (!isDev && callerInstId && targetInstId && targetInstId !== callerInstId) {
+      return c.json({ error: 'Forbidden: Cannot delete user from another institution' }, 403);
     }
 
     await db.execute({
@@ -3097,6 +3232,9 @@ async function handleDeleteUser(c: any) {
 
 async function handleUpdateUserDetails(c: any) {
   try {
+    const { caller, error } = await requireActiveCaller(c, ['admin', 'developer', 'platform_admin']);
+    if (error) return error;
+
     const userId = c.req.param('userId') || c.req.param('id');
     if (!userId) {
       return c.json({ error: 'User ID is required' }, 400);
@@ -3117,6 +3255,16 @@ async function handleUpdateUserDetails(c: any) {
     }
 
     const current = check.rows[0];
+    const isDev = caller.role === 'developer' || caller.role === 'platform_admin';
+    const callerInstId = (caller.institution_id || caller.college_id || '').trim();
+    const targetInstId = String(current.college_id || current.institution_id || '').trim();
+    if (!isDev && callerInstId && targetInstId && targetInstId !== callerInstId) {
+      return c.json({ error: 'Forbidden: Cannot update user from another institution' }, 403);
+    }
+
+    if (String(current.role) === 'developer' && caller.role !== 'developer') {
+      return c.json({ error: 'Forbidden: Only platform developers can modify developer accounts' }, 403);
+    }
     const newName = body.name !== undefined ? String(body.name).trim() : String(current.name);
     const newPhone = body.phone !== undefined ? String(body.phone).trim() : String(current.phone || '');
     const newGuardianName = body.guardianName !== undefined ? String(body.guardianName).trim() : (body.guardian_name !== undefined ? String(body.guardian_name).trim() : String(current.guardian_name || ''));
@@ -5148,6 +5296,9 @@ app.delete('/api/courses/:courseId/files/:fileId', async (c) => {
 // 17. Cloudflare D1 procollege_vault: Backup snapshot from Turso
 app.post('/api/vault/backup', async (c) => {
   try {
+    const { error } = await requireActiveCaller(c, ['developer', 'platform_admin']);
+    if (error) return error;
+
     if (!c.env.procollege_vault) {
       return c.json({ error: 'Cloudflare D1 procollege_vault binding not found' }, 503);
     }
@@ -5186,6 +5337,9 @@ app.post('/api/vault/backup', async (c) => {
 // 18. Cloudflare D1 procollege_vault: List recent backups
 app.get('/api/vault/backups', async (c) => {
   try {
+    const { error } = await requireActiveCaller(c, ['developer', 'platform_admin']);
+    if (error) return error;
+
     if (!c.env.procollege_vault) {
       return c.json({ error: 'Cloudflare D1 procollege_vault binding not found' }, 503);
     }
@@ -5211,7 +5365,20 @@ app.get('/api/storage/config', (c) => {
 // 20. Cloudinary 25GB Storage: Register uploaded file metadata
 app.post('/api/storage/files', async (c) => {
   try {
+    const { caller, error } = await requireActiveCaller(c);
+    if (error) return error;
+
     const body = await c.req.json();
+    const isDev = caller.role === 'developer' || caller.role === 'platform_admin';
+    const callerInstId = (caller.institution_id || caller.college_id || '').trim();
+    const requestedCourseId = body.courseId || body.course_id || 'course_padma_bit_sem5';
+    const requestedColId = (body.collegeId || body.college_id || '').trim();
+
+    if (!isDev && requestedColId && callerInstId && requestedColId !== callerInstId) {
+      return c.json({ error: 'Forbidden: Tenant isolation mismatch' }, 403);
+    }
+
+    const effectiveCollegeId = callerInstId || requestedColId || 'padmashree-demo';
     const id = body.id || `asset_${Date.now()}`;
     const fileName = body.name || body.fileName || 'file.pdf';
     const cloudName = c.env.CLOUDINARY_CLOUD_NAME || 'pf66y0wq';
@@ -5219,8 +5386,8 @@ app.post('/api/storage/files', async (c) => {
     const fileSize = body.size || body.fileSize || '1.0 MB';
     const fileType = body.type || body.fileType || 'pdf';
     const publicId = body.publicId || id;
-    const uploadedBy = body.uploadedBy || 'User';
-    const courseId = body.courseId || 'course_padma_bit_sem5';
+    const uploadedBy = caller.name || caller.email || body.uploadedBy || 'User';
+    const courseId = requestedCourseId;
 
     // 1. Record into Cloudflare D1 procollege_vault
     if (c.env.procollege_vault) {
@@ -5233,8 +5400,8 @@ app.post('/api/storage/files', async (c) => {
     const db = getDb(c);
     await db.execute({
       sql: `INSERT OR REPLACE INTO course_files (id, course_id, college_id, name, category, size, type, uploaded_by, is_class_material, permission)
-            VALUES (?, ?, 'padmashree-demo', ?, 'Class Materials', ?, ?, ?, 1, 'read-only');`,
-      args: [id, courseId, fileName, fileSize, fileType, uploadedBy],
+            VALUES (?, ?, ?, ?, 'Class Materials', ?, ?, ?, 1, 'read-only');`,
+      args: [id, courseId, effectiveCollegeId, fileName, fileSize, fileType, uploadedBy],
     });
 
     return c.json({
