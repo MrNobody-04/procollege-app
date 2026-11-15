@@ -15,7 +15,8 @@ import {
   FileArchive,
   Download,
   Eye,
-  X
+  X,
+  Plus
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
@@ -31,6 +32,8 @@ export const ChatView: React.FC = () => {
     setSelectedConversation,
     directMessages,
     sendDirectMessage,
+    startDirectConversation,
+    availableUsers,
     startMeeting
   } = useApp();
 
@@ -39,6 +42,9 @@ export const ChatView: React.FC = () => {
   const [mobileChatListOpen, setMobileChatListOpen] = useState(false);
   const [chatAttachments, setChatAttachments] = useState<Attachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'lecturer' | 'student' | 'admin'>('all');
   const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   // Live Dexie IndexedDB + Turso delta sync + Ably Realtime hook
@@ -151,7 +157,17 @@ export const ChatView: React.FC = () => {
         mobileChatListOpen ? 'flex' : 'hidden md:flex'
       }`}>
         <div className="p-3 border-b border-[#B2C1C5]">
-          <h2 className="font-bold text-sm text-[#141E2B] mb-2">Direct & Group Chat</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-bold text-sm text-[#141E2B]">Direct & Group Chat</h2>
+            <button
+              onClick={() => setShowNewChatModal(true)}
+              className="p-1.5 rounded-md bg-[#26394D] hover:bg-[#141E2B] text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1 text-[11px] font-semibold px-2"
+              title="Compose New Message"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New</span>
+            </button>
+          </div>
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
             <input
@@ -167,10 +183,18 @@ export const ChatView: React.FC = () => {
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto divide-y divide-zinc-200/40 p-1.5 space-y-0.5">
           {filteredConversations.length === 0 ? (
-            <div className="p-8 text-center text-zinc-500 text-xs">
-              <MessageSquare className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+            <div className="p-8 text-center text-zinc-500 text-xs flex flex-col items-center">
+              <MessageSquare className="w-8 h-8 text-zinc-400 mb-2" />
               <p className="font-semibold text-zinc-700">No conversations yet</p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">No direct messages have been started in your workspace.</p>
+              <p className="text-[11px] text-zinc-500 mt-0.5">Start a direct message with any campus member.</p>
+              <button
+                type="button"
+                onClick={() => setShowNewChatModal(true)}
+                className="mt-3 px-3 py-1.5 bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Start New Chat</span>
+              </button>
             </div>
           ) : (
             filteredConversations.map(conv => {
@@ -237,6 +261,14 @@ export const ChatView: React.FC = () => {
             <p className="text-xs text-zinc-600 max-w-sm">
               Your chats and direct messages with colleagues, professors, and students will appear here.
             </p>
+            <button
+              type="button"
+              onClick={() => setShowNewChatModal(true)}
+              className="mt-4 px-4 py-2 bg-[#26394D] hover:bg-[#141E2B] text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Compose New Message</span>
+            </button>
           </div>
         ) : (
           <>
@@ -445,6 +477,115 @@ export const ChatView: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* New Conversation Selector Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-2xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#26394D] flex items-center justify-center text-white">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-900">New Message</h3>
+                  <p className="text-[11px] text-zinc-500">Select any member from your institution to chat</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowNewChatModal(false)}
+                className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg hover:bg-zinc-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search and Role Filter */}
+            <div className="p-3 bg-zinc-50/80 border-b border-zinc-200 space-y-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={e => setUserSearchQuery(e.target.value)}
+                  placeholder="Search by name, email, or department..."
+                  className="w-full bg-white border border-zinc-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-[#26394D]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                {(['all', 'lecturer', 'student', 'admin'] as const).map(role => (
+                  <button
+                    key={role}
+                    onClick={() => setUserRoleFilter(role)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold capitalize transition-colors cursor-pointer ${
+                      userRoleFilter === role
+                        ? 'bg-[#26394D] text-white shadow-2xs'
+                        : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600'
+                    }`}
+                  >
+                    {role === 'all' ? 'All Members' : `${role}s`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Users List */}
+            <div className="flex-1 overflow-y-auto p-2 divide-y divide-zinc-100">
+              {availableUsers
+                .filter(u => u.id !== currentUser.id)
+                .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                .filter(u =>
+                  !userSearchQuery ||
+                  u.name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  u.email.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  (u.department && u.department.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                )
+                .map(user => (
+                  <div
+                    key={user.id}
+                    onClick={() => {
+                      const conv = startDirectConversation(user);
+                      setSelectedConversation(conv);
+                      setShowNewChatModal(false);
+                      setMobileChatListOpen(false);
+                    }}
+                    className="p-2.5 flex items-center justify-between hover:bg-zinc-50 rounded-xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                        alt={user.name}
+                        className="w-9 h-9 rounded-full object-cover ring-1 ring-zinc-200 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-xs text-zinc-900 group-hover:text-[#26394D] truncate">
+                            {user.name}
+                          </p>
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border capitalize ${
+                            user.role === 'admin'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : user.role === 'lecturer'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-400 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-[#26394D] opacity-0 group-hover:opacity-100 font-semibold px-2">
+                      Chat →
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <FilePreviewModal
         isOpen={!!previewAttachment}

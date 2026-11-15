@@ -225,7 +225,8 @@ export function calculateSubjectAttendance(
  */
 export function isAssignmentSubmissionLocked(
   attendancePercentage: number,
-  hasOverride: boolean
+  hasOverride: boolean,
+  totalSessions: number = 1
 ): {
   isLocked: boolean;
   percentage: number;
@@ -237,6 +238,15 @@ export function isAssignmentSubmissionLocked(
       isLocked: false,
       percentage: Math.round(attendancePercentage),
       hasOverride: true
+    };
+  }
+
+  // If no attendance sessions have been conducted yet, student is eligible and not restricted
+  if (totalSessions === 0) {
+    return {
+      isLocked: false,
+      percentage: 100,
+      hasOverride: false
     };
   }
 

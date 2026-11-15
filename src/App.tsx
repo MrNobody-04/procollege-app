@@ -13,6 +13,7 @@ import { AdminCenterView } from './components/AdminCenterView';
 import { MeetingModal } from './components/MeetingModal';
 import { PortalLanding } from './components/PortalLanding';
 import { GlobalDialogModal } from './components/GlobalDialogModal';
+import { clearStoredSession } from './utils/session';
 
 const MainWorkspace: React.FC = () => {
   const { activeTab, currentUser } = useApp();
@@ -118,9 +119,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               <button
                 onClick={() => {
                   try {
-                    localStorage.removeItem('procollege_token');
-                    localStorage.removeItem('procollege_user');
-                    localStorage.removeItem('procollege_college');
+                    clearStoredSession();
                   } catch {}
                   window.location.href = '/';
                 }}

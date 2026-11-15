@@ -36,8 +36,9 @@ export const ThreadPostItem: React.FC<{ post: ThreadPost }> = ({ post }) => {
 
   const handleSendReply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim() || !selectedChannel?.id) return;
-    addReply(selectedChannel.id, post.id, replyText.trim());
+    if (!replyText.trim()) return;
+    const targetChannelId = post.channelId || selectedChannel?.id || '';
+    addReply(targetChannelId, post.id, replyText.trim());
     setReplyText('');
   };
 

@@ -22,6 +22,7 @@ export const MeetingModal: React.FC = () => {
     toggleMute,
     toggleCamera,
     toggleScreenShare,
+    setScreenSharing,
     toggleHand,
     sendMeetingMessage,
     currentUser
@@ -157,33 +158,41 @@ export const MeetingModal: React.FC = () => {
   // Real Screen Sharing
   const handleToggleScreenShare = async () => {
     if (!meeting.isScreenSharing) {
-      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
         try {
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: true
-          });
+          let displayStream: MediaStream;
+          try {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: false
+            });
+          } catch (audioErr) {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: true
+            });
+          }
 
           setScreenStream(displayStream);
-          toggleScreenShare(); // sets meeting.isScreenSharing = true
+          setScreenSharing(true);
 
           // Track ended by native browser bar "Stop Sharing"
-          displayStream.getVideoTracks()[0].onended = () => {
-            setScreenStream(null);
-            if (meeting.isScreenSharing) {
-              toggleScreenShare();
-            }
-          };
+          const videoTrack = displayStream.getVideoTracks()[0];
+          if (videoTrack) {
+            videoTrack.onended = () => {
+              displayStream.getTracks().forEach(t => t.stop());
+              setScreenStream(null);
+              setScreenSharing(false);
+            };
+          }
 
           setTimeout(() => {
             if (screenVideoRef.current) {
               screenVideoRef.current.srcObject = displayStream;
+              screenVideoRef.current.play().catch(e => console.warn('Screen video play error:', e));
             }
           }, 100);
         } catch (err) {
-          console.warn('User canceled or denied screen share:', err);
-          // Fall back to presentation stage simulation
-          toggleScreenShare();
+          console.warn('Screen share cancelled or permission denied:', err);
         }
       } else {
         toggleScreenShare();
@@ -193,7 +202,7 @@ export const MeetingModal: React.FC = () => {
         screenStream.getTracks().forEach(t => t.stop());
         setScreenStream(null);
       }
-      toggleScreenShare();
+      setScreenSharing(false);
     }
   };
 
@@ -201,6 +210,7 @@ export const MeetingModal: React.FC = () => {
   useEffect(() => {
     if (screenVideoRef.current && screenStream) {
       screenVideoRef.current.srcObject = screenStream;
+      screenVideoRef.current.play().catch(e => console.warn('Screen video play caught:', e));
     }
   }, [screenStream, meeting.isScreenSharing]);
 
@@ -408,6 +418,7 @@ export const MeetingModal: React.FC = () => {
                     ref={screenVideoRef}
                     autoPlay
                     playsInline
+                    muted
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -447,8 +458,8 @@ export const MeetingModal: React.FC = () => {
           ) : (
             /* Video Gallery Grid */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 w-full max-w-5xl h-full max-h-[700px]">
-              {meeting.participants.map(p => {
-                const isCurrent = p.id === currentUser.id;
+              {(meeting.participants || []).filter(p => Boolean(p && p.id)).map(p => {
+                const isCurrent = p.id === currentUser?.id;
                 const isCamera = isCurrent ? meeting.isCameraOn : true;
                 const isMuted = isCurrent ? meeting.isMuted : false;
                 const isHand = isCurrent ? meeting.isHandRaised : false;
@@ -475,8 +486,8 @@ export const MeetingModal: React.FC = () => {
                         ) : (
                           <div className="relative w-full h-full">
                             <img
-                              src={p.avatar}
-                              alt={p.name}
+                              src={p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                              alt={p.name || 'User'}
                               className="w-full h-full object-cover brightness-95"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
@@ -489,15 +500,15 @@ export const MeetingModal: React.FC = () => {
                         )
                       ) : (
                         <div className="w-20 h-20 rounded-full bg-zinc-700 text-zinc-200 flex items-center justify-center font-bold text-2xl shadow-inner">
-                          {p.name.split(' ').map(n => n[0]).join('')}
+                          {(p.name || 'User').split(' ').map(n => n[0]).join('')}
                         </div>
                       )
                     ) : (
                       /* Other participants: Avatar simulation */
                       <div className="relative w-full h-full">
                         <img
-                          src={p.avatar}
-                          alt={p.name}
+                          src={p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                          alt={p.name || 'User'}
                           className="w-full h-full object-cover brightness-95"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
@@ -507,7 +518,7 @@ export const MeetingModal: React.FC = () => {
                     {/* Participant Name Tag & Audio Status */}
                     <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs font-semibold">
                       <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-md">
-                        <span className="truncate">{p.name} {isCurrent && '(You)'}</span>
+                        <span className="truncate">{p.name || 'Participant'} {isCurrent && '(You)'}</span>
                         {p.role === 'professor' && (
                           <span className="text-[10px] bg-[#26394D] text-white px-1.5 py-0.2 rounded font-normal">
                             Host
@@ -606,13 +617,13 @@ export const MeetingModal: React.FC = () => {
             {activeSidePanel === 'participants' && (
               <div className="p-4 overflow-y-auto space-y-2 text-xs">
                 <div className="text-[11px] font-bold text-zinc-400 mb-2">In this meeting</div>
-                {meeting.participants.map(p => (
+                {(meeting.participants || []).filter(p => Boolean(p && p.id)).map(p => (
                   <div key={p.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-800/60">
                     <div className="flex items-center gap-2.5">
-                      <img src={p.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      <img src={p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'} alt="" className="w-8 h-8 rounded-full object-cover" />
                       <div>
                         <p className="font-semibold text-zinc-200">
-                          {p.name} {p.id === currentUser.id && '(You)'}
+                          {p.name || 'User'} {p.id === currentUser?.id && '(You)'}
                         </p>
                         <p className="text-[10px] text-zinc-500 capitalize">{p.role}</p>
                       </div>

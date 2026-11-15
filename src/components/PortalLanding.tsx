@@ -43,6 +43,7 @@ import {
   getDeviceDisplayName
 } from '../utils/deviceFingerprint';
 import { initHeroAnimations } from '../utils/heroAnimations';
+import { setStoredSession, clearStoredSession } from '../utils/session';
 import { ProCollegeAIAssistant } from './ProCollegeAIAssistant';
 
 export const PortalLanding: React.FC = () => {
@@ -185,9 +186,7 @@ export const PortalLanding: React.FC = () => {
     const eduLevel = data.college?.educationLevel || data.college?.education_level || data.user?.educationLevel || data.user?.education_level || 'bachelor';
     const collegeObj = data.college ? { ...data.college, educationLevel: eduLevel, education_level: eduLevel } : { name: instName, educationLevel: eduLevel, education_level: eduLevel };
 
-    localStorage.setItem('procollege_token', data.token);
-    localStorage.setItem('procollege_user', JSON.stringify(data.user));
-    localStorage.setItem('procollege_college', JSON.stringify(collegeObj));
+    setStoredSession(data.token, data.user, collegeObj);
 
     if (data.deviceToken) {
       saveDeviceToken(data.deviceToken);
@@ -525,10 +524,7 @@ export const PortalLanding: React.FC = () => {
 
   const launchDemoMode = (targetRoleOrUser: 'student' | 'professor' | 'admin' | typeof availableUsers[0] = 'student') => {
     try {
-      localStorage.removeItem('procollege_token');
-      localStorage.removeItem('procollege_user');
-      localStorage.removeItem('procollege_college');
-      sessionStorage.clear();
+      clearStoredSession();
     } catch {
       // ignore
     }

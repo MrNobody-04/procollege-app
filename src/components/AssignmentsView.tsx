@@ -7,7 +7,8 @@ import {
   Paperclip,
   BookOpen,
   Layers,
-  Filter
+  Filter,
+  ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CreateAssignmentModal } from './CreateAssignmentModal';
@@ -60,10 +61,10 @@ export const AssignmentsView: React.FC = () => {
     }
     if (currentUser.role === 'professor' || currentUser.role === 'lecturer') {
       return (
-        c.instructor.id === currentUser.id ||
-        (c.instructor.email && currentUser.email && c.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        c.instructor?.id === currentUser.id ||
+        (c.instructor?.email && currentUser.email && c.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
         c.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase())) ||
-        c.channels.some(
+        c.channels?.some(
           ch =>
             !ch.isGeneral &&
             (ch.subjectLecturerId === currentUser.id ||
@@ -90,12 +91,12 @@ export const AssignmentsView: React.FC = () => {
       const course = courses.find(c => c.id === a.courseId);
       if (!course) return false;
       const isCourseLead =
-        course.instructor.id === currentUser.id ||
-        (course.instructor.email && currentUser.email && course.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        course.instructor?.id === currentUser.id ||
+        (course.instructor?.email && currentUser.email && course.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
         course.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase()));
       if (!isCourseLead) {
         const asgnChanId = a.channelId || a.targetChannelId;
-        const channel = course.channels.find(ch => ch.id === asgnChanId);
+        const channel = course.channels?.find(ch => ch.id === asgnChanId);
         const isSubjectLecturer =
           channel &&
           (channel.subjectLecturerId === currentUser.id ||
@@ -441,11 +442,14 @@ export const AssignmentsView: React.FC = () => {
                           <p className="text-[10px] text-zinc-400">Hidden from students</p>
                         </div>
                       ) : (
-                        <div>
+                        <div className="flex flex-col items-end gap-1">
                           <p className="text-xs font-semibold text-zinc-700">
                             {asgn.submissions.length} turned in
                           </p>
-                          <p className="text-[10px] text-[#26394D] hover:underline font-medium">SpeedGrader</p>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#26394D] text-white text-[11px] font-semibold hover:bg-[#141E2B] transition-colors shadow-2xs">
+                            <ShieldAlert className="w-3 h-3 text-amber-300" />
+                            SpeedGrader & Overrides
+                          </span>
                         </div>
                       )
                     )}

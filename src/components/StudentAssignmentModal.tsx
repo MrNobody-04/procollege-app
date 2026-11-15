@@ -42,7 +42,8 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
     turnInAssignment,
     undoTurnIn,
     showDialog,
-    isStudentLockedFromAssignment
+    isStudentLockedFromAssignment,
+    toggleAttendanceOverride
   } = useApp();
 
   const [newFileName, setNewFileName] = useState('');
@@ -263,6 +264,21 @@ export const StudentAssignmentModal: React.FC<StudentAssignmentModalProps> = ({
               <p className="text-[11px] text-rose-700 mt-1">
                 You may still read and review the assignment instructions, rubric, and reference materials below.
               </p>
+              {currentUser.role !== 'student' && (
+                <div className="mt-2.5 pt-2 border-t border-rose-200 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-rose-950">Faculty Control:</span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await toggleAttendanceOverride(assignment.id, currentUser.id, true);
+                      showDialog('Attendance override granted for this assignment!', { type: 'success' });
+                    }}
+                    className="px-3 py-1 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                  >
+                    Grant Attendance Override
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

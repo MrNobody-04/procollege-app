@@ -65,9 +65,10 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
     }
     if (currentUser.role === 'admin' || currentUser.role === 'developer') return true;
     return (
-      c.instructor.id === currentUser.id ||
-      c.coOwners?.some(co => co.id === currentUser.id) ||
-      c.channels.some(
+      c.instructor?.id === currentUser.id ||
+      (c.instructor?.email && currentUser.email && c.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+      c.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase())) ||
+      c.channels?.some(
         ch =>
           !ch.isGeneral &&
           (ch.subjectLecturerId === currentUser.id ||
@@ -149,11 +150,12 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
         }
       } else {
         const first = eligibleCourses[0] || selectedCourse;
+        if (!first) return;
         setSelectedCourseId(first.id);
         const firstSub = (first.channels || []).find(ch => {
           if (ch.isGeneral || ch.name.toLowerCase() === 'announcements' || ch.name.toLowerCase() === 'general') return false;
           if (currentUser.role === 'admin' || currentUser.role === 'developer') return true;
-          if (first.instructor.id === currentUser.id || first.coOwners?.some(co => co.id === currentUser.id)) return true;
+          if (first.instructor?.id === currentUser.id || (first.instructor?.email && currentUser.email && first.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) || first.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase()))) return true;
           return (
             ch.subjectLecturerId === currentUser.id ||
             (ch.subjectLecturerName && ch.subjectLecturerName.toLowerCase().includes(currentUser.name.toLowerCase()))
@@ -172,7 +174,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
       return false;
     }
     if (currentUser.role === 'admin' || currentUser.role === 'developer') return true;
-    if (activeCourse.instructor.id === currentUser.id || activeCourse.coOwners?.some(co => co.id === currentUser.id)) {
+    if (activeCourse?.instructor?.id === currentUser.id || (activeCourse?.instructor?.email && currentUser.email && activeCourse.instructor.email.toLowerCase() === currentUser.email.toLowerCase()) || activeCourse?.coOwners?.some(co => co.id === currentUser.id || (co.email && currentUser.email && co.email.toLowerCase() === currentUser.email.toLowerCase()))) {
       return true;
     }
     return (
@@ -182,7 +184,7 @@ export const CreateAssignmentModal: React.FC<CreateAssignmentModalProps> = ({
   });
 
   useEffect(() => {
-    if (!defaultCourseId && selectedCourseId) {
+    if (selectedCourseId) {
       if (!eligibleChannels.some(ch => ch.id === selectedChannelId)) {
         setSelectedChannelId(eligibleChannels[0]?.id || '');
       }

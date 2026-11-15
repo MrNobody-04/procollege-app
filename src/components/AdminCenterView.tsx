@@ -43,6 +43,7 @@ import { AdminRosterUpload } from './AdminRosterUpload';
 import { StudentProfileModal } from './StudentProfileModal';
 import { SchoolRollCallModal } from './SchoolRollCallModal';
 import { SubjectRollCallModal } from './SubjectRollCallModal';
+import { getStoredToken } from '../utils/session';
 import { useApp, type ActiveTab } from '../context/AppContext';
 import type { LicenseSku, CourseTeam, DeploymentModel, Channel, User, InstitutionalRequest, FacultyDepartment, EducationLevel } from '../types';
 
@@ -210,7 +211,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const fetchEmailSettings = async () => {
     setIsLoadingEmailSettings(true);
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const [settingsRes, logsRes] = await Promise.all([
         fetch('/api/platform/email-settings', { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch('/api/platform/email-logs', { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -240,7 +241,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     e.preventDefault();
     setIsSavingEmailSettings(true);
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch('/api/platform/email-settings', {
         method: 'POST',
         headers: {
@@ -267,7 +268,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     setIsSendingTestEmail(true);
     setTestEmailResult(null);
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch('/api/platform/send-test-email', {
         method: 'POST',
         headers: {
@@ -474,7 +475,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
   const fetchOrganizations = async () => {
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch('/api/platform/institutions', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -499,7 +500,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
   const handleToggleOrgStatus = async (orgId: string, _currentStatus?: string) => {
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(orgId)}/toggle-status`, {
         method: 'POST',
         headers: {
@@ -536,7 +537,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const executeDeleteOrg = async (org: PlatformOrg) => {
     setIsDeletingOrg(true);
     try {
-      const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}`, {
         method: 'DELETE',
         headers: {
@@ -568,7 +569,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
 
   const handleRenewOrg = async (org: PlatformOrg) => {
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}/renew`, {
         method: 'POST',
         headers: {
@@ -608,7 +609,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const executeResetAdminPassword = async (org: PlatformOrg) => {
     setIsResettingPassword(true);
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}/reset-admin-password`, {
         method: 'POST',
         headers: {
@@ -914,7 +915,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   const handleUpdateActiveEducationLevel = async (newLevel: EducationLevel) => {
     setInstitutionEducationLevel(newLevel);
     try {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const orgId = selectedInstitution || currentUser.collegeId || 'college_1';
       await fetch(`/api/platform/institutions/${encodeURIComponent(orgId)}/education-level`, {
         method: 'PATCH',
@@ -1162,7 +1163,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       setRolloverNewTerm('Spring 2027');
     }
 
-    setRolloverLeadInstructorId(course.instructor.id);
+    setRolloverLeadInstructorId(course.instructor?.id || '');
     setShowRolloverModal(true);
   };
 
@@ -1404,7 +1405,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
     if (!newAdminInstitution.trim() || !newAdminContact.trim() || !newAdminEmail.trim()) return;
 
     try {
-      const token = localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch('/api/platform/institutions/provision', {
         method: 'POST',
         headers: {
@@ -5011,7 +5012,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                         setRolloverNewName(`${selected.name} - Next Semester`);
                         setRolloverNewCode(`${selected.code}-S2`);
                       }
-                      setRolloverLeadInstructorId(selected.instructor.id);
+                      setRolloverLeadInstructorId(selected.instructor?.id || '');
                     }
                   }}
                   className="w-full bg-white border border-zinc-300 rounded px-3 py-1.5 text-xs text-zinc-800 font-medium focus:outline-none focus:border-[#26394D]"

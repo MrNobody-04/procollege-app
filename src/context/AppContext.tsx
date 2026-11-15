@@ -48,6 +48,7 @@ import {
   INITIAL_INSTITUTIONAL_REQUESTS,
   INITIAL_FACULTIES
 } from '../data/initialData';
+import { getStoredToken, getStoredUser, getStoredCollege, clearStoredSession } from '../utils/session';
 
 export type ActiveTab =
   | 'activity'
@@ -138,6 +139,7 @@ interface AppContextType {
   setSelectedConversation: (conv: Conversation | null) => void;
   directMessages: Record<string, DirectMessage[]>;
   sendDirectMessage: (convId: string, content: string, attachments?: Attachment[]) => void;
+  startDirectConversation: (targetUser: User) => Conversation;
 
   assignments: Assignment[];
   createAssignment: (newAsgn: {
@@ -185,6 +187,7 @@ interface AppContextType {
   toggleMute: () => void;
   toggleCamera: () => void;
   toggleScreenShare: () => void;
+  setScreenSharing: (active: boolean) => void;
   toggleHand: () => void;
   sendMeetingMessage: (text: string) => void;
 
@@ -300,12 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedInstitution, setSelectedInstitution] = useState<string>('ProCollege University Network');
   const [institutionEducationLevel, setInstitutionEducationLevelState] = useState<EducationLevel>(() => {
     try {
-      const savedColStr = localStorage.getItem('procollege_college');
-      if (savedColStr) {
-        const parsed = JSON.parse(savedColStr);
-        if (parsed.educationLevel || parsed.education_level) {
-          return parsed.educationLevel || parsed.education_level;
-        }
+      const savedCol = getStoredCollege();
+      if (savedCol && (savedCol.educationLevel || savedCol.education_level)) {
+        return savedCol.educationLevel || savedCol.education_level;
       }
     } catch {}
     return 'bachelor';
@@ -314,11 +314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const setInstitutionEducationLevel = (level: EducationLevel) => {
     setInstitutionEducationLevelState(level);
     try {
-      const savedColStr = localStorage.getItem('procollege_college');
-      const parsed = savedColStr ? JSON.parse(savedColStr) : {};
-      parsed.educationLevel = level;
-      parsed.education_level = level;
-      localStorage.setItem('procollege_college', JSON.stringify(parsed));
+      const savedCol = getStoredCollege() || {};
+      savedCol.educationLevel = level;
+      savedCol.education_level = level;
+      sessionStorage.setItem('procollege_college', JSON.stringify(savedCol));
+      localStorage.setItem('procollege_college', JSON.stringify(savedCol));
     } catch {}
   };
 
@@ -327,20 +327,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [subjectAttendance, setSubjectAttendance] = useState<SubjectAttendanceRecord[]>([]);
   const [attendanceOverrides, setAttendanceOverrides] = useState<AssignmentAttendanceOverride[]>([]);
 
-  // Restore authenticated Turso session on refresh if present
+  // Restore authenticated Turso session on refresh if present (Tab-isolated)
   useEffect(() => {
     try {
-      const savedUserStr = localStorage.getItem('procollege_user');
-      const savedToken = localStorage.getItem('procollege_token');
-      if (savedUserStr && savedToken) {
-        const u = JSON.parse(savedUserStr);
-        const roleStr = u.role;
+      const u = getStoredUser();
+      const savedToken = getStoredToken();
+      if (u && savedToken) {
+        const roleStr = String(u.role || '').toLowerCase();
         const mappedRole: UserRole =
-          roleStr === 'developer'
+          roleStr === 'developer' || roleStr === 'platform_admin'
             ? 'developer'
-            : roleStr === 'admin'
+            : roleStr === 'admin' || roleStr === 'assistant_admin'
             ? 'admin'
-            : roleStr === 'teacher'
+            : roleStr === 'lecturer' || roleStr === 'professor' || roleStr === 'teacher'
             ? 'professor'
             : 'student';
 
@@ -360,7 +359,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ? 'Platform Architecture & Operations'
               : mappedRole === 'admin'
               ? 'Administration'
-              : 'Department of BIT',
+              : (u.department || 'Department of BIT'),
           institutionName:
             mappedRole === 'developer'
               ? 'ProCollege Platform Operations'
@@ -385,7 +384,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const isDev = (userRole || currentUser.role) === 'developer' || (userRole || currentUser.role) === 'platform_admin';
       const inst = instName || currentUser.institutionName || (isDev ? 'all' : 'Public English School');
       const role = userRole || currentUser.role;
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const res = await fetch(`/api/workspace/bootstrap?institution=${encodeURIComponent(inst)}&role=${encodeURIComponent(role)}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -439,29 +438,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (Array.isArray(data.notices) && data.notices.length > 0) {
           data.notices.forEach((n: any) => {
-            const chId = n.channel_id || n.target_channel_id || (loadedCourses[0]?.channels[0]?.id) || 'c1-general';
-            if (!newPosts[chId]) newPosts[chId] = [];
-            newPosts[chId].push({
-              id: String(n.id),
-              channelId: chId,
-              author: {
-                id: String(n.author_id || 'admin'),
-                name: String(n.author_name || 'Campus Administration'),
-                email: String(n.author_email || 'admin@campus.edu'),
-                role: 'admin',
-                license: 'ProCollege Verified for Faculty',
-                department: 'Administration',
-                institutionName: inst,
-                avatar: String(n.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
-                status: 'available',
-              },
-              title: String(n.title),
-              content: String(n.content || n.message || ''),
-              timestamp: String(n.created_at || 'Recently'),
-              reactions: {},
-              replies: [],
-              isAnnouncement: true,
-            });
+            // Find appropriate channel for this notice based on course_id or channel_id
+            let chId = n.channel_id;
+            if (!chId && n.course_id) {
+              const matchedCourse = loadedCourses.find(c => c.id === n.course_id);
+              chId = matchedCourse?.channels.find(ch => ch.isGeneral)?.id || matchedCourse?.channels[0]?.id;
+            }
+            if (!chId) {
+              // Try matching by course code in title or content (e.g. 'CLASS 10 B', 'CLASS 10 A')
+              const matchedByName = loadedCourses.find(c =>
+                (n.title && n.title.includes(c.code)) ||
+                (n.content && n.content.includes(c.code))
+              );
+              if (matchedByName) {
+                chId = matchedByName.channels.find(ch => ch.isGeneral)?.id || matchedByName.channels[0]?.id;
+              } else {
+                chId = loadedCourses[0]?.channels[0]?.id || 'c1-general';
+              }
+            }
+
+            if (chId) {
+              if (!newPosts[chId]) newPosts[chId] = [];
+              const parsedReplies = Array.isArray(n.replies) ? n.replies : [];
+              newPosts[chId].push({
+                id: String(n.id),
+                channelId: chId,
+                author: {
+                  id: String(n.author_id || 'admin'),
+                  name: String(n.author_name || 'Campus Administration'),
+                  email: String(n.author_email || 'admin@campus.edu'),
+                  role: 'admin',
+                  license: 'ProCollege Verified for Faculty',
+                  department: 'Administration',
+                  institutionName: inst,
+                  avatar: String(n.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
+                  status: 'available',
+                },
+                title: String(n.title),
+                content: String(n.content || n.message || ''),
+                timestamp: String(n.created_at || 'Recently'),
+                reactions: {},
+                replies: parsedReplies,
+                isAnnouncement: true,
+              });
+            }
           });
         }
         setPosts(newPosts);
@@ -470,7 +490,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (inst !== 'ProCollege University Network') {
           setNotifications(prev => prev.filter(n => !n.isDemo && n.institutionName !== 'ProCollege University Network'));
           setCalendarEvents(prev => prev.filter(e => !e.isDemo && e.institutionName !== 'ProCollege University Network'));
-          setConversations(prev => prev.filter(c => !c.isDemo && c.institutionName !== 'ProCollege University Network'));
+
+          // Seed direct conversations between currentUser and campus members so Chat is populated
+          const otherMembers = (data.users || []).filter((u: any) => u.id !== currentUser.id);
+          const initialTenantConvs: Conversation[] = otherMembers.map((u: any) => ({
+            id: `conv_${[currentUser.id, u.id].sort().join('_')}`,
+            type: 'direct' as const,
+            institutionName: inst,
+            participants: [currentUser, u],
+            lastMessage: `Direct message thread with ${u.name}`,
+            lastMessageTime: 'Active',
+            unreadCount: 0
+          }));
+          setConversations(initialTenantConvs);
         }
 
         // 7. Attendance & Gatekeeper Hydration
@@ -606,7 +638,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser(prev => ({ ...prev, department }));
     }
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/users/${userId}/department`, {
         method: 'PATCH',
         headers: {
@@ -651,10 +683,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logoutUser = () => {
     try {
-      localStorage.removeItem('procollege_token');
-      localStorage.removeItem('procollege_auth_token');
-      localStorage.removeItem('procollege_user');
-      localStorage.removeItem('procollege_college');
+      clearStoredSession();
     } catch {
       // ignore
     }
@@ -708,7 +737,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new class & channels to live Turso SQL database (R14) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch('/api/courses', {
         method: 'POST',
         headers: {
@@ -741,7 +770,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSelectedCourse(prev => (prev ? { ...prev, ...updates } : prev));
     }
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/courses/${courseId}`, {
         method: 'PATCH',
         headers: {
@@ -765,7 +794,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/courses/${courseId}`, {
         method: 'DELETE',
         headers: {
@@ -807,7 +836,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Enforce deletion in Turso with server protection (R20) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/courses/${encodeURIComponent(courseId)}/subjects/${encodeURIComponent(channelId)}`, {
         method: 'DELETE',
         headers: {
@@ -879,7 +908,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new subject channel to live Turso SQL database
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const collegeId = currentUser.collegeId || currentUser.institutionId;
       fetch(`/api/courses/${encodeURIComponent(courseId)}/channels`, {
         method: 'POST',
@@ -944,7 +973,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode && finalEnrolled.length > 0) {
       try {
-        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        const token = getStoredToken();
         await fetch(`/api/courses/${courseId}`, {
           method: 'PATCH',
           headers: {
@@ -990,7 +1019,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        const token = getStoredToken();
         await fetch(`/api/courses/${courseId}/students/${encodeURIComponent(studentId)}`, {
           method: 'DELETE',
           headers: {
@@ -1021,7 +1050,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist to backend Turso DB
     try {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/channels/${encodeURIComponent(channelId)}/lecturer`, {
         method: 'PATCH',
         headers: {
@@ -1104,7 +1133,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist automated Semester Rollover to live Turso SQL database (R23) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const collegeId = currentUser.collegeId || currentUser.institutionId;
       fetch('/api/courses/rollover', {
         method: 'POST',
@@ -1266,35 +1295,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             priority: isAnnouncement ? 'important' : 'normal',
             author_id: currentUser.id,
             author_name: currentUser.name,
+            course_id: selectedCourse?.id,
+            channel_id: channelId,
           }),
         }).catch(() => {});
       }
     }
   };
 
-  const addReply = (channelId: string, postId: string, content: string) => {
+  const addReply = async (_channelId: string, postId: string, content: string) => {
     if (currentUser.isMuted) {
       showDialog('You have been muted from posting by the College Administrator or Course Owner.', { type: 'warning', title: 'Muted Notice' });
       return;
     }
 
     const newReply = {
-      id: `rep_${Date.now()}`,
+      id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       author: currentUser,
       content,
-      timestamp: 'Just now',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       reactions: {}
     };
 
-    setPosts(prev => ({
-      ...prev,
-      [channelId]: (prev[channelId] || []).map(p => {
-        if (p.id === postId) {
-          return { ...p, replies: [...p.replies, newReply] };
-        }
-        return p;
-      })
-    }));
+    // Update in-memory state across all channels
+    setPosts(prev => {
+      const updated = { ...prev };
+      for (const ch in updated) {
+        updated[ch] = (updated[ch] || []).map(p => {
+          if (p.id === postId) {
+            return { ...p, replies: [...(p.replies || []), newReply] };
+          }
+          return p;
+        });
+      }
+      return updated;
+    });
+
+    // Sync to backend Turso notices table & Ably broadcast
+    if (!isDemoMode) {
+      try {
+        const token = getStoredToken();
+        await fetch(`/api/notices/${encodeURIComponent(postId)}/replies`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ reply: newReply })
+        });
+      } catch (err) {
+        console.warn('Failed to sync reply to backend:', err);
+      }
+    }
   };
 
   const toggleReaction = (channelId: string, postId: string, emoji: string, replyId?: string) => {
@@ -1343,6 +1395,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
       [convId]: [...(prev[convId] || []), newMsg]
     }));
+    setConversations(prev =>
+      prev.map(c =>
+        c.id === convId
+          ? {
+              ...c,
+              lastMessage: content || (attachments && attachments.length > 0 ? `Sent ${attachments.length} attachment(s)` : ''),
+              lastMessageTime: 'Just now'
+            }
+          : c
+      )
+    );
+  };
+
+  const startDirectConversation = (targetUser: User): Conversation => {
+    const existing = conversations.find(
+      c => c.participants.some(p => p.id === targetUser.id) && c.participants.some(p => p.id === currentUser.id)
+    );
+    if (existing) {
+      setSelectedConversation(existing);
+      return existing;
+    }
+    const newConv: Conversation = {
+      id: `conv_${[currentUser.id, targetUser.id].sort().join('_')}`,
+      type: 'direct',
+      institutionName: currentUser.institutionName || 'Academic Institution',
+      participants: [currentUser, targetUser],
+      lastMessage: 'Conversation started',
+      lastMessageTime: 'Just now',
+      unreadCount: 0
+    };
+    setConversations(prev => [newConv, ...prev]);
+    setSelectedConversation(newConv);
+    return newConv;
   };
 
   // ==========================================
@@ -1423,7 +1508,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Sync to live Turso assignments table with strict boundary data - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch('/api/assignments', {
         method: 'POST',
         headers: {
@@ -1462,9 +1547,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }).catch(err => console.warn('Assignment sync to Turso failed:', err));
     }
 
-    // Channel Notification Routing: Post automated assignment card in target channel
+    // Channel Notification Routing: Post automated assignment card in target course's general Announcements channel
+    const courseAnnounceChannelId = targetCourse.channels.find(ch => ch.isGeneral)?.id;
+    const targetPostChannelId = courseAnnounceChannelId || channelId;
+
     addPost(
-      channelId,
+      targetPostChannelId,
       newAsgn.isScheduled
         ? `🗓️ Scheduled Assignment: ${newAsgn.title}`
         : `📋 Assignment: ${newAsgn.title}`,
@@ -1698,7 +1786,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Sync submission with live Turso database with server-side deadline lock (R3, R4) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/assignments/${encodeURIComponent(asgnId)}/submit`, {
         method: 'POST',
         headers: {
@@ -1906,9 +1994,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [subjectAttendance, schoolAttendance]);
 
   const isStudentLockedFromAssignment = useCallback((assignmentId: string, studentId: string, subjectId: string) => {
-    const { percentage } = getStudentSubjectAttendance(studentId, subjectId);
+    const { percentage, totalSessions } = getStudentSubjectAttendance(studentId, subjectId);
     const hasOverride = attendanceOverrides.some(o => o.assignmentId === assignmentId && o.studentId === studentId && o.active);
-    return isAssignmentSubmissionLocked(percentage, hasOverride);
+    return isAssignmentSubmissionLocked(percentage, hasOverride, totalSessions);
   }, [getStudentSubjectAttendance, attendanceOverrides]);
 
   const saveSchoolRollCall = useCallback(async (
@@ -1939,7 +2027,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        const token = getStoredToken();
         await fetch('/api/attendance/school/bulk', {
           method: 'POST',
           headers: {
@@ -1991,7 +2079,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        const token = getStoredToken();
         await fetch('/api/attendance/subject/bulk', {
           method: 'POST',
           headers: {
@@ -2036,7 +2124,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       try {
-        const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+        const token = getStoredToken();
         await fetch(`/api/assignments/${encodeURIComponent(assignmentId)}/overrides`, {
           method: 'POST',
           headers: {
@@ -2077,7 +2165,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist to Turso - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/courses/${file.courseId}/files`, {
         method: 'POST',
         headers: {
@@ -2136,7 +2224,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist delete to Turso - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/courses/${target.courseId}/files/${fileId}`, {
         method: 'DELETE',
         headers: {
@@ -2156,6 +2244,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Meeting controls
   const startMeeting = (title?: string, courseCode?: string) => {
+    const otherUsers = (availableUsers || [])
+      .filter(u => Boolean(u && u.id && u.id !== currentUser.id))
+      .slice(0, 3);
+    
+    const participantsList = [currentUser, ...otherUsers].filter(u => Boolean(u && u.id));
+
     setMeeting({
       isOpen: true,
       title: title || `${selectedCourse?.code || 'ProCollege'}: Virtual Classroom`,
@@ -2164,7 +2258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isCameraOn: true,
       isScreenSharing: false,
       isHandRaised: false,
-      participants: [currentUser, availableUsers[1], availableUsers[3]],
+      participants: participantsList,
       messages: [
         { sender: 'System', text: 'Call started with end-to-end encryption.', time: 'Now' }
       ]
@@ -2172,12 +2266,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const endMeeting = () => {
-    setMeeting(prev => ({ ...prev, isOpen: false }));
+    setMeeting(prev => ({
+      ...prev,
+      isOpen: false,
+      isScreenSharing: false,
+      isCameraOn: false,
+      isHandRaised: false
+    }));
   };
 
   const toggleMute = () => setMeeting(prev => ({ ...prev, isMuted: !prev.isMuted }));
   const toggleCamera = () => setMeeting(prev => ({ ...prev, isCameraOn: !prev.isCameraOn }));
   const toggleScreenShare = () => setMeeting(prev => ({ ...prev, isScreenSharing: !prev.isScreenSharing }));
+  const setScreenSharing = (active: boolean) => setMeeting(prev => ({ ...prev, isScreenSharing: active }));
   const toggleHand = () => setMeeting(prev => ({ ...prev, isHandRaised: !prev.isHandRaised }));
 
   const sendMeetingMessage = (text: string) => {
@@ -2348,7 +2449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Persist new user to Turso database
     if (!isDemoMode) {
       const collegeId = currentUser.collegeId || currentUser.institutionId;
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -2391,7 +2492,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })));
 
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const collegeId = currentUser.collegeId || currentUser.institutionId;
       try {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
@@ -2414,7 +2515,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const collegeId = currentUser.collegeId || currentUser.institutionId;
       try {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
@@ -2444,7 +2545,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new faculty/department to live Turso SQL database (R13, R22) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch('/api/faculties', {
         method: 'POST',
         headers: {
@@ -2496,7 +2597,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist to backend Turso database
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/faculties/${facultyId}`, {
         method: 'PUT',
         headers: {
@@ -2513,7 +2614,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist deletion to live Turso SQL database - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       fetch(`/api/faculties/${facultyId}`, {
         method: 'DELETE',
         headers: {
@@ -2815,7 +2916,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const fetchInstitutionAdmins = async (instId: string) => {
     try {
-      const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+      const token = getStoredToken();
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -2831,7 +2932,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const appointInstitutionAdmin = async (instId: string, data: { name: string; email: string; department?: string }) => {
-    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const token = getStoredToken();
     const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins`, {
       method: 'POST',
       headers: {
@@ -2848,7 +2949,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetInstitutionAdminPassword = async (instId: string, adminId: string) => {
-    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const token = getStoredToken();
     const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins/${encodeURIComponent(adminId)}/reset`, {
       method: 'POST',
       headers: {
@@ -2863,7 +2964,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const removeInstitutionAdmin = async (instId: string, adminId: string) => {
-    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const token = getStoredToken();
     const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins/${encodeURIComponent(adminId)}`, {
       method: 'DELETE',
       headers: {
@@ -2878,7 +2979,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const renameInstitutionAdmin = async (instId: string, adminId: string, data: { name: string; department?: string }) => {
-    const token = localStorage.getItem('procollege_auth_token') || localStorage.getItem('procollege_token') || '';
+    const token = getStoredToken();
     const res = await fetch(`/api/platform/institutions/${encodeURIComponent(instId)}/admins/${encodeURIComponent(adminId)}`, {
       method: 'PATCH',
       headers: {
@@ -2944,6 +3045,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedConversation,
         directMessages,
         sendDirectMessage,
+        startDirectConversation,
 
         assignments,
         createAssignment,
@@ -2970,6 +3072,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleMute,
         toggleCamera,
         toggleScreenShare,
+        setScreenSharing,
         toggleHand,
         sendMeetingMessage,
 

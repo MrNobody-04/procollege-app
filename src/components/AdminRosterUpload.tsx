@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useApp } from '../context/AppContext';
+import { getStoredToken } from '../utils/session';
 
 interface ParsedStudentRow {
   name: string;
@@ -147,7 +148,7 @@ export const AdminRosterUpload: React.FC = () => {
     if (parsedRows.length === 0) return;
     setIsImporting(true);
     try {
-      const token = localStorage.getItem('procollege_token') || localStorage.getItem('procollege_auth_token') || '';
+      const token = getStoredToken();
       const res = await fetch('/api/admin/import-roster', {
         method: 'POST',
         headers: {

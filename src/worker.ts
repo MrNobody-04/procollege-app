@@ -179,20 +179,6 @@ async function extractUserFromHeader(c: any): Promise<{
     }
   }
 
-  // Stage 1 backward-compatibility fallback if NO Authorization header was provided
-  const roleHeader = c.req.header('x-user-role');
-  if (roleHeader) {
-    const user = {
-      role: roleHeader,
-      email: c.req.header('x-user-email') || '',
-      institution_id: c.req.header('x-institution-id') || c.req.header('x-college-id') || '',
-      college_id: c.req.header('x-college-id') || c.req.header('x-institution-id') || '',
-      institution_name: c.req.header('x-institution-name') || '',
-    };
-    c.set('authenticatedCaller', user);
-    return user;
-  }
-
   c.set('authenticatedCaller', null);
   return null;
 }
@@ -200,12 +186,18 @@ async function extractUserFromHeader(c: any): Promise<{
 // Helper to resolve and ensure a valid college_id that satisfies FOREIGN KEY constraint
 async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
   const caller = await extractUserFromHeader(c);
-  let cid = (body?.college_id || body?.collegeId || body?.institution_id || body?.institutionId ||
-             c.req.header('x-college-id') || c.req.header('x-institution-id') ||
-             caller?.college_id || caller?.institution_id || '').trim();
+  const callerTenant = (caller?.college_id || caller?.institution_id || '').trim();
+  const isDev = caller?.role === 'developer' || caller?.role === 'platform_admin';
 
-  const instName = (body?.institution_name || body?.institutionName ||
-                    c.req.header('x-institution-name') || caller?.institution_name || '').trim();
+  const requestedCid = (body?.college_id || body?.collegeId || body?.institution_id || body?.institutionId || c.req.query('collegeId') || c.req.query('institutionId') || '').trim();
+
+  // Strict RBAC: Tenant comes from verified token only. Mismatch returns Forbidden unless developer.
+  if (!isDev && requestedCid && callerTenant && requestedCid !== callerTenant && requestedCid !== 'all' && requestedCid !== 'campus') {
+    throw new Error('FORBIDDEN_TENANT_MISMATCH');
+  }
+
+  let cid = (isDev && requestedCid ? requestedCid : callerTenant || requestedCid).trim();
+  const instName = (caller?.institution_name || body?.institution_name || body?.institutionName || '').trim();
 
   if ((!cid || cid === 'padmashree-demo' || cid === 'col_procollege_network' || cid === 'campus' || cid === 'all') && instName) {
     try {
@@ -544,18 +536,8 @@ app.use('/api/*', async (c, next) => {
     return next();
   }
 
-  const institutionId =
-    c.req.header('x-institution-id') ||
-    c.req.header('x-college-id') ||
-    caller?.institution_id ||
-    caller?.college_id ||
-    '';
-
-  const institutionName =
-    c.req.header('x-institution-name') ||
-    c.req.query('institution') ||
-    caller?.institution_name ||
-    '';
+  const institutionId = caller?.institution_id || caller?.college_id || '';
+  const institutionName = caller?.institution_name || '';
 
   if (institutionId || institutionName) {
     try {
@@ -2849,10 +2831,17 @@ async function handleCreateUser(c: any) {
       return c.json({ error: 'Name and email are required' }, 400);
     }
 
-    const callerInstId = caller?.institution_id || caller?.college_id;
-    const callerInstName = caller?.institution_name;
-    let collegeId = (body.collegeId || body.college_id || body.institutionId || body.institution_id || c.req.header('x-college-id') || c.req.header('x-institution-id') || callerInstId || '').trim();
-    let institutionName = (body.institutionName || body.institution_name || callerInstName || 'Academic Institution').trim();
+    const isDev = caller?.role === 'developer' || caller?.role === 'platform_admin';
+    const callerInstId = (caller?.institution_id || caller?.college_id || '').trim();
+    const callerInstName = (caller?.institution_name || '').trim();
+
+    const requestedId = (body.collegeId || body.college_id || body.institutionId || body.institution_id || '').trim();
+    if (!isDev && requestedId && callerInstId && requestedId !== callerInstId && requestedId !== 'col_procollege_network') {
+      return c.json({ error: 'Forbidden: Tenant ID does not match authenticated token' }, 403);
+    }
+
+    let collegeId = (isDev && requestedId ? requestedId : callerInstId || requestedId || '').trim();
+    let institutionName = (isDev && (body.institutionName || body.institution_name) ? (body.institutionName || body.institution_name) : callerInstName || 'Academic Institution').trim();
 
     // Resolve or match valid college in DB to ensure foreign key constraint
     if (!collegeId || collegeId === 'col_procollege_network') {
@@ -2996,10 +2985,20 @@ async function handleCreateUser(c: any) {
 async function handleListUsers(c: any) {
   try {
     const caller = await extractUserFromHeader(c);
+    if (!caller) {
+      return c.json({ error: 'Unauthorized: Invalid or missing token' }, 401);
+    }
+    const isDev = caller.role === 'developer' || caller.role === 'platform_admin';
+    const callerInstId = (caller.institution_id || caller.college_id || '').trim();
+    const requestedInstId = (c.req.query('collegeId') || c.req.query('institutionId') || '').trim();
+
+    if (!isDev && requestedInstId && callerInstId && requestedInstId !== callerInstId && requestedInstId !== 'all') {
+      return c.json({ error: 'Forbidden: Tenant ID does not match authenticated token' }, 403);
+    }
+
+    const instId = isDev && requestedInstId ? requestedInstId : callerInstId;
+    const instName = isDev && c.req.query('institution') ? c.req.query('institution') : caller.institution_name || '';
     const db = getDb(c);
-    const callerInstId = caller?.institution_id || caller?.college_id;
-    const instId = c.req.query('collegeId') || c.req.query('institutionId') || c.req.header('x-college-id') || callerInstId || '';
-    const instName = c.req.query('institution') || caller?.institution_name || '';
 
     let sql = `SELECT id, login_id, name, email, phone, role, department, institution_name, college_id, institution_id, avatar_url, guardian_name, guardian_phone, must_change_password, created_at
                FROM users WHERE role != 'developer'`;

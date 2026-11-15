@@ -404,57 +404,59 @@ export const SpeedGraderModal: React.FC<SpeedGraderModalProps> = ({
                 </span>
               </div>
 
-              {/* Requirement B: Flagged low-attendance students display [ Grant One-Time Exception ] toggle switch */}
-              {isLowAttendance ? (
-                <div className="pt-2 border-t border-rose-200/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-rose-950 block">Grant One-Time Exception</span>
-                      <p className="text-[10px] text-rose-800">
-                        Bypasses the automatic submission lock for {student.name.split(' ')[0]}.
-                      </p>
-                    </div>
+              {/* Always Visible Attendance Gatekeeper & Lecturer Override Section */}
+              <div className="pt-2 border-t border-zinc-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-zinc-900 block">Attendance Submission Override</span>
+                    <p className="text-[10px] text-zinc-500">
+                      {hasException
+                        ? `Override active: ${student.name.split(' ')[0]} can submit this assignment.`
+                        : `Bypasses attendance gatekeeper lock for ${student.name.split(' ')[0]}.`}
+                    </p>
+                  </div>
 
-                    <button
-                      type="button"
-                      onClick={handleToggleException}
-                      className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        hasException ? 'bg-emerald-600' : 'bg-zinc-300'
+                  <button
+                    type="button"
+                    onClick={handleToggleException}
+                    className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      hasException ? 'bg-emerald-600' : 'bg-zinc-300'
+                    }`}
+                    title={hasException ? 'Click to revoke override' : 'Click to grant override'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        hasException ? 'translate-x-5' : 'translate-x-0'
                       }`}
-                      title={hasException ? 'Click to revoke exception' : 'Click to grant exception'}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          hasException ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
+                    />
+                  </button>
+                </div>
 
-                  <div className={`p-2 rounded text-[11px] font-medium flex items-center gap-1.5 ${
-                    hasException
-                      ? 'bg-emerald-100/80 text-emerald-900 border border-emerald-300'
-                      : 'bg-rose-100/70 text-rose-900 border border-rose-300'
-                  }`}>
-                    {hasException ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <span>Exception active: Student can submit this assignment.</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-700 shrink-0" />
-                        <span>Submissions locked automatically (&lt; 75% attendance).</span>
-                      </>
-                    )}
-                  </div>
+                <div className={`p-2 rounded text-[11px] font-medium flex items-center gap-1.5 ${
+                  hasException
+                    ? 'bg-emerald-100/80 text-emerald-900 border border-emerald-300'
+                    : isLowAttendance
+                    ? 'bg-rose-100/70 text-rose-900 border border-rose-300'
+                    : 'bg-zinc-100 text-zinc-700 border border-zinc-200'
+                }`}>
+                  {hasException ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                      <span>Manual Override Active: Student can submit this assignment.</span>
+                    </>
+                  ) : isLowAttendance ? (
+                    <>
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-700 shrink-0" />
+                      <span>Submissions locked (&lt; 75% attendance). Switch toggle above to override.</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Eligible: Student meets minimum attendance requirement.</span>
+                    </>
+                  )}
                 </div>
-              ) : (
-                <div className="pt-1 text-[11px] text-zinc-500 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Student meets the 75% minimum attendance requirement.</span>
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Rubric Evaluation Matrix */}
