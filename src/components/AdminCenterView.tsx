@@ -1269,6 +1269,8 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       facultyId: chosenFaculty?.id,
       departmentId: chosenFaculty?.id,
       department: deptName,
+      institutionName: currentUser?.institutionName || 'Academic Institution',
+      collegeId: currentUser?.collegeId || currentUser?.institutionId,
       term,
       color: '#4f46e5',
       icon: model === 'model-b' ? '🏛️' : '⚡',

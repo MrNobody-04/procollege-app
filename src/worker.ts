@@ -416,8 +416,22 @@ async function resolveCollegeId(c: any, body: any, db: any): Promise<string> {
   const requestedCid = (body?.college_id || body?.collegeId || body?.institution_id || body?.institutionId || c.req.query('collegeId') || c.req.query('institutionId') || '').trim();
 
   // Strict RBAC: Tenant comes from verified token only. Mismatch returns Forbidden unless developer.
-  if (!isDev && requestedCid && callerTenant && requestedCid !== callerTenant && requestedCid !== 'all' && requestedCid !== 'campus') {
-    throw new Error('FORBIDDEN_TENANT_MISMATCH');
+  if (!isDev && callerTenant) {
+    const isPlaceholder =
+      !requestedCid ||
+      requestedCid === 'all' ||
+      requestedCid === 'campus' ||
+      requestedCid === 'padmashree-demo' ||
+      requestedCid === 'col_procollege_network' ||
+      requestedCid.toLowerCase() === 'procollege university network' ||
+      requestedCid.toLowerCase() === 'academic institution' ||
+      (Boolean(caller?.institution_name) && requestedCid.toLowerCase().trim() === (caller?.institution_name || '').toLowerCase().trim());
+
+    if (!isPlaceholder && requestedCid !== callerTenant) {
+      throw new Error('FORBIDDEN_TENANT_MISMATCH');
+    }
+
+    return callerTenant;
   }
 
   let cid = (isDev && requestedCid ? requestedCid : callerTenant || requestedCid).trim();
@@ -3967,6 +3981,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         license: 'ProCollege Verified for Faculty' as const,
         department: String(cRow.department || 'Academic Department'),
         institutionName: String(cRow.institution_name || institutionParam),
+        collegeId: String(cRow.college_id || collegeId || ''),
         status: 'available' as const,
       };
       if (cRow.instructor_data) {
@@ -4005,6 +4020,7 @@ app.get('/api/workspace/bootstrap', async (c) => {
         departmentId: cRow.department_id ? String(cRow.department_id) : (cRow.faculty_id ? String(cRow.faculty_id) : undefined),
         facultyId: cRow.department_id ? String(cRow.department_id) : (cRow.faculty_id ? String(cRow.faculty_id) : undefined),
         institutionName: String(cRow.institution_name || institutionParam),
+        collegeId: String(cRow.college_id || collegeId || ''),
         term: String(cRow.term || 'Fall 2026'),
         color: String(cRow.color || '#4f46e5'),
         icon: String(cRow.icon || '🏛️'),
@@ -4493,10 +4509,11 @@ app.post('/api/courses', async (c) => {
   try {
     const body = await c.req.json();
     const db = getDb(c);
+    const caller = await extractUserFromHeader(c);
     const collegeId = await resolveCollegeId(c, body, db);
 
     const id = body.id || `course_${Date.now()}`;
-    const institutionName = body.institutionName || body.institution_name || 'PUBLIC ENGLISH BOARDING SCHOOL';
+    const institutionName = (caller?.institution_name || body.institutionName || body.institution_name || '').trim() || 'PUBLIC ENGLISH BOARDING SCHOOL';
     const code = (body.code || '').trim().toUpperCase();
     const name = (body.name || '').trim();
     const department = (body.department || 'Academic Department').trim();

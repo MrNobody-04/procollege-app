@@ -137,6 +137,8 @@ export interface CourseTeam {
   department: string;
   departmentId?: string;
   institutionName?: string;
+  collegeId?: string;
+  institutionId?: string;
   facultyId?: string; // backwards compatibility alias
   term: string;
   color: string;

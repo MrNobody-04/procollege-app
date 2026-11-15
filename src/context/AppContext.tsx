@@ -343,6 +343,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ? 'professor'
             : 'student';
 
+        const instName =
+          mappedRole === 'developer'
+            ? 'ProCollege Platform Operations'
+            : u.institution_name || u.institutionName || 'Academic Institution';
+
+        const colId = u.college_id || u.collegeId || u.institution_id || u.institutionId;
+
         const restoredUser: User = {
           id: u.id,
           name: u.full_name || u.name,
@@ -360,16 +367,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               : mappedRole === 'admin'
               ? 'Administration'
               : (u.department || 'Department of BIT'),
-          institutionName:
-            mappedRole === 'developer'
-              ? 'ProCollege Platform Operations'
-              : u.institution_name || u.institutionName || 'Academic Institution',
+          institutionName: instName,
+          institutionId: colId,
+          collegeId: colId,
+          collegeName: instName,
           avatar:
             u.avatar_url ||
             'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
           status: 'available',
         };
         setCurrentUser(restoredUser);
+        if (instName && mappedRole !== 'developer') {
+          setSelectedInstitution(instName);
+        }
         setIsDemoMode(false);
         setViewMode('app');
       }
@@ -732,17 +742,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Phase 1: Provision Class Team
-  const createCourse = (newCourse: CourseTeam) => {
-    const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
-    const collegeId = currentUser.collegeId || currentUser.institutionId || (selectedInstitution !== 'all' ? selectedInstitution : undefined);
+  const createCourse = async (newCourse: CourseTeam) => {
+    const inst = newCourse.institutionName || currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
+    const collegeId = newCourse.collegeId || currentUser.collegeId || currentUser.institutionId || (selectedInstitution !== 'all' ? selectedInstitution : undefined);
     const targetDeptId = newCourse.departmentId || newCourse.facultyId;
     const courseWithInst: CourseTeam = {
       ...newCourse,
+      collegeId,
       departmentId: targetDeptId,
       facultyId: targetDeptId,
-      institutionName: newCourse.institutionName || inst
+      institutionName: inst
     };
-    setCourses(prev => [...prev, courseWithInst]);
+    setCourses(prev => [...prev.filter(c => c.id !== courseWithInst.id), courseWithInst]);
     setSelectedCourse(courseWithInst);
     if (courseWithInst.channels.length > 0) {
       setSelectedChannel(courseWithInst.channels[0]);
@@ -750,21 +761,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist new class & channels to live Turso SQL database (R14) - Zero writes in demo mode
     if (!isDemoMode) {
-      const token = getStoredToken();
-      fetch('/api/courses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          ...courseWithInst,
-          college_id: collegeId,
-          institution_id: collegeId,
-          institution_name: inst,
-          channels: courseWithInst.channels
-        }),
-      }).catch(console.error);
+      try {
+        const token = getStoredToken();
+        const res = await fetch('/api/courses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            ...courseWithInst,
+            college_id: collegeId,
+            institution_id: collegeId,
+            institution_name: inst,
+            channels: courseWithInst.channels
+          }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.error('[COURSES] Failed to persist course to Turso:', res.status, errData);
+          showDialog(`Failed to save class to server: ${errData.error || res.statusText}`, { type: 'error', title: 'Save Failed' });
+        } else {
+          console.log('[COURSES] Class saved to database successfully');
+        }
+      } catch (err) {
+        console.error('[COURSES] Network error persisting course:', err);
+      }
     }
   };
 
@@ -2761,10 +2783,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (selectedInstitution === 'all') {
         return realCourses;
       }
-      return realCourses.filter(c => c.institutionName === activeInstitution);
+      return realCourses.filter(c => (c.institutionName || '').toLowerCase().trim() === (activeInstitution || '').toLowerCase().trim());
     }
-    return courses.filter(c => (c.institutionName || 'ProCollege University Network') === activeInstitution);
-  }, [courses, currentUser.role, selectedInstitution, activeInstitution]);
+    return courses.filter(c => {
+      if (c.collegeId && currentUser.collegeId && c.collegeId === currentUser.collegeId) return true;
+      if ((c as any).college_id && currentUser.collegeId && (c as any).college_id === currentUser.collegeId) return true;
+      const cInst = (c.institutionName || 'ProCollege University Network').toLowerCase().trim();
+      const activeInst = (activeInstitution || 'ProCollege University Network').toLowerCase().trim();
+      return cInst === activeInst;
+    });
+  }, [courses, currentUser.role, currentUser.collegeId, selectedInstitution, activeInstitution]);
 
   const tenantFaculties = useMemo(() => {
     if (currentUser.role === 'developer') {
@@ -2773,10 +2801,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (selectedInstitution === 'all') {
         return realFaculties;
       }
-      return realFaculties.filter(f => f.institutionName === activeInstitution);
+      return realFaculties.filter(f => (f.institutionName || '').toLowerCase().trim() === (activeInstitution || '').toLowerCase().trim());
     }
-    return faculties.filter(f => (f.institutionName || 'ProCollege University Network') === activeInstitution);
-  }, [faculties, currentUser.role, selectedInstitution, activeInstitution]);
+    return faculties.filter(f => {
+      if (f.collegeId && currentUser.collegeId && f.collegeId === currentUser.collegeId) return true;
+      const fInst = (f.institutionName || 'ProCollege University Network').toLowerCase().trim();
+      const activeInst = (activeInstitution || 'ProCollege University Network').toLowerCase().trim();
+      return fInst === activeInst;
+    });
+  }, [faculties, currentUser.role, currentUser.collegeId, selectedInstitution, activeInstitution]);
 
   const tenantUsers = useMemo(() => {
     if (currentUser.role === 'developer') {
