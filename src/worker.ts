@@ -3408,15 +3408,21 @@ app.post('/api/notices/:id/replies', async (c) => {
 app.get('/api/workspace/bootstrap', async (c) => {
   try {
     const caller = await extractUserFromHeader(c);
-    const callerInstId = caller?.institution_id || caller?.college_id;
-    const callerInstName = caller?.institution_name;
+    if (!caller) {
+      return c.json({ error: 'Unauthorized: Invalid or missing token' }, 401);
+    }
+    const isDeveloper = caller.role === 'developer' || caller.role === 'platform_admin';
+    const callerInstId = (caller.institution_id || caller.college_id || '').trim();
+    const callerInstName = (caller.institution_name || '').trim();
 
-    const roleParam = c.req.query('role') || c.req.header('x-user-role') || caller?.role || '';
-    const isDeveloper = roleParam === 'developer' || roleParam === 'platform_admin';
-    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || callerInstName || (isDeveloper ? 'all' : 'Public English School');
+    const requestedInstId = (c.req.query('collegeId') || c.req.query('institutionId') || '').trim();
+    if (!isDeveloper && requestedInstId && callerInstId && requestedInstId !== callerInstId && requestedInstId !== 'all') {
+      return c.json({ error: 'Forbidden: Tenant ID does not match authenticated token' }, 403);
+    }
 
     const db = getDb(c);
-    let collegeId = c.req.query('collegeId') || c.req.header('x-college-id') || callerInstId || '';
+    let collegeId = isDeveloper && requestedInstId ? requestedInstId : callerInstId;
+    const institutionParam = isDeveloper && c.req.query('institution') ? c.req.query('institution') : callerInstName || (isDeveloper ? 'all' : 'Public English School');
     if (!collegeId || collegeId === 'col_procollege_network') {
       if (institutionParam && institutionParam !== 'all') {
         const colLookup = await db.execute({
@@ -4585,10 +4591,19 @@ app.post('/api/assignments', async (c) => {
 // Dedicated GET /api/assignments endpoint
 app.get('/api/assignments', async (c) => {
   try {
+    const caller = await extractUserFromHeader(c);
     const db = getDb(c);
     const courseId = c.req.query('courseId') || c.req.query('course_id');
-    const institutionParam = c.req.query('institution') || c.req.header('x-institution-name') || '';
-    const collegeId = c.req.query('collegeId') || c.req.header('x-college-id') || '';
+    const isDev = caller?.role === 'developer' || caller?.role === 'platform_admin';
+    const callerInstId = (caller?.institution_id || caller?.college_id || '').trim();
+
+    const requestedInstId = (c.req.query('collegeId') || '').trim();
+    if (caller && !isDev && requestedInstId && callerInstId && requestedInstId !== callerInstId && requestedInstId !== 'all') {
+      return c.json({ error: 'Forbidden: Tenant ID does not match authenticated token' }, 403);
+    }
+
+    const collegeId = isDev && requestedInstId ? requestedInstId : callerInstId || requestedInstId;
+    const institutionParam = isDev && c.req.query('institution') ? c.req.query('institution') : caller?.institution_name || '';
 
     let asgnRes;
     if (courseId) {
@@ -5099,7 +5114,11 @@ app.post('/api/courses/:courseId/files', async (c) => {
 // 16. Delete Course File from Turso with permission check
 app.delete('/api/courses/:courseId/files/:fileId', async (c) => {
   const fileId = c.req.param('fileId');
-  const role = c.req.header('x-user-role') || '';
+  const caller = await extractUserFromHeader(c);
+  if (!caller) {
+    return c.json({ error: 'Unauthorized: Invalid or missing token' }, 401);
+  }
+  const role = caller.role || '';
   try {
     const db = getDb(c);
     const existing = await db.execute({
