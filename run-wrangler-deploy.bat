@@ -1,5 +1,5 @@
 @echo off
-cd /d c:\Users\lenovo\Desktop\ProCollege\procollege-app
+cd /d "%~dp0"
 echo ========================================================
 echo  ProCollege Cloudflare Worker Deployer
 echo ========================================================
