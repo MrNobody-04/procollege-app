@@ -123,19 +123,11 @@ async function extractUserFromHeader(c: any): Promise<{
 
     const userId = legacyRes.userId;
 
-    // Special developer override check
-    if (userId === 'user_dev_root' && c.env?.DEVELOPER_EMAIL) {
-      const user = {
-        id: 'user_dev_root',
-        email: c.env.DEVELOPER_EMAIL,
-        role: 'developer',
-        institution_id: 'col_platform_root',
-        college_id: 'col_platform_root',
-        institution_name: 'ProCollege Platform Operations',
-        is_legacy: true,
-      };
-      c.set('authenticatedCaller', user);
-      return user;
+    // Reject legacy tokens for developer accounts immediately.
+    // Privileged accounts must sign in fresh with signed HS256 JWTs.
+    if (userId === 'user_dev_root') {
+      c.set('authenticatedCaller', null);
+      return null;
     }
 
     // Strictly resolve genuine user role and tenant from Database (Never trust claims in legacy token)
@@ -156,6 +148,14 @@ async function extractUserFromHeader(c: any): Promise<{
       }
 
       const row = result.rows[0];
+      const role = String(row.role || '').toLowerCase();
+
+      // Legacy tokens are NEVER accepted for developer, platform_admin, admin, or assistant_admin
+      if (role === 'developer' || role === 'platform_admin' || role === 'admin' || role === 'assistant_admin') {
+        c.set('authenticatedCaller', null);
+        return null;
+      }
+
       const status = row.status ? String(row.status).toLowerCase() : 'active';
       if (status !== 'active') {
         c.set('authenticatedCaller', null);
@@ -3295,6 +3295,8 @@ app.post('/api/notices', async (c) => {
     const priority = body.priority || 'normal';
     const authorId = body.author_id || body.authorId || 'usr_anonymous';
     const authorName = body.author_name || body.authorName || 'Faculty Member';
+    const courseId = body.course_id || body.courseId || null;
+    const channelId = body.channel_id || body.channelId || null;
     const createdAt = new Date().toISOString();
 
     if (!title || !content) {
@@ -3302,9 +3304,9 @@ app.post('/api/notices', async (c) => {
     }
 
     await db.execute({
-      sql: `INSERT INTO notices (id, college_id, title, content, priority, author_id, author_name, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-      args: [id, collegeId, title, content, priority, authorId, authorName, createdAt],
+      sql: `INSERT INTO notices (id, college_id, title, content, priority, author_id, author_name, created_at, course_id, channel_id, replies)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      args: [id, collegeId, title, content, priority, authorId, authorName, createdAt, courseId, channelId, '[]'],
     });
 
     const savedNotice = {
@@ -3316,6 +3318,9 @@ app.post('/api/notices', async (c) => {
       author_id: authorId,
       author_name: authorName,
       created_at: createdAt,
+      course_id: courseId,
+      channel_id: channelId,
+      replies: [],
     };
 
     // Broadcast notice via Ably REST API
@@ -3343,6 +3348,58 @@ app.post('/api/notices', async (c) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return c.json({ error: message }, 500);
+  }
+});
+
+// 5b. Post reply to an announcement notice
+app.post('/api/notices/:id/replies', async (c) => {
+  try {
+    const noticeId = c.req.param('id');
+    const body = await c.req.json();
+    const reply = body.reply;
+    if (!reply || !reply.content) {
+      return c.json({ error: 'Reply content is required' }, 400);
+    }
+    const db = getDb(c);
+    const existing = await db.execute({
+      sql: 'SELECT replies FROM notices WHERE id = ? LIMIT 1;',
+      args: [noticeId]
+    });
+    if (existing.rows.length === 0) {
+      return c.json({ error: 'Notice not found' }, 404);
+    }
+    let replies: any[] = [];
+    try {
+      replies = existing.rows[0].replies ? JSON.parse(String(existing.rows[0].replies)) : [];
+    } catch {}
+    replies.push(reply);
+    await db.execute({
+      sql: 'UPDATE notices SET replies = ? WHERE id = ?;',
+      args: [JSON.stringify(replies), noticeId]
+    });
+
+    const ablyApiKey = c.env?.ABLY_API_KEY || DEFAULT_ABLY_KEY;
+    if (ablyApiKey) {
+      try {
+        const authHeader = 'Basic ' + btoa(ablyApiKey);
+        await fetch(`https://rest.ably.io/channels/notices/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'notice-reply',
+            data: { noticeId, reply },
+          }),
+        });
+      } catch {}
+    }
+
+    return c.json({ success: true, replies }, 201);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
   }
 });
 
@@ -3711,7 +3768,28 @@ app.get('/api/workspace/bootstrap', async (c) => {
       courses: allCourses,
       assignments: allAssignments,
       files: allFiles,
-      notices: noticesRes.rows,
+      notices: noticesRes.rows.map((n: any) => {
+        let replies: any[] = [];
+        if (n.replies) {
+          try {
+            replies = typeof n.replies === 'string' ? JSON.parse(n.replies) : n.replies;
+          } catch {}
+        }
+        return {
+          id: String(n.id),
+          college_id: String(n.college_id),
+          institution_name: n.institution_name ? String(n.institution_name) : undefined,
+          title: String(n.title),
+          content: String(n.content),
+          priority: String(n.priority || 'normal'),
+          author_id: n.author_id ? String(n.author_id) : undefined,
+          author_name: n.author_name ? String(n.author_name) : undefined,
+          created_at: String(n.created_at || ''),
+          course_id: n.course_id ? String(n.course_id) : undefined,
+          channel_id: n.channel_id ? String(n.channel_id) : undefined,
+          replies,
+        };
+      }),
       users: allUsers,
       schoolAttendance: (schoolAttRes?.rows || []).map((r: any) => ({
         id: String(r.id),

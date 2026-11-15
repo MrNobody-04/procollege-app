@@ -294,6 +294,30 @@ async function runLocalIntegrationTests() {
   assert.equal(rejectedLegacyRes.status, 401, 'Legacy token must be rejected when ALLOW_LEGACY_TOKENS is false');
   console.log('✓ 7. Legacy token rejected when ALLOW_LEGACY_TOKENS=false');
 
+  // Test 7b: Legacy Token for Developer account MUST return 401
+  const devLegacyPayload = {
+    id: 'user_dev_root',
+    ts: Date.now() - 5000,
+  };
+  const devLegacyToken = 'tok_' + Buffer.from(JSON.stringify(devLegacyPayload)).toString('base64');
+  const devLegacyRes = await app.fetch(new Request('http://localhost/api/auth/me', {
+    headers: { 'Authorization': `Bearer ${devLegacyToken}` }
+  }), env);
+  assert.equal(devLegacyRes.status, 401, 'Legacy token for developer account must be rejected with 401');
+  console.log('✓ 7b. Legacy token for developer account strictly rejected (401)');
+
+  // Test 7c: Legacy Token for Admin account MUST return 401
+  const adminLegacyPayload = {
+    id: 'usr_test_admin',
+    ts: Date.now() - 5000,
+  };
+  const adminLegacyToken = 'tok_' + Buffer.from(JSON.stringify(adminLegacyPayload)).toString('base64');
+  const adminLegacyRes = await app.fetch(new Request('http://localhost/api/auth/me', {
+    headers: { 'Authorization': `Bearer ${adminLegacyToken}` }
+  }), env);
+  assert.equal(adminLegacyRes.status, 401, 'Legacy token for admin account must be rejected with 401');
+  console.log('✓ 7c. Legacy token for admin account strictly rejected (401)');
+
   // Test 8: Missing JWT_SECRET Fails Loudly
   const envNoSecret = { ...env, JWT_SECRET: '' };
   const failLoudRes = await app.fetch(new Request('http://localhost/api/auth/me', {
