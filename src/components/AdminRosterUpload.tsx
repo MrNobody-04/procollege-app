@@ -153,7 +153,6 @@ export const AdminRosterUpload: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-role': currentUser.role || 'admin',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({

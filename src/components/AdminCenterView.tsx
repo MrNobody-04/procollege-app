@@ -541,9 +541,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       const res = await fetch(`/api/platform/institutions/${encodeURIComponent(org.id)}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'x-user-role': currentUser?.role || 'developer',
-          'x-user-email': currentUser?.email || 'gcsujan321@gmail.com'
+          'Authorization': `Bearer ${token}`
         }
       });
       const data = await res.json();

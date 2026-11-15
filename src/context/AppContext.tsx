@@ -742,9 +742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {}),
-          ...(inst ? { 'x-institution-name': inst } : {})
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           ...courseWithInst,
@@ -914,9 +912,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {}),
-          ...(currentUser.institutionName ? { 'x-institution-name': currentUser.institutionName } : {})
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           id: newChanId,
@@ -1139,8 +1135,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           sourceCourseId,
@@ -2170,9 +2165,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          'x-user-role': currentUser.role,
-          'x-institution-name': currentUser.institutionName || 'Academic Institution',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           id: newFile.id,
@@ -2228,9 +2221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fetch(`/api/courses/${target.courseId}/files/${fileId}`, {
         method: 'DELETE',
         headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          'x-user-role': currentUser.role,
-          'x-institution-name': currentUser.institutionName || 'Academic Institution',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
       }).catch(err => console.warn('Turso file deletion sync failed:', err));
     }
@@ -2454,8 +2445,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           id: newUser.id,
@@ -2493,13 +2483,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       const token = getStoredToken();
-      const collegeId = currentUser.collegeId || currentUser.institutionId;
       try {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`,
-            ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+            'Authorization': `Bearer ${token}`
           }
         });
       } catch (err) {
@@ -2516,14 +2504,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!isDemoMode) {
       const token = getStoredToken();
-      const collegeId = currentUser.collegeId || currentUser.institutionId;
       try {
         await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {})
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(data)
         });
@@ -2550,9 +2536,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...(collegeId ? { 'x-college-id': collegeId, 'x-institution-id': collegeId } : {}),
-          ...(inst ? { 'x-institution-name': inst } : {})
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           ...newFac,

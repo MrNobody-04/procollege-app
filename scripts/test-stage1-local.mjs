@@ -318,6 +318,24 @@ async function runLocalIntegrationTests() {
   assert.equal(adminLegacyRes.status, 401, 'Legacy token for admin account must be rejected with 401');
   console.log('✓ 7c. Legacy token for admin account strictly rejected (401)');
 
+  // Stage 2 Test 9a: Request with spoofed x-user-role: developer and NO token MUST return 401
+  const spoofHeaderRes = await app.fetch(new Request('http://localhost/api/auth/me', {
+    headers: {
+      'x-user-role': 'developer',
+      'x-user-email': 'attacker@spoof.local',
+      'x-institution-id': 'col_platform_root',
+    }
+  }), env);
+  assert.equal(spoofHeaderRes.status, 401, 'Request with spoofed x-user-role and NO token must return 401');
+  console.log('✓ 9a. Request with spoofed x-user-role and no token returned 401 Unauthorized');
+
+  // Stage 2 Test 9b: Tenant mismatch rejection (student attempting to query another college)
+  const mismatchRes = await app.fetch(new Request('http://localhost/api/workspace/bootstrap?collegeId=col_other_tenant', {
+    headers: { 'Authorization': `Bearer ${studentToken}` }
+  }), env);
+  assert.equal(mismatchRes.status, 403, 'Tenant mismatch must return 403 Forbidden');
+  console.log('✓ 9b. Request with tenant mismatch strictly returned 403 Forbidden');
+
   // Test 8: Missing JWT_SECRET Fails Loudly
   const envNoSecret = { ...env, JWT_SECRET: '' };
   const failLoudRes = await app.fetch(new Request('http://localhost/api/auth/me', {
