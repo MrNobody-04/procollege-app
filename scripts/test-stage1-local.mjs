@@ -150,6 +150,7 @@ async function runLocalIntegrationTests() {
     JWT_SECRET: TEST_JWT_SECRET,
     DEVELOPER_EMAIL: 'dev@platform.local',
     ALLOW_LEGACY_TOKENS: 'true',
+    LEGACY_TOKEN_CUTOFF: new Date(Date.now() + 86400 * 1000).toISOString(),
     __db: db,
   };
 

@@ -69,16 +69,23 @@ async function runTests() {
   );
   console.log('✓ 5. Fail loudly on missing secret passed');
 
-  // 6. Legacy Token: Valid when ALLOW_LEGACY_TOKENS=true
+  // 6. Legacy Token: Valid when ALLOW_LEGACY_TOKENS=true and future cutoff
+  const futureCutoff = Date.now() + 86400 * 1000;
   const legacyPayload = { id: 'usr_legacy', role: 'student', ts: Date.now() - 1000 };
   const legacyTokenStr = 'tok_' + Buffer.from(JSON.stringify(legacyPayload)).toString('base64');
-  const legRes1 = validateLegacyTokenPayload(legacyTokenStr, { allowLegacyTokens: true });
+  const legRes1 = validateLegacyTokenPayload(legacyTokenStr, {
+    allowLegacyTokens: true,
+    legacyTokenCutoff: futureCutoff,
+  });
   assert.equal(legRes1.valid, true);
   assert.equal(legRes1.userId, 'usr_legacy');
-  console.log('✓ 6. Legacy token acceptance when allowed passed');
+  console.log('✓ 6. Legacy token acceptance when allowed with valid cutoff passed');
 
   // 7. Legacy Token: Rejected when ALLOW_LEGACY_TOKENS=false
-  const legRes2 = validateLegacyTokenPayload(legacyTokenStr, { allowLegacyTokens: false });
+  const legRes2 = validateLegacyTokenPayload(legacyTokenStr, {
+    allowLegacyTokens: false,
+    legacyTokenCutoff: futureCutoff,
+  });
   assert.equal(legRes2.valid, false);
   console.log('✓ 7. Legacy token rejection when disabled passed');
 
@@ -95,12 +102,33 @@ async function runTests() {
   // 9. Legacy Token: Rejected if > 30 days old
   const oldLegacyPayload = { id: 'usr_old', role: 'student', ts: Date.now() - (35 * 86400 * 1000) };
   const oldTokenStr = 'tok_' + Buffer.from(JSON.stringify(oldLegacyPayload)).toString('base64');
-  const legRes4 = validateLegacyTokenPayload(oldTokenStr, { allowLegacyTokens: true });
+  const legRes4 = validateLegacyTokenPayload(oldTokenStr, {
+    allowLegacyTokens: true,
+    legacyTokenCutoff: futureCutoff,
+  });
   assert.equal(legRes4.valid, false);
   assert.match(legRes4.error || '', /older than 30 days/);
   console.log('✓ 9. Legacy token rejection when > 30 days passed');
 
-  console.log('ALL 9 JWT & TOKEN UNIT TESTS PASSED!');
+  // 10. Legacy Token: Rejected when LEGACY_TOKEN_CUTOFF is unset/missing
+  const legRes5 = validateLegacyTokenPayload(legacyTokenStr, {
+    allowLegacyTokens: true,
+    legacyTokenCutoff: undefined,
+  });
+  assert.equal(legRes5.valid, false);
+  assert.match(legRes5.error || '', /cutoff is not configured/);
+  console.log('✓ 10. Legacy token rejection when cutoff is unset passed');
+
+  // 11. Legacy Token: Rejected when LEGACY_TOKEN_CUTOFF is invalid
+  const legRes6 = validateLegacyTokenPayload(legacyTokenStr, {
+    allowLegacyTokens: true,
+    legacyTokenCutoff: 'invalid-cutoff-date',
+  });
+  assert.equal(legRes6.valid, false);
+  assert.match(legRes6.error || '', /cutoff is invalid/);
+  console.log('✓ 11. Legacy token rejection when cutoff is invalid passed');
+
+  console.log('ALL 11 JWT & TOKEN UNIT TESTS PASSED!');
 }
 
 runTests().catch(err => {

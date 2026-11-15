@@ -183,18 +183,20 @@ export function validateLegacyTokenPayload(
 
   const nowMs = options.nowMs ?? Date.now();
 
-  // Check hard cutoff
-  if (options.legacyTokenCutoff) {
-    let cutoffMs: number;
-    if (typeof options.legacyTokenCutoff === 'number') {
-      cutoffMs = options.legacyTokenCutoff < 1e12 ? options.legacyTokenCutoff * 1000 : options.legacyTokenCutoff;
-    } else {
-      cutoffMs = new Date(String(options.legacyTokenCutoff)).getTime();
-    }
+  // Check hard cutoff: Must be set and valid, otherwise reject legacy tokens immediately
+  if (!options.legacyTokenCutoff) {
+    return { valid: false, error: 'Legacy token cutoff is not configured. Legacy tokens are rejected.' };
+  }
 
-    if (!isNaN(cutoffMs) && nowMs > cutoffMs) {
-      return { valid: false, error: 'Legacy token sunset window has expired. Please log in again.' };
-    }
+  let cutoffMs: number;
+  if (typeof options.legacyTokenCutoff === 'number') {
+    cutoffMs = options.legacyTokenCutoff < 1e12 ? options.legacyTokenCutoff * 1000 : options.legacyTokenCutoff;
+  } else {
+    cutoffMs = new Date(String(options.legacyTokenCutoff)).getTime();
+  }
+
+  if (isNaN(cutoffMs) || nowMs > cutoffMs) {
+    return { valid: false, error: 'Legacy token sunset window has expired or cutoff is invalid. Please log in again.' };
   }
 
   // Parse payload
