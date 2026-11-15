@@ -396,6 +396,24 @@ async function send2FAEmail(params: {
   return { success, provider: providerUsed, error: lastError };
 }
 
+// Global Security Headers Middleware
+app.use('*', async (c, next) => {
+  await next();
+  if (c.res) {
+    const isNullBodyStatus = [101, 204, 205, 304].includes(c.res.status) || c.req.method === 'HEAD';
+    const body = isNullBodyStatus ? null : c.res.body;
+    c.res = new Response(body, c.res);
+    c.res.headers.set('X-Content-Type-Options', 'nosniff');
+    c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    c.res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+    c.res.headers.set('Strict-Transport-Security', 'max-age=86400');
+    c.res.headers.set(
+      'Content-Security-Policy-Report-Only',
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; frame-ancestors 'self';"
+    );
+  }
+});
+
 // Global API Workflow Enforcement Middleware: Checks if an organization workflow is paused
 app.use('/api/*', async (c, next) => {
   const path = c.req.path;
@@ -1015,7 +1033,7 @@ app.post('/api/auth/login', async (c) => {
         args: [otpCode, otpExpires, userRow.id],
       });
 
-      console.log(`[AUTH-OTP] Generated fresh 2FA OTP ${otpCode} for ${userRow.email} (valid for 10 min)`);
+      console.log(`[AUTH-OTP] Generated fresh 2FA OTP for ${userRow.email} (valid for 10 min)`);
 
       // Dispatch real 2FA email directly to recipient's email address
       const emailResult = await send2FAEmail({
