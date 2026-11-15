@@ -835,8 +835,8 @@ app.post('/api/auth/login', async (c) => {
     }
 
     // A. Check Developer / Platform Creator credentials from secure environment secrets (never exposed to public)
-    const devEnvEmail = (c.env.DEVELOPER_EMAIL || '').trim().toLowerCase();
-    const devEnvPass = c.env.DEVELOPER_PASSWORD || '';
+    const devEnvEmail = (c.env?.DEVELOPER_EMAIL || '').trim().toLowerCase();
+    const devEnvPass = c.env?.DEVELOPER_PASSWORD || '';
 
     if (devEnvEmail && email === devEnvEmail) {
       if (!devEnvPass || password !== devEnvPass) {
@@ -1090,6 +1090,7 @@ app.post('/api/auth/login', async (c) => {
       phone: userRow.phone ? String(userRow.phone) : undefined,
       guardianName: userRow.guardian_name ? String(userRow.guardian_name) : undefined,
       guardianPhone: userRow.guardian_phone ? String(userRow.guardian_phone) : undefined,
+      mustChangePassword,
     };
 
     const college = {
@@ -1111,6 +1112,7 @@ app.post('/api/auth/login', async (c) => {
       college,
       deviceToken: matchedDeviceToken || undefined,
       deviceTrusted: isDeviceTrusted,
+      mustChangePassword,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -1471,9 +1473,11 @@ app.post('/api/auth/change-password', async (c) => {
     const caller = extractUserFromHeader(c);
     const body = await c.req.json();
     const email = (body.email || caller?.email || '').trim().toLowerCase();
+    const userId = (body.userId || caller?.id || '').trim();
+    const loginId = (body.loginId || '').trim();
     const newPassword = (body.newPassword || '').trim();
 
-    if (!email || !newPassword || newPassword.length < 6) {
+    if ((!email && !userId && !loginId) || !newPassword || newPassword.length < 6) {
       return c.json({ error: 'New password must be at least 6 characters long' }, 400);
     }
 
@@ -1481,8 +1485,12 @@ app.post('/api/auth/change-password', async (c) => {
     const newHash = await hashPassword(newPassword);
 
     await db.execute({
-      sql: 'UPDATE users SET password = ?, password_hash = ?, must_change_password = 0 WHERE LOWER(email) = LOWER(?);',
-      args: [newPassword, newHash, email],
+      sql: `UPDATE users 
+            SET password = ?, password_hash = ?, must_change_password = 0 
+            WHERE (LOWER(email) = LOWER(?) AND email != '') 
+               OR (id = ? AND ? != '') 
+               OR (LOWER(login_id) = LOWER(?) AND login_id IS NOT NULL AND ? != '');`,
+      args: [newPassword, newHash, email, userId, userId, loginId, loginId],
     });
 
     return c.json({ success: true, message: 'Password updated successfully' });
@@ -1859,34 +1867,129 @@ app.delete('/api/platform/institutions/:id', async (c) => {
     const id = c.req.param('id');
     const db = getDb(c);
 
-    // Look up the organization name first
+    // Look up the organization name first (by id or by name)
     const orgRes = await db.execute({
-      sql: `SELECT id, name FROM colleges WHERE id = ? UNION SELECT id, name FROM institutions WHERE id = ? LIMIT 1;`,
-      args: [id, id],
+      sql: `SELECT id, name FROM colleges WHERE id = ? OR LOWER(name) = LOWER(?) 
+            UNION 
+            SELECT id, name FROM institutions WHERE id = ? OR LOWER(name) = LOWER(?) 
+            LIMIT 1;`,
+      args: [id, id, id, id],
     });
 
     const orgName = orgRes.rows[0]?.name ? String(orgRes.rows[0].name) : '';
+    const resolvedId = orgRes.rows[0]?.id ? String(orgRes.rows[0].id) : id;
 
-    // Delete from colleges and institutions
-    await db.execute({ sql: `DELETE FROM colleges WHERE id = ?;`, args: [id] });
-    await db.execute({ sql: `DELETE FROM institutions WHERE id = ?;`, args: [id] });
+    // Full cascading cleanup across all dependent tables
+    // 1. Delete course files
+    await db.execute({
+      sql: `DELETE FROM course_files WHERE college_id = ? OR college_id = ? OR course_id IN (
+              SELECT id FROM courses WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+            );`,
+      args: [id, resolvedId, id, resolvedId, orgName, orgName],
+    });
 
-    // Cascade delete associated tenant users, faculties, and courses strictly by ID (except platform developers)
+    // 2. Delete messages in channels of courses belonging to this organization
     await db.execute({
-      sql: `DELETE FROM users WHERE (college_id = ? OR institution_id = ?) AND role != 'developer';`,
-      args: [id, id],
+      sql: `DELETE FROM messages WHERE channel_id IN (
+              SELECT id FROM channels WHERE college_id = ? OR college_id = ? OR course_id IN (
+                SELECT id FROM courses WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+              )
+            );`,
+      args: [id, resolvedId, id, resolvedId, orgName, orgName],
+    });
+
+    // 3. Delete channels
+    await db.execute({
+      sql: `DELETE FROM channels WHERE college_id = ? OR college_id = ? OR course_id IN (
+              SELECT id FROM courses WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+            );`,
+      args: [id, resolvedId, id, resolvedId, orgName, orgName],
+    });
+
+    // 4. Delete assignment submissions
+    await db.execute({
+      sql: `DELETE FROM assignment_submissions WHERE assignment_id IN (
+              SELECT id FROM assignments WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+            );`,
+      args: [id, resolvedId, orgName, orgName],
+    });
+
+    // 5. Delete assignments
+    await db.execute({
+      sql: `DELETE FROM assignments WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, orgName, orgName],
+    });
+
+    // 6. Delete attendance & overrides
+    await db.execute({
+      sql: `DELETE FROM school_attendance WHERE college_id = ? OR college_id = ? OR class_id IN (
+              SELECT id FROM courses WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+            );`,
+      args: [id, resolvedId, id, resolvedId, orgName, orgName],
     });
     await db.execute({
-      sql: `DELETE FROM faculties WHERE college_id = ? OR institution_id = ?;`,
-      args: [id, id],
+      sql: `DELETE FROM subject_attendance WHERE college_id = ? OR college_id = ? OR course_id IN (
+              SELECT id FROM courses WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+            );`,
+      args: [id, resolvedId, id, resolvedId, orgName, orgName],
     });
     await db.execute({
-      sql: `DELETE FROM departments WHERE college_id = ? OR institution_id = ?;`,
-      args: [id, id],
+      sql: `DELETE FROM assignment_attendance_overrides WHERE assignment_id IN (
+              SELECT id FROM assignments WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '')
+            );`,
+      args: [id, resolvedId, orgName, orgName],
+    });
+
+    // 7. Delete notices
+    await db.execute({
+      sql: `DELETE FROM notices WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, orgName, orgName],
+    });
+
+    // 8. Delete courses (by id, resolvedId, or institution_name)
+    await db.execute({
+      sql: `DELETE FROM courses WHERE college_id = ? OR college_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, orgName, orgName],
+    });
+
+    // 9. Delete faculties and departments
+    await db.execute({
+      sql: `DELETE FROM faculties WHERE college_id = ? OR college_id = ? OR institution_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, id, orgName, orgName],
     });
     await db.execute({
-      sql: `DELETE FROM courses WHERE college_id = ?;`,
-      args: [id],
+      sql: `DELETE FROM departments WHERE college_id = ? OR college_id = ? OR institution_id = ? OR (LOWER(institution_name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, id, orgName, orgName],
+    });
+
+    // 10. Delete sections
+    await db.execute({
+      sql: `DELETE FROM sections WHERE college_id = ? OR college_id = ?;`,
+      args: [id, resolvedId],
+    });
+
+    // 11. Delete college requests
+    if (orgName) {
+      await db.execute({
+        sql: `DELETE FROM college_requests WHERE LOWER(institution_name) = LOWER(?);`,
+        args: [orgName],
+      });
+    }
+
+    // 12. Delete tenant users (except platform developers)
+    await db.execute({
+      sql: `DELETE FROM users WHERE ((college_id = ? OR college_id = ? OR institution_id = ? OR institution_id = ?) OR (LOWER(institution_name) = LOWER(?) AND ? != '')) AND role != 'developer';`,
+      args: [id, resolvedId, id, resolvedId, orgName, orgName],
+    });
+
+    // 13. Delete from colleges and institutions
+    await db.execute({
+      sql: `DELETE FROM colleges WHERE id = ? OR id = ? OR (LOWER(name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, orgName, orgName],
+    });
+    await db.execute({
+      sql: `DELETE FROM institutions WHERE id = ? OR id = ? OR (LOWER(name) = LOWER(?) AND ? != '');`,
+      args: [id, resolvedId, orgName, orgName],
     });
 
     return c.json({
@@ -2699,6 +2802,7 @@ async function handleCreateUser(c: any) {
     });
 
     let userId: string;
+    const shouldMustChange = body.mustChangePassword !== undefined ? (body.mustChangePassword ? 1 : 0) : 1;
     if (existing.rows.length > 0) {
       userId = String(existing.rows[0].id);
       await db.execute({
@@ -2710,14 +2814,14 @@ async function handleCreateUser(c: any) {
                 institution_id = COALESCE(NULLIF(?, ''), institution_id),
                 institution_name = COALESCE(NULLIF(?, ''), institution_name),
                 login_id = COALESCE(NULLIF(?, ''), login_id),
-                must_change_password = 0
+                must_change_password = ?
               WHERE id = ?;`,
         args: [
           name, phone, role, department,
           password, passHash,
           guardianName, guardianPhone,
           collegeId, collegeId, institutionName,
-          loginId, userId
+          loginId, shouldMustChange, userId
         ]
       });
     } else {
@@ -2728,7 +2832,7 @@ async function handleCreateUser(c: any) {
                 name, email, phone, role, password, password_hash,
                 department, guardian_name, guardian_phone,
                 avatar_url, must_change_password, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'));`,
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'));`,
         args: [
           userId, loginId || userId, collegeId, collegeId, institutionName,
           name, email, phone, role, password, passHash,
@@ -2753,6 +2857,7 @@ async function handleCreateUser(c: any) {
       institutionId: collegeId,
       avatar: avatarUrl,
       temporaryPassword: password,
+      mustChangePassword: true,
       status: 'available',
     };
 
@@ -2779,7 +2884,7 @@ async function handleListUsers(c: any) {
     const instId = c.req.query('collegeId') || c.req.query('institutionId') || c.req.header('x-college-id') || callerInstId || '';
     const instName = c.req.query('institution') || caller?.institution_name || '';
 
-    let sql = `SELECT id, login_id, name, email, phone, role, department, institution_name, college_id, institution_id, avatar_url, guardian_name, guardian_phone, created_at
+    let sql = `SELECT id, login_id, name, email, phone, role, department, institution_name, college_id, institution_id, avatar_url, guardian_name, guardian_phone, must_change_password, created_at
                FROM users WHERE role != 'developer'`;
     const args: string[] = [];
 
@@ -2806,6 +2911,7 @@ async function handleListUsers(c: any) {
       avatar: String(u.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'),
       guardianName: u.guardian_name ? String(u.guardian_name) : undefined,
       guardianPhone: u.guardian_phone ? String(u.guardian_phone) : undefined,
+      mustChangePassword: Boolean(u.must_change_password),
       status: 'available',
       createdAt: u.created_at ? String(u.created_at).split('T')[0] : undefined,
     }));
@@ -3797,12 +3903,37 @@ app.delete('/api/courses/:id', async (c) => {
   const id = c.req.param('id');
   try {
     const db = getDb(c);
+    // Cascade delete all course-related records
     await db.execute({
-      sql: 'DELETE FROM courses WHERE id = ?;',
+      sql: 'DELETE FROM assignment_submissions WHERE assignment_id IN (SELECT id FROM assignments WHERE course_id = ?);',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM assignments WHERE course_id = ?;',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM messages WHERE channel_id IN (SELECT id FROM channels WHERE course_id = ?);',
       args: [id],
     });
     await db.execute({
       sql: 'DELETE FROM channels WHERE course_id = ?;',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM course_files WHERE course_id = ?;',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM school_attendance WHERE class_id = ?;',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM subject_attendance WHERE course_id = ?;',
+      args: [id],
+    });
+    await db.execute({
+      sql: 'DELETE FROM courses WHERE id = ?;',
       args: [id],
     });
     return c.json({ success: true, deletedCourseId: id });

@@ -692,8 +692,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createCourse = (newCourse: CourseTeam) => {
     const inst = currentUser.institutionName || (selectedInstitution !== 'all' ? selectedInstitution : 'Academic Institution');
     const collegeId = currentUser.collegeId || currentUser.institutionId || (selectedInstitution !== 'all' ? selectedInstitution : undefined);
+    const targetDeptId = newCourse.departmentId || newCourse.facultyId;
     const courseWithInst: CourseTeam = {
       ...newCourse,
+      departmentId: targetDeptId,
+      facultyId: targetDeptId,
       institutionName: newCourse.institutionName || inst
     };
     setCourses(prev => [...prev, courseWithInst]);
@@ -2166,6 +2169,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFaculties(prev => prev.filter(f => (f.institutionName || '').toLowerCase().trim() !== lower));
     setAvailableUsers(prev => prev.filter(u => u.role === 'developer' || (u.institutionName || '').toLowerCase().trim() !== lower));
     setInstitutionalRequests(prev => prev.filter(r => (r.institutionName || '').toLowerCase().trim() !== lower));
+    setAssignments(prev => prev.filter(a => (a.institutionName || '').toLowerCase().trim() !== lower));
+    setCourseFiles(prev => prev.filter(f => (f.institutionName || '').toLowerCase().trim() !== lower));
     if (selectedInstitution.toLowerCase().trim() === lower) {
       setSelectedInstitution('all');
     }
@@ -2214,6 +2219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'available',
       statusMessage: `${isStudent ? 'Student' : isAssistantAdmin ? 'Assistant Admin' : 'Faculty'} Account Active`,
       temporaryPassword,
+      mustChangePassword: true,
       phone: userData.phone,
       guardianName: userData.guardianName,
       guardianPhone: userData.guardianPhone,
@@ -2259,6 +2265,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           guardianName: newUser.guardianName,
           guardianPhone: newUser.guardianPhone,
           password: temporaryPassword,
+          mustChangePassword: true,
           license: newUser.license
         })
       }).catch(console.error);

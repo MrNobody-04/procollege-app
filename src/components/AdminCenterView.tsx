@@ -35,7 +35,8 @@ import {
   ChevronDown,
   Pencil,
   Check,
-  Phone
+  Phone,
+  Lock
 } from 'lucide-react';
 import { ProCollegeLogo } from './ProCollegeLogo';
 import { AdminRosterUpload } from './AdminRosterUpload';
@@ -1260,6 +1261,7 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
       code: finalCode,
       name: courseName.trim(),
       facultyId: chosenFaculty?.id,
+      departmentId: chosenFaculty?.id,
       department: deptName,
       term,
       color: '#4f46e5',
@@ -1489,14 +1491,15 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
   // Courses belonging to a faculty / department (Strict matching by facultyId or exact department name/code)
   const getFacultyCourses = (fac: FacultyDepartment) => {
     return courses.filter(c => {
-      if (c.facultyId) {
-        return c.facultyId === fac.id;
+      const targetFacultyId = c.departmentId || c.facultyId;
+      if (targetFacultyId) {
+        return targetFacultyId === fac.id;
       }
       const cDept = (c.department || '').trim().toLowerCase();
       const facName = (fac.name || '').trim().toLowerCase();
       const facCode = (fac.code || '').trim().toLowerCase();
-      if (!cDept) return false;
-      return cDept === facName || cDept === facCode;
+      if (!cDept || cDept === 'academic department' || cDept === 'general' || cDept === 'pebs classes' || cDept === 'unassigned') return false;
+      return cDept === facName || (facCode && cDept === facCode);
     });
   };
 
@@ -5860,6 +5863,13 @@ export const AdminCenterView: React.FC<{ activeDevTab?: ActiveTab }> = ({ active
                   {copiedField === 'pass' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-zinc-500" />}
                   {copiedField === 'pass' ? 'Copied' : 'Copy Pass'}
                 </button>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
+                <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>
+                  <strong>First-Time Reset:</strong> User will be required to set a permanent password on first sign in.
+                </span>
               </div>
             </div>
 

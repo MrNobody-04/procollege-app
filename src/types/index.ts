@@ -31,6 +31,7 @@ export interface User {
   statusMessage?: string;
   isMuted?: boolean;
   temporaryPassword?: string;
+  mustChangePassword?: boolean;
   phone?: string;
   guardianName?: string;
   guardianPhone?: string;

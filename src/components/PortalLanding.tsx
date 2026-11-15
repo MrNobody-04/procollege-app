@@ -496,7 +496,9 @@ export const PortalLanding: React.FC = () => {
         },
         body: JSON.stringify({
           newPassword,
-          email: pendingAuthResponse?.user?.email || otpEmail,
+          email: pendingAuthResponse?.user?.email || otpEmail || loginEmail,
+          userId: pendingAuthResponse?.user?.id,
+          loginId: pendingAuthResponse?.user?.loginId,
         }),
       });
       const data = await res.json();
@@ -504,7 +506,15 @@ export const PortalLanding: React.FC = () => {
         throw new Error(data.error || 'Failed to update password.');
       }
 
-      finishLoginSession(pendingAuthResponse);
+      const updatedResponse = {
+        ...pendingAuthResponse,
+        mustChangePassword: false,
+        user: {
+          ...(pendingAuthResponse?.user || {}),
+          mustChangePassword: false,
+        },
+      };
+      finishLoginSession(updatedResponse);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       setLoginError(message);
@@ -2522,7 +2532,7 @@ export const PortalLanding: React.FC = () => {
                   </div>
                   <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Set Permanent Password</h3>
                   <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
-                    You are signing in with a temporary roster password. Please create a secure permanent password to protect your student records.
+                    You are signing in with an initial temporary password. Please create a secure permanent password to protect your account and campus records.
                   </p>
                 </div>
 
